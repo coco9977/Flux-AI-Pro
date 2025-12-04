@@ -1,23 +1,23 @@
 // =================================================================================
 //  項目: multi-provider-image-generator
-//  版本: 8.5.0 (完整最終版 + 自動高清)
+//  版本: 8.6.0 (智能自適應高清優化)
 //  作者: Enhanced by AI Assistant
-//  日期: 2025-11-29
+//  日期: 2025-12-04
 //
 //  完整功能:
 //  ✅ 17個模型 (Flux + SD3)
 //  ✅ 12種風格預設
+//  ✅ 三檔質量模式
+//  ✅ 智能提示詞分析
+//  ✅ 模型專屬優化
 //  ✅ NSFW 成人內容
-//  ✅ 智能參數優化
-//  ✅ 動態生成 UI
-//  ✅ 自動高清優化 (NEW!)
 //  ✅ 歷史記錄系統
 //  ✅ OpenAI 兼容 API
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "multi-provider-image-generator",
-  PROJECT_VERSION: "8.5.0",
+  PROJECT_VERSION: "8.6.0",
   
   API_MASTER_KEY: "1",
   
@@ -30,7 +30,7 @@ const CONFIG = {
       requires_key: false,
       enabled: true,
       default: true,
-      description: "完全免費的 AI 圖像生成服務 - 支持 Flux & SD3 系列 + 自動高清",
+      description: "完全免費的 AI 圖像生成服務 - 支持 Flux & SD3 系列 + 智能自適應高清",
       features: {
         nsfw: true,
         private_mode: true,
@@ -40,7 +40,8 @@ const CONFIG = {
         enhance: true,
         nologo: true,
         style_presets: true,
-        auto_hd: true
+        auto_hd: true,
+        quality_modes: true
       },
       models: [
         { id: "flux", name: "Flux", confirmed: true, category: "flux", description: "均衡速度與質量" },
@@ -119,29 +120,111 @@ const CONFIG = {
   
   HD_OPTIMIZATION: {
     enabled: true,
+    
+    QUALITY_MODES: {
+      economy: {
+        name: "經濟模式",
+        description: "快速出圖，適合測試",
+        min_resolution: 1024,
+        steps_multiplier: 0.85,
+        guidance_multiplier: 0.9,
+        hd_level: "basic"
+      },
+      standard: {
+        name: "標準模式",
+        description: "平衡質量與速度",
+        min_resolution: 1280,
+        steps_multiplier: 1.0,
+        guidance_multiplier: 1.0,
+        hd_level: "enhanced"
+      },
+      ultra: {
+        name: "超高清模式",
+        description: "極致質量，耗時較長",
+        min_resolution: 1536,
+        steps_multiplier: 1.35,
+        guidance_multiplier: 1.15,
+        hd_level: "maximum",
+        force_upscale: true
+      }
+    },
+    
     HD_PROMPTS: {
-      quality_boost: "high quality, extremely detailed, sharp focus, crisp, clear, professional",
-      resolution_boost: "8k uhd, high resolution, ultra HD, masterpiece",
-      texture_boost: "fine details, intricate details, highly detailed textures",
-      clarity_boost: "perfect clarity, crystal clear, no blur, no noise",
-      full_enhancement: "8k uhd, high quality, extremely detailed, sharp focus, crisp, clear, professional, masterpiece, fine details, intricate details, perfect clarity, crystal clear"
+      basic: "high quality, detailed, sharp",
+      
+      enhanced: "high quality, extremely detailed, sharp focus, crisp, clear, professional, 8k uhd, masterpiece, fine details",
+      
+      maximum: "ultra high quality, extremely detailed, razor sharp focus, crystal clear, professional grade, 8k uhd resolution, masterpiece quality, fine details, intricate details, perfect clarity, photographic precision, studio lighting, professional color grading, maximum detail preservation"
     },
+    
     HD_NEGATIVE: "low quality, blurry, pixelated, low resolution, jpeg artifacts, compression artifacts, bad quality, distorted, noisy, grainy, poor details, soft focus, out of focus",
-    MODEL_HD_STRATEGY: {
-      "flux-realism": { prompt_level: "full_enhancement", negative: true, upscale: true },
-      "flux-pro": { prompt_level: "full_enhancement", negative: true, upscale: true },
-      "flux-1.1-pro": { prompt_level: "full_enhancement", negative: true, upscale: true },
-      "sd3.5-large": { prompt_level: "full_enhancement", negative: true, upscale: true },
-      "flux": { prompt_level: "quality_boost", negative: true, upscale: false },
-      "sd3": { prompt_level: "quality_boost", negative: true, upscale: false },
-      "sdxl": { prompt_level: "quality_boost", negative: true, upscale: false },
-      "turbo": { prompt_level: "resolution_boost", negative: false, upscale: false },
-      "sdxl-lightning": { prompt_level: "resolution_boost", negative: false, upscale: false },
-      "sd3.5-turbo": { prompt_level: "resolution_boost", negative: false, upscale: false },
-      "flux-anime": { prompt_level: "clarity_boost", negative: true, upscale: false },
-      "flux-3d": { prompt_level: "clarity_boost", negative: true, upscale: false },
-      "any-dark": { prompt_level: "texture_boost", negative: true, upscale: false }
+    
+    MODEL_QUALITY_PROFILES: {
+      "flux-realism": {
+        priority: "ultra_detail",
+        min_resolution: 1536,
+        optimal_steps_boost: 1.25,
+        guidance_boost: 1.15,
+        recommended_quality: "ultra"
+      },
+      "flux-pro": {
+        priority: "maximum_quality",
+        min_resolution: 1536,
+        optimal_steps_boost: 1.3,
+        guidance_boost: 1.2,
+        recommended_quality: "ultra"
+      },
+      "flux-1.1-pro": {
+        priority: "maximum_quality",
+        min_resolution: 1536,
+        optimal_steps_boost: 1.25,
+        guidance_boost: 1.15,
+        recommended_quality: "ultra"
+      },
+      "sd3.5-large": {
+        priority: "high_detail",
+        min_resolution: 1280,
+        optimal_steps_boost: 1.2,
+        guidance_boost: 1.1,
+        recommended_quality: "standard"
+      },
+      "flux-anime": {
+        priority: "clarity",
+        min_resolution: 1280,
+        optimal_steps_boost: 1.15,
+        guidance_boost: 1.1,
+        recommended_quality: "standard"
+      },
+      "flux-3d": {
+        priority: "detail",
+        min_resolution: 1280,
+        optimal_steps_boost: 1.2,
+        guidance_boost: 1.1,
+        recommended_quality: "standard"
+      },
+      "turbo": {
+        priority: "speed",
+        min_resolution: 1024,
+        optimal_steps_boost: 0.7,
+        guidance_boost: 0.85,
+        recommended_quality: "economy"
+      },
+      "sdxl-lightning": {
+        priority: "speed",
+        min_resolution: 1024,
+        optimal_steps_boost: 0.6,
+        guidance_boost: 0.8,
+        recommended_quality: "economy"
+      },
+      "sd3.5-turbo": {
+        priority: "balanced_speed",
+        min_resolution: 1024,
+        optimal_steps_boost: 0.8,
+        guidance_boost: 0.9,
+        recommended_quality: "economy"
+      }
     },
+    
     SIZE_RECOMMENDATION: {
       min_recommended: 1024,
       auto_upscale_threshold: 768,
@@ -186,8 +269,50 @@ class Logger {
     get() { return this.logs; }
 }
 
+class PromptAnalyzer {
+    static analyzeComplexity(prompt) {
+        const complexKeywords = [
+            'detailed', 'intricate', 'complex', 'elaborate',
+            'realistic', 'photorealistic', 'hyperrealistic',
+            'architecture', 'cityscape', 'landscape',
+            'portrait', 'face', 'eyes', 'hair',
+            'texture', 'material', 'fabric', 'skin',
+            'lighting', 'shadows', 'reflections',
+            'fine details', 'high detail', 'ultra detailed'
+        ];
+        
+        let score = 0;
+        const lowerPrompt = prompt.toLowerCase();
+        
+        complexKeywords.forEach(keyword => {
+            if (lowerPrompt.includes(keyword)) {
+                score += 0.1;
+            }
+        });
+        
+        if (prompt.length > 100) score += 0.2;
+        if (prompt.length > 200) score += 0.3;
+        if (prompt.split(',').length > 5) score += 0.15;
+        
+        return Math.min(score, 1.0);
+    }
+    
+    static recommendQualityMode(prompt, model) {
+        const complexity = this.analyzeComplexity(prompt);
+        const profile = CONFIG.HD_OPTIMIZATION.MODEL_QUALITY_PROFILES[model];
+        
+        if (profile?.recommended_quality) {
+            return profile.recommended_quality;
+        }
+        
+        if (complexity > 0.7) return 'ultra';
+        if (complexity > 0.4) return 'standard';
+        return 'economy';
+    }
+}
+
 class HDOptimizer {
-    static optimize(prompt, negativePrompt, model, width, height, autoHD = true) {
+    static optimize(prompt, negativePrompt, model, width, height, qualityMode = 'standard', autoHD = true) {
         if (!autoHD || !CONFIG.HD_OPTIMIZATION.enabled) {
             return {
                 prompt: prompt,
@@ -199,44 +324,44 @@ class HDOptimizer {
         }
         
         const hdConfig = CONFIG.HD_OPTIMIZATION;
-        const strategy = hdConfig.MODEL_HD_STRATEGY[model] || {
-            prompt_level: "quality_boost",
-            negative: true,
-            upscale: false
-        };
+        const modeConfig = hdConfig.QUALITY_MODES[qualityMode] || hdConfig.QUALITY_MODES.standard;
+        const profile = hdConfig.MODEL_QUALITY_PROFILES[model];
         
         const optimizations = [];
         
+        const hdLevel = modeConfig.hd_level;
         let enhancedPrompt = prompt;
-        if (strategy.prompt_level && hdConfig.HD_PROMPTS[strategy.prompt_level]) {
-            const hdBoost = hdConfig.HD_PROMPTS[strategy.prompt_level];
+        
+        if (hdConfig.HD_PROMPTS[hdLevel]) {
+            const hdBoost = hdConfig.HD_PROMPTS[hdLevel];
             enhancedPrompt = `${prompt}, ${hdBoost}`;
-            optimizations.push(`提示詞增強: ${strategy.prompt_level}`);
+            optimizations.push(`HD增強: ${hdLevel}`);
         }
         
         let enhancedNegative = negativePrompt || "";
-        if (strategy.negative) {
+        if (qualityMode !== 'economy') {
             enhancedNegative = enhancedNegative 
                 ? `${enhancedNegative}, ${hdConfig.HD_NEGATIVE}`
                 : hdConfig.HD_NEGATIVE;
-            optimizations.push(`負面提示詞: 已添加高清過濾`);
+            optimizations.push(`負面提示詞: 高清過濾`);
         }
         
         let finalWidth = width;
         let finalHeight = height;
         let sizeUpscaled = false;
         
-        if (strategy.upscale) {
-            const totalPixels = width * height;
-            const minPixels = hdConfig.SIZE_RECOMMENDATION.min_recommended ** 2;
-            
-            if (totalPixels < minPixels) {
-                const scale = Math.sqrt(minPixels / totalPixels);
-                finalWidth = Math.min(Math.round(width * scale / 64) * 64, hdConfig.SIZE_RECOMMENDATION.max_size);
-                finalHeight = Math.min(Math.round(height * scale / 64) * 64, hdConfig.SIZE_RECOMMENDATION.max_size);
-                sizeUpscaled = true;
-                optimizations.push(`尺寸提升: ${width}x${height} → ${finalWidth}x${finalHeight}`);
-            }
+        const minRes = Math.max(
+            modeConfig.min_resolution,
+            profile?.min_resolution || 1024
+        );
+        
+        const currentRes = Math.min(width, height);
+        if (currentRes < minRes || modeConfig.force_upscale) {
+            const scale = minRes / currentRes;
+            finalWidth = Math.min(Math.round(width * scale / 64) * 64, hdConfig.SIZE_RECOMMENDATION.max_size);
+            finalHeight = Math.min(Math.round(height * scale / 64) * 64, hdConfig.SIZE_RECOMMENDATION.max_size);
+            sizeUpscaled = true;
+            optimizations.push(`尺寸優化: ${width}x${height} → ${finalWidth}x${finalHeight}`);
         }
         
         const sizeKey = `${width}x${height}`;
@@ -258,7 +383,8 @@ class HDOptimizer {
             width: finalWidth,
             height: finalHeight,
             optimized: true,
-            strategy: strategy,
+            quality_mode: qualityMode,
+            hd_level: hdLevel,
             optimizations: optimizations,
             size_upscaled: sizeUpscaled
         };
@@ -266,9 +392,9 @@ class HDOptimizer {
 }
 
 class ParameterOptimizer {
-    static optimizeSteps(model, width, height, style = 'none', userSteps = null) {
+    static optimizeSteps(model, width, height, style = 'none', qualityMode = 'standard', userSteps = null) {
         if (userSteps !== null && userSteps !== -1) {
-            const suggestion = this.calculateOptimalSteps(model, width, height, style);
+            const suggestion = this.calculateOptimalSteps(model, width, height, style, qualityMode);
             return {
                 steps: userSteps,
                 optimized: false,
@@ -277,23 +403,25 @@ class ParameterOptimizer {
                 user_override: true
             };
         }
-        return this.calculateOptimalSteps(model, width, height, style);
+        return this.calculateOptimalSteps(model, width, height, style, qualityMode);
     }
     
-    static calculateOptimalSteps(model, width, height, style) {
+    static calculateOptimalSteps(model, width, height, style, qualityMode = 'standard') {
         const rules = CONFIG.OPTIMIZATION_RULES;
         const modelRule = rules.MODEL_STEPS[model] || rules.MODEL_STEPS["flux"];
+        const modeConfig = CONFIG.HD_OPTIMIZATION.QUALITY_MODES[qualityMode];
+        const profile = CONFIG.HD_OPTIMIZATION.MODEL_QUALITY_PROFILES[model];
+        
         let baseSteps = modelRule.optimal;
         
         const reasoning = [];
-        reasoning.push(`模型 ${model} 基礎: ${baseSteps}步`);
+        reasoning.push(`${model}: ${baseSteps}步`);
         
         const totalPixels = width * height;
         let sizeMultiplier = 1.0;
         
         if (totalPixels <= rules.SIZE_MULTIPLIER.small.threshold) {
             sizeMultiplier = rules.SIZE_MULTIPLIER.small.multiplier;
-            reasoning.push(`小尺寸 x${sizeMultiplier}`);
         } else if (totalPixels <= rules.SIZE_MULTIPLIER.medium.threshold) {
             sizeMultiplier = rules.SIZE_MULTIPLIER.medium.multiplier;
         } else if (totalPixels <= rules.SIZE_MULTIPLIER.large.threshold) {
@@ -305,14 +433,21 @@ class ParameterOptimizer {
         }
         
         let styleMultiplier = rules.STYLE_ADJUSTMENT[style] || rules.STYLE_ADJUSTMENT.default;
-        if (styleMultiplier !== 1.0) {
-            reasoning.push(`風格 x${styleMultiplier}`);
+        
+        let qualityMultiplier = modeConfig?.steps_multiplier || 1.0;
+        if (qualityMultiplier !== 1.0) {
+            reasoning.push(`${modeConfig.name} x${qualityMultiplier}`);
         }
         
-        let optimizedSteps = Math.round(baseSteps * sizeMultiplier * styleMultiplier);
+        let profileBoost = profile?.optimal_steps_boost || 1.0;
+        if (profileBoost !== 1.0) {
+            reasoning.push(`模型配置 x${profileBoost}`);
+        }
+        
+        let optimizedSteps = Math.round(baseSteps * sizeMultiplier * styleMultiplier * qualityMultiplier * profileBoost);
         optimizedSteps = Math.max(modelRule.min, Math.min(optimizedSteps, modelRule.max));
         
-        reasoning.push(`最終: ${optimizedSteps}步`);
+        reasoning.push(`→ ${optimizedSteps}步`);
         
         return {
             steps: optimizedSteps,
@@ -320,19 +455,32 @@ class ParameterOptimizer {
             base_steps: baseSteps,
             size_multiplier: sizeMultiplier,
             style_multiplier: styleMultiplier,
+            quality_multiplier: qualityMultiplier,
+            profile_boost: profileBoost,
             min_steps: modelRule.min,
             max_steps: modelRule.max,
-            reasoning: reasoning.join(' → ')
+            reasoning: reasoning.join(' ')
         };
     }
     
-    static optimizeGuidance(model, style) {
+    static optimizeGuidance(model, style, qualityMode = 'standard') {
+        const modeConfig = CONFIG.HD_OPTIMIZATION.QUALITY_MODES[qualityMode];
+        const profile = CONFIG.HD_OPTIMIZATION.MODEL_QUALITY_PROFILES[model];
+        
+        let baseGuidance = 7.5;
+        
         if (model.includes('turbo') || model.includes('lightning')) {
-            return style === 'photorealistic' ? 3.0 : 2.5;
+            baseGuidance = style === 'photorealistic' ? 3.0 : 2.5;
+        } else if (style === 'photorealistic') {
+            baseGuidance = 8.5;
+        } else if (['oil-painting', 'watercolor', 'sketch'].includes(style)) {
+            baseGuidance = 6.5;
         }
-        if (style === 'photorealistic') return 8.5;
-        if (['oil-painting', 'watercolor', 'sketch'].includes(style)) return 6.5;
-        return 7.5;
+        
+        let qualityBoost = modeConfig?.guidance_multiplier || 1.0;
+        let profileBoost = profile?.guidance_boost || 1.0;
+        
+        return Math.round(baseGuidance * qualityBoost * profileBoost * 10) / 10;
     }
 }
 
@@ -400,7 +548,8 @@ class PollinationsProvider {
             style = "none",
             nsfw = false,
             autoOptimize = true,
-            autoHD = true
+            autoHD = true,
+            qualityMode = 'standard'
         } = options;
         
         let hdOptimization = null;
@@ -409,6 +558,15 @@ class PollinationsProvider {
         let finalWidth = width;
         let finalHeight = height;
         
+        const promptComplexity = PromptAnalyzer.analyzeComplexity(prompt);
+        const recommendedQuality = PromptAnalyzer.recommendQualityMode(prompt, model);
+        
+        logger.add("🧠 Prompt Analysis", {
+            complexity: (promptComplexity * 100).toFixed(1) + '%',
+            recommended_quality: recommendedQuality,
+            selected_quality: qualityMode
+        });
+        
         if (autoHD) {
             hdOptimization = HDOptimizer.optimize(
                 prompt,
@@ -416,6 +574,7 @@ class PollinationsProvider {
                 model,
                 width,
                 height,
+                qualityMode,
                 autoHD
             );
             
@@ -426,10 +585,12 @@ class PollinationsProvider {
             
             if (hdOptimization.optimized) {
                 logger.add("🎨 HD Optimization", {
-                    original_size: `${width}x${height}`,
-                    optimized_size: `${finalWidth}x${finalHeight}`,
-                    size_upscaled: hdOptimization.size_upscaled,
-                    optimizations: hdOptimization.optimizations
+                    mode: qualityMode,
+                    hd_level: hdOptimization.hd_level,
+                    original: `${width}x${height}`,
+                    optimized: `${finalWidth}x${finalHeight}`,
+                    upscaled: hdOptimization.size_upscaled,
+                    details: hdOptimization.optimizations
                 });
             }
         }
@@ -442,18 +603,19 @@ class PollinationsProvider {
                 model, 
                 finalWidth,
                 finalHeight, 
-                style, 
+                style,
+                qualityMode,
                 steps
             );
             finalSteps = stepsOptimization.steps;
             
             logger.add("🎯 Steps Optimization", {
-                optimized: stepsOptimization.steps,
+                steps: stepsOptimization.steps,
                 reasoning: stepsOptimization.reasoning
             });
             
             if (guidance === null) {
-                finalGuidance = ParameterOptimizer.optimizeGuidance(model, style);
+                finalGuidance = ParameterOptimizer.optimizeGuidance(model, style, qualityMode);
             } else {
                 finalGuidance = guidance;
             }
@@ -479,9 +641,10 @@ class PollinationsProvider {
             provider: this.name,
             model: model,
             dimensions: `${finalWidth}x${finalHeight}`,
+            quality_mode: qualityMode,
             hd_optimized: autoHD && hdOptimization?.optimized,
-            optimized_steps: finalSteps,
-            optimized_guidance: finalGuidance
+            steps: finalSteps,
+            guidance: finalGuidance
         });
         
         const currentSeed = seed === -1 ? Math.floor(Math.random() * 1000000) : seed;
@@ -541,6 +704,7 @@ class PollinationsProvider {
                                 url: response.url,
                                 used_model: tryModel,
                                 final_size: `${finalWidth}x${finalHeight}`,
+                                quality_mode: qualityMode,
                                 hd_optimized: autoHD && hdOptimization?.optimized,
                                 seed: currentSeed
                             });
@@ -557,6 +721,8 @@ class PollinationsProvider {
                                 guidance: finalGuidance,
                                 width: finalWidth,
                                 height: finalHeight,
+                                quality_mode: qualityMode,
+                                prompt_complexity: promptComplexity,
                                 hd_optimized: autoHD && hdOptimization?.optimized,
                                 hd_details: hdOptimization,
                                 cost: "FREE",
@@ -690,7 +856,7 @@ export default {
         return new Response(JSON.stringify({
           project: CONFIG.PROJECT_NAME,
           version: CONFIG.PROJECT_VERSION,
-          features: ['17 Models', '12 Styles', 'Smart Optimization', 'Auto HD', 'NSFW', 'History'],
+          features: ['17 Models', '12 Styles', '3 Quality Modes', 'Smart Analysis', 'Auto HD', 'NSFW', 'History'],
           endpoints: [
             '/v1/images/generations',
             '/v1/chat/completions',
@@ -760,7 +926,8 @@ async function handleChatCompletions(request) {
             style: body.style || "none",
             nsfw: body.nsfw === true,
             autoOptimize: body.auto_optimize !== false,
-            autoHD: body.auto_hd !== false
+            autoHD: body.auto_hd !== false,
+            qualityMode: body.quality_mode || 'standard'
         };
 
         const router = new MultiProviderRouter();
@@ -877,7 +1044,8 @@ async function handleImageGenerations(request) {
             style: body.style || "none",
             nsfw: body.nsfw === true,
             autoOptimize: body.auto_optimize !== false,
-            autoHD: body.auto_hd !== false
+            autoHD: body.auto_hd !== false,
+            qualityMode: body.quality_mode || 'standard'
         };
 
         const router = new MultiProviderRouter();
@@ -893,6 +1061,8 @@ async function handleImageGenerations(request) {
                 width: r.width,
                 height: r.height,
                 style: r.style,
+                quality_mode: r.quality_mode,
+                prompt_complexity: r.prompt_complexity,
                 nsfw: r.nsfw,
                 steps: r.steps,
                 guidance: r.guidance,
@@ -982,7 +1152,6 @@ function handleStylesRequest() {
       headers: corsHeaders({ 'Content-Type': 'application/json' })
     });
 }
-
 function handleUI(request) {
   const origin = new URL(request.url).origin;
   
@@ -1020,7 +1189,7 @@ function handleUI(request) {
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
       body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
         background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%); 
         color: #fff; 
         padding: 20px;
@@ -1178,6 +1347,62 @@ function handleUI(request) {
         margin-top: 10px;
         font-size: 12px;
         color: #fca5a5;
+      }
+      
+      .quality-mode-selector {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin: 12px 0;
+      }
+      
+      .quality-option {
+        position: relative;
+      }
+      
+      .quality-option input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      
+      .quality-label {
+        display: block;
+        padding: 16px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+      
+      .quality-label:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(245, 158, 11, 0.5);
+      }
+      
+      .quality-option input[type="radio"]:checked + .quality-label {
+        background: rgba(245, 158, 11, 0.2);
+        border-color: #f59e0b;
+      }
+      
+      .quality-icon {
+        font-size: 24px;
+        margin-bottom: 8px;
+      }
+      
+      .quality-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #e5e7eb;
+        margin-bottom: 4px;
+      }
+      
+      .quality-desc {
+        font-size: 11px;
+        color: #9ca3af;
       }
       
       button { 
@@ -1518,7 +1743,7 @@ function handleUI(request) {
 <body>
     <div class="container">
         <h1>🎨 AI Image Generator <span class="badge">v${CONFIG.PROJECT_VERSION}</span></h1>
-        <div class="subtitle">完整平台 - Flux & SD3 系列 + 智能優化 + 自動高清</div>
+        <div class="subtitle">智能自適應高清優化 - Flux & SD3 系列 + 三檔質量模式</div>
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab(event, 'generate')">🎨 生成</button>
@@ -1527,11 +1752,12 @@ function handleUI(request) {
         
         <div id="generate-tab" class="tab-content active">
             <div class="info-card">
-                <h4>🚀 v8.5.0 新功能</h4>
+                <h4>🚀 v8.6.0 新功能</h4>
                 <p>
-                    <strong>✨ 自動高清:</strong> 智能添加高清質量提示詞 + 自動尺寸優化<br>
-                    <strong>🎯 智能優化:</strong> 根據模型和尺寸自動調整步數<br>
-                    <strong>🎨 完整功能:</strong> 17個模型 | 12種風格 | NSFW支持 | 完全免費
+                    <strong>🎨 三檔質量模式:</strong> 經濟/標準/超高清自由切換<br>
+                    <strong>🧠 智能分析:</strong> 自動識別提示詞複雜度並推薦最佳模式<br>
+                    <strong>⚡ 模型優化:</strong> 每個模型專屬質量配置和參數調優<br>
+                    <strong>✨ 全功能:</strong> 17模型 | 12風格 | 智能優化 | 完全免費
                 </p>
             </div>
             
@@ -1570,6 +1796,34 @@ function handleUI(request) {
                 <div class="box">
                     <h3>進階參數</h3>
                     
+                    <label>質量模式:</label>
+                    <div class="quality-mode-selector">
+                        <div class="quality-option">
+                            <input type="radio" name="qualityMode" id="economy" value="economy">
+                            <label for="economy" class="quality-label">
+                                <div class="quality-icon">⚡</div>
+                                <div class="quality-name">經濟</div>
+                                <div class="quality-desc">快速出圖</div>
+                            </label>
+                        </div>
+                        <div class="quality-option">
+                            <input type="radio" name="qualityMode" id="standard" value="standard" checked>
+                            <label for="standard" class="quality-label">
+                                <div class="quality-icon">⭐</div>
+                                <div class="quality-name">標準</div>
+                                <div class="quality-desc">平衡質量</div>
+                            </label>
+                        </div>
+                        <div class="quality-option">
+                            <input type="radio" name="qualityMode" id="ultra" value="ultra">
+                            <label for="ultra" class="quality-label">
+                                <div class="quality-icon">💎</div>
+                                <div class="quality-name">超高清</div>
+                                <div class="quality-desc">極致質量</div>
+                            </label>
+                        </div>
+                    </div>
+                    
                     <label>尺寸:</label>
                     <select id="sizePreset" onchange="updateSize()">${sizeOptions}</select>
                     
@@ -1587,13 +1841,13 @@ function handleUI(request) {
                         <input type="checkbox" id="autoHD" checked onchange="toggleAutoHD()">
                         <label for="autoHD">🎨 自動高清 (推薦)</label>
                     </div>
-                    <div class="help-text" id="hdHelp" style="color:#10b981">✅ 自動添加高清提示詞 + 尺寸優化</div>
+                    <div class="help-text" id="hdHelp" style="color:#10b981">✅ 智能提示詞增強 + 分辨率優化</div>
                     
                     <div class="checkbox-group">
                         <input type="checkbox" id="autoOptimize" checked onchange="toggleAutoOptimize()">
                         <label for="autoOptimize">🎯 智能優化 (推薦)</label>
                     </div>
-                    <div class="help-text" id="optimizeHelp" style="color:#10b981">✅ 自動選擇最佳參數</div>
+                    <div class="help-text" id="optimizeHelp" style="color:#10b981">✅ 自動最佳參數 + 模型專屬優化</div>
                     
                     <div id="manualParams" style="opacity: 0.5; pointer-events: none;">
                         <label>步數: <span class="range-value" id="stepsValue">20</span></label>
@@ -1669,7 +1923,7 @@ function handleUI(request) {
             const help = document.getElementById('hdHelp');
             
             if (checked) {
-                help.innerText = '✅ 自動添加高清提示詞 + 尺寸優化';
+                help.innerText = '✅ 智能提示詞增強 + 分辨率優化';
                 help.style.color = '#10b981';
             } else {
                 help.innerText = '⚠️ 已關閉 - 使用原始參數';
@@ -1685,7 +1939,7 @@ function handleUI(request) {
             if (checked) {
                 manualParams.style.opacity = '0.5';
                 manualParams.style.pointerEvents = 'none';
-                help.innerText = '✅ 自動選擇最佳參數';
+                help.innerText = '✅ 自動最佳參數 + 模型專屬優化';
                 help.style.color = '#10b981';
             } else {
                 manualParams.style.opacity = '1';
@@ -1693,6 +1947,11 @@ function handleUI(request) {
                 help.innerText = '⚠️ 手動模式';
                 help.style.color = '#fbbf24';
             }
+        }
+        
+        function getSelectedQualityMode() {
+            const selected = document.querySelector('input[name="qualityMode"]:checked');
+            return selected ? selected.value : 'standard';
         }
         
         function getHistory() {
@@ -1793,6 +2052,12 @@ function handleUI(request) {
             document.getElementById('width').value = item.width || 1024;
             document.getElementById('height').value = item.height || 1024;
             document.getElementById('seed').value = item.seed || -1;
+            
+            if (item.qualityMode) {
+                const radio = document.getElementById(item.qualityMode);
+                if (radio) radio.checked = true;
+            }
+            
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
         
@@ -1827,7 +2092,13 @@ function handleUI(request) {
         }
         
         function renderGeneratingUI(config) {
-            const { model, numOutputs, width, height, steps } = config;
+            const { model, numOutputs, width, height, steps, qualityMode } = config;
+            
+            const qualityEmoji = {
+                'economy': '⚡',
+                'standard': '⭐',
+                'ultra': '💎'
+            };
             
             return \`
                 <div class="generating-container">
@@ -1855,12 +2126,12 @@ function handleUI(request) {
                             <div class="info-card-value">\${model}</div>
                         </div>
                         <div class="info-card-small">
-                            <div class="info-card-label">尺寸</div>
-                            <div class="info-card-value">\${width}x\${height}</div>
+                            <div class="info-card-label">質量</div>
+                            <div class="info-card-value">\${qualityEmoji[qualityMode] || '⭐'} \${qualityMode}</div>
                         </div>
                         <div class="info-card-small">
-                            <div class="info-card-label">數量</div>
-                            <div class="info-card-value">\${numOutputs} 張</div>
+                            <div class="info-card-label">尺寸</div>
+                            <div class="info-card-value">\${width}x\${height}</div>
                         </div>
                         <div class="info-card-small">
                             <div class="info-card-label">步數</div>
@@ -1938,12 +2209,14 @@ function handleUI(request) {
                 updateProgress(progress, elapsed);
                 
                 if (progress > 20 && progress < 25) {
-                    addStatusMessage('🎨 處理提示詞...');
-                } else if (progress > 40 && progress < 45) {
+                    addStatusMessage('🧠 分析提示詞複雜度...');
+                } else if (progress > 35 && progress < 40) {
+                    addStatusMessage('🎨 應用質量優化...');
+                } else if (progress > 50 && progress < 55) {
                     addStatusMessage('🖼️ 生成基礎結構...');
-                } else if (progress > 60 && progress < 65) {
+                } else if (progress > 70 && progress < 75) {
                     addStatusMessage('✨ 細化細節...');
-                } else if (progress > 80 && progress < 85) {
+                } else if (progress > 85 && progress < 90) {
                     addStatusMessage('🎯 最終優化...');
                 }
             }, 500);
@@ -1975,6 +2248,7 @@ function handleUI(request) {
             const width = parseInt(document.getElementById('width').value);
             const height = parseInt(document.getElementById('height').value);
             const seed = parseInt(document.getElementById('seed').value);
+            const qualityMode = getSelectedQualityMode();
             const autoHD = document.getElementById('autoHD').checked;
             const autoOptimize = document.getElementById('autoOptimize').checked;
             const guidance = autoOptimize ? null : parseFloat(document.getElementById('guidance').value);
@@ -2000,7 +2274,8 @@ function handleUI(request) {
             
             resultDiv.innerHTML = renderGeneratingUI({
                 model, numOutputs: num, width, height, 
-                steps: steps || 'Auto'
+                steps: steps || 'Auto',
+                qualityMode
             });
             
             resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2018,7 +2293,8 @@ function handleUI(request) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         model, style, prompt, negative_prompt: negativePrompt, n: num,
-                        width, height, seed, 
+                        width, height, seed,
+                        quality_mode: qualityMode,
                         guidance_scale: guidance,
                         steps: steps,
                         auto_optimize: autoOptimize,
@@ -2052,6 +2328,7 @@ function handleUI(request) {
                         url: item.url,
                         prompt, negativePrompt, model: item.model, style,
                         numOutputs: num, width: item.width, height: item.height, seed,
+                        qualityMode: item.quality_mode,
                         guidance: item.guidance, steps: item.steps, 
                         enhance, nologo, privateMode, nsfw
                     });
@@ -2062,11 +2339,16 @@ function handleUI(request) {
                         \`<img src="\${item.url}" onclick="window.open(this.src)" alt="\${idx + 1}" loading="lazy" style="animation: fadeIn 0.5s ease-in \${idx * 0.1}s backwards;">\`
                     ).join('');
                     
+                    const complexity = data.data[0].prompt_complexity;
+                    const complexityPercent = (complexity * 100).toFixed(0);
+                    
                     const optimizedNote = data.data[0].auto_optimized ? 
-                        \`<p style="color: #10b981; font-size: 12px; margin-top: 4px;">🎯 步數: \${data.data[0].steps} (智能優化)</p>\` : '';
+                        \`<p style="color: #10b981; font-size: 12px; margin-top: 4px;">🎯 步數: \${data.data[0].steps} | 引導: \${data.data[0].guidance} (智能優化)</p>\` : '';
                     
                     const hdNote = data.data[0].hd_optimized ? 
-                        \`<p style="color: #a78bfa; font-size: 12px; margin-top: 4px;">🎨 高清優化: \${data.data[0].width}x\${data.data[0].height} | 質量增強</p>\` : '';
+                        \`<p style="color: #a78bfa; font-size: 12px; margin-top: 4px;">🎨 高清優化: \${data.data[0].width}x\${data.data[0].height} | 質量模式: \${data.data[0].quality_mode}</p>\` : '';
+                    
+                    const complexityNote = \`<p style="color: #60a5fa; font-size: 12px; margin-top: 4px;">🧠 提示詞複雜度: \${complexityPercent}%</p>\`;
                     
                     resultDiv.innerHTML = \`
                         <div class="success" style="animation: slideIn 0.5s ease-out;">
@@ -2077,6 +2359,7 @@ function handleUI(request) {
                                 <strong>耗時:</strong> \${elapsed}秒 | 
                                 <strong>費用:</strong> <span style="color:#10b981">免費</span>
                             </p>
+                            \${complexityNote}
                             \${optimizedNote}
                             \${hdNote}
                         </div>
@@ -2112,7 +2395,7 @@ function handleUI(request) {
             }
         });
         
-        console.log('%c🎨 v${CONFIG.PROJECT_VERSION} - Auto HD', 'font-size: 16px; color: #f59e0b;');
+        console.log('%c🎨 v${CONFIG.PROJECT_VERSION} - Intelligent Adaptive HD', 'font-size: 16px; color: #f59e0b; font-weight: bold;');
     </script>
 </body>
 </html>`;
