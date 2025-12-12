@@ -1,446 +1,535 @@
-# 🎨 Flux AI Pro - v9.1.1 計時器 + 歷史記錄版
+# 🎨 Flux AI Pro
 
-[![Deploy to Cloudflare Workers](https://img.shields.io/badge/Deploy%20to-Cloudflare%20Workers-orange?style=for-the-badge&logo=cloudflare)](https://workers.cloudflare.com/)
-[![Version](https://img.shields.io/badge/Version-9.1.1-blue?style=for-the-badge)](https://github.com/kinai9661/Flux-AI-Pro)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-[![Cost](https://img.shields.io/badge/Cost-100%25%20FREE-success?style=for-the-badge)](https://pollinations.ai/)
+<div align="center">
 
-> **基於 Cloudflare Workers 的智能 AI 圖像生成平台**
-> 
-> **⏱️ 實時計時** | **📜 歷史記錄** | **🍌 4K超高清** | **🎨 17個免費模型** | **🌍 自動翻譯** | **完全開源**
+![Version](https://img.shields.io/badge/version-9.3.0-orange?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)
+![Stars](https://img.shields.io/github/stars/kinai9661/Flux-AI-Pro?style=for-the-badge)
+![Forks](https://img.shields.io/github/forks/kinai9661/Flux-AI-Pro?style=for-the-badge)
 
----
+**免費 AI 圖像生成 API · 支持批量生成 · Seed 控制 · 圖生圖 · 多圖融合 · 39 種風格**
 
-## 🆕 v9.1.1 最新版本亮點
+[English](README.md) | [繁體中文](README_TW.md) | [简体中文](README_CN.md)
 
-### 🎉 核心功能
+[🚀 立即部署](#-一鍵部署) · [📖 文檔](#-功能特性) · [💬 討論](https://github.com/kinai9661/Flux-AI-Pro/issues)
 
-#### ⏱️ **實時生成計時器**
-
-```javascript
-// 生成過程中實時顯示
-生成中 ⏱️ 3.2s...
-生成中 ⏱️ 8.7s...
-✅ 生成成功! ⏱️ 12.4s
-
-• 每 100ms 更新一次
-• 精確到 0.1 秒
-• 完成後顯示總耗時
-• 自動儲存到歷史記錄
-```
-
-#### 📜 **完整歷史記錄系統**
-
-| 功能 | 描述 |
-|------|------|
-| **本地存儲** | localStorage 持久化，最多 100 條 |
-| **完整資訊** | 圖片 URL + 提示詞 + 模型 + 尺寸 + 耗時 + 時間戳 |
-| **一鍵重生** | 載入歷史配置重新生成 |
-| **刪除管理** | 單筆刪除 / 清空所有 |
-| **計數徽章** | 實時顯示歷史記錄數量 |
-| **點擊預覽** | 新視窗打開大圖 |
-
-#### 🍌 **4K 超高清支持**
-
-**Nano Banana Pro** 專屬功能:
-- ✅ **4K 解析度**: 最高 4096x4096px
-- ✅ **超高清模式**: 獨特的 ultra_4k 質量配置
-- ✅ **Google Gemini 3 Pro**: 頂級 AI 模型
-- ✅ **極致細節**: 1.5x 步數倍率 + 1.25x 引導倍率
-
-#### 1️⃣ **三檔質量模式系統**
-
-| 模式 | 特性 | 最低分辨率 | 步數倍率 | 適用場景 |
-|------|------|------------|----------|----------|
-| **⚡ 經濟模式** | 快速出圖 | 1024px | 0.85× | 快速測試、草稿預覽 |
-| **⭐ 標準模式** | 平衡質量 | 1280px | 1.0× | 日常使用、一般項目 |
-| **💎 超高清模式** | 極致質量 | 1536px | 1.35× | 最終交付、專業作品 |
-| **🍌 4K超高清** | 頂級質量 | 2048px | 1.5× | Nano Banana Pro 專屬 |
-
-#### 2️⃣ **智能提示詞分析器**
-
-自動分析提示詞複雜度（0-100%），智能推薦最佳質量模式：
-
-```javascript
-// 分析維度
-✓ 關鍵詞複雜度: 'detailed', 'photorealistic', 'intricate' 等
-✓ 提示詞長度: >100字 / >200字
-✓ 描述深度: 分句數量、細節層次
-
-// 自動推薦
-複雜度 > 70% → 超高清模式
-複雜度 40-70% → 標準模式
-複雜度 < 40% → 經濟模式
-```
-
-#### 3️⃣ **自動中譯英功能**
-
-使用 Cloudflare Workers AI 免費翻譯，提高中文提示詞生成質量：
-
-```javascript
-// 自動檢測中文並翻譯
-"一個穿著漢服的少女" → "A girl wearing traditional Chinese hanfu"
-
-✓ 完全免費（Cloudflare Workers AI）
-✓ 無需額外 API Key
-✓ 支持中英文混合提示詞
-✓ 自動檢測，純英文不翻譯
-✓ 高可靠性，錯誤時保持原文
-```
-
-#### 4️⃣ **17 種 AI 模型**
-
-- **Flux 系列**: 7 種模型（基礎/寫實/動漫/3D/Pro/暗黑/極速）
-- **Flux 高級版**: 3 種實驗性模型（Flux 1.1 Pro, Kontext, Kontext Pro）
-- **Nano Banana**: 2 種 Google Gemini 模型（支持 4K）
-- **Stable Diffusion**: 5 種 SD 模型（SD3, SD3.5 Large/Turbo, SDXL, SDXL Lightning）
-
-#### 5️⃣ **8 種藝術風格**
-
-動漫、寫實照片、油畫、水彩、素描、賽博朋克、奇幻、向量圖
+</div>
 
 ---
 
-## ✨ 完整功能列表
+## ✨ 功能特性
 
-- ✅ **實時計時器**: 生成過程中顯示實時耗時，完成後顯示總耗時
-- ✅ **歷史記錄系統**: localStorage 持久化，一鍵重生，完整管理
-- ✅ **4K 超高清**: Nano Banana Pro 專屬，最高 4096x4096px
-- ✅ **自動高清 (Auto HD)**: 智能注入 8k/UHD 提示詞 + 尺寸優化
-- ✅ **智能參數優化**: 根據模型/尺寸/風格自動調整 Steps/Guidance
-- ✅ **自動中譯英**: 使用 Cloudflare Workers AI 免費翻譯
-- ✅ **17 種頂級模型**: Flux Pro/Realism, Nano Banana, SD3.5, SDXL Lightning 等
-- ✅ **8 種藝術風格**: 動漫、賽博朋克、寫實、油畫、水彩等
-- ✅ **私密模式**: 保護用戶隱私
-- ✅ **OpenAI 相容 API**: 直接對接 NextChat/LobeChat
+### 🎯 核心功能
+
+- ✅ **完全免費** - 基於 Pollinations.ai,無需 API Key
+- 🎲 **Seed 控制** - 精確復現圖片,支持固定種子和隨機生成
+- 📦 **批量生成** - 一次生成 1-4 張圖片,自動遞增 Seed
+- 🖼️ **圖生圖** - 支持單張參考圖 (Kontext 系列)
+- 🎨 **多圖融合** - 支持最多 4 張參考圖 (Nano Banana 系列)
+- 🌐 **中文支持** - 自動翻譯中文提示詞 (Workers AI m2m100)
+- 📜 **歷史記錄** - 本地保存生成記錄,支持一鍵復現
+- 📤 **本地上傳** - 直接上傳圖片,自動托管到 Imgur/ImgBB
+
+### 🎨 模型支持 (17 個)
+
+#### ⚡ **Flux 系列 (7 個模型)**
+
+| 模型 ID | 名稱 | 描述 | 最大尺寸 | 狀態 |
+|---------|------|------|----------|------|
+| `flux` | **Flux** | 均衡速度與質量,通用首選 | 2048px | ✅ 穩定 |
+| `flux-realism` | **Flux Realism** | 超寫實照片風格,照片級質量 | 2048px | ✅ 穩定 |
+| `flux-anime` | **Flux Anime** | 日系動漫風格,動漫專用 | 2048px | ✅ 穩定 |
+| `flux-3d` | **Flux 3D** | 3D 渲染風格,立體感強 | 2048px | ✅ 穩定 |
+| `flux-pro` | **Flux Pro** | 專業版最高質量,極致細節 | 2048px | ✅ 穩定 |
+| `any-dark` | **Any Dark** | 暗黑風格,黑暗氛圍 | 2048px | ✅ 穩定 |
+| `turbo` | **Turbo** | 極速生成,快速測試 | 2048px | ✅ 穩定 |
+
+#### 🔥 **Flux 進階系列 (3 個模型)**
+
+| 模型 ID | 名稱 | 描述 | 最大尺寸 | 狀態 |
+|---------|------|------|----------|------|
+| `flux-1.1-pro` | **Flux 1.1 Pro** 🔥 | 最新 Flux 1.1,更強細節 | 2048px | ⚠️ 實驗性 |
+| `flux-kontext` | **Flux Kontext** 🎨 | 圖像編輯,1 張參考圖 | 2048px | ⚠️ 實驗性 |
+| `flux-kontext-pro` | **Flux Kontext Pro** 💎 | 圖像編輯專業版,1 張參考圖 | 2048px | ⚠️ 實驗性 |
+
+**圖生圖功能說明:**
+- **Kontext 系列:** 支持 1 張參考圖
+- **適用場景:** 圖像編輯、風格遷移、精準重繪
+- **實驗性狀態:** 如失敗會自動回退到 Flux Pro/Realism
+
+#### 🍌 **Nano Banana 系列 (2 個模型)**
+
+| 模型 ID | 名稱 | 描述 | 參考圖 | 最大尺寸 | 狀態 |
+|---------|------|------|--------|----------|------|
+| `nanobanana` | **Nano Banana** 🍌 | Gemini 2.5 Flash,多圖融合 | 4 張 | 2048px | ✅ 穩定 |
+| `nanobanana-pro` | **Nano Banana Pro** 🍌💎 | Gemini 3 Pro,4K 超清 | 4 張 | **4096px** | ✅ 穩定 |
+
+**多圖融合功能說明:**
+- **支持 1-4 張參考圖**
+- **適用場景:** 多圖融合、圖像合成、4K 超清輸出
+- **Nano Banana Pro:** 獨家支持 4K (4096×4096)
+
+#### ⚡ **Stable Diffusion 系列 (5 個模型)**
+
+| 模型 ID | 名稱 | 描述 | 最大尺寸 | 狀態 |
+|---------|------|------|----------|------|
+| `sd3` | **SD 3** ⚡ | Stable Diffusion 3 標準版 | 2048px | ⚠️ 實驗性 |
+| `sd3.5-large` | **SD 3.5 Large** 🔥 | SD 3.5 大模型,高質量 | 2048px | ⚠️ 實驗性 |
+| `sd3.5-turbo` | **SD 3.5 Turbo** ⚡ | SD 3.5 快速版 | 2048px | ⚠️ 實驗性 |
+| `sdxl` | **SDXL** 📐 | 經典 SDXL 1.0 | 2048px | ⚠️ 實驗性 |
+| `sdxl-lightning` | **SDXL Lightning** ⚡ | SDXL 極速版,超快生成 | 2048px | ⚠️ 實驗性 |
+
+**實驗性模型說明:**
+- ⚠️ 可能不穩定,失敗時自動回退到穩定模型
+- **回退邏輯:** SD 系列 → Flux Realism → Flux
+- **推薦:** 優先使用 Flux 系列獲得最佳體驗
 
 ---
 
-## 🎨 模型與風格列表
+### 📊 模型選擇建議
 
-### 17 個免費模型 (Pollinations.ai)
+| 使用場景 | 推薦模型 | 理由 |
+|----------|----------|------|
+| **日常使用** | `flux` | 速度與質量平衡 |
+| **寫實照片** | `flux-realism` | 照片級質量 |
+| **動漫插畫** | `flux-anime` | 專為動漫優化 |
+| **3D 渲染** | `flux-3d` | 立體感強 |
+| **專業作品** | `flux-pro` | 極致細節 |
+| **快速測試** | `turbo` | 極速生成 |
+| **圖生圖** | `flux-kontext` | 單張參考圖編輯 |
+| **多圖融合** | `nanobanana` | 4 張參考圖融合 |
+| **4K 超清** | `nanobanana-pro` | 獨家 4K 支持 |
+
+---
+
+### 🎭 藝術風格 (39 種)
 
 <details>
-<summary><strong>查看完整列表 (點擊展開)</strong></summary>
+<summary>點擊查看完整風格列表</summary>
 
-| 分類 | 模型 ID | 描述 | 質量配置 |
-|------|---------|------|---------|
-| **Flux 標準** | `flux` | 基礎版 | 標準優化 |
-| | `flux-realism` | 超寫實 | 💎 極致細節 |
-| | `flux-anime` | 動漫 | ⭐ 清晰度優先 |
-| | `flux-3d` | 3D 渲染 | ⭐ 細節增強 |
-| | `flux-pro` | 專業版 | 💎 最高質量 |
-| | `any-dark` | 暗黑 | ⭐ 紋理增強 |
-| | `turbo` | 極速版 | ⚡ 速度優先 |
-| **Flux 高級** | `flux-1.1-pro` 🧪 | v1.1 Pro | 💎 最高質量 |
-| | `flux-kontext` 🧪 | Context | ⭐ 標準 |
-| | `flux-kontext-pro` 🧪 | Context Pro | 💎 專業級 |
-| **Nano Banana** | `nanobanana` | Gemini 2.5 Flash | ⭐ 快速生成 |
-| | `nanobanana-pro` | Gemini 3 Pro | 🍌 4K超高清 |
-| **SD3 系列** | `sd3` 🧪 | SD3 標準 | ⭐ 質量增強 |
-| | `sd3.5-large` 🧪 | SD3.5 Large | 💎 旗艦畫質 |
-| | `sd3.5-turbo` 🧪 | SD3.5 Turbo | ⚡ 快速迭代 |
-| **SDXL** | `sdxl` 🧪 | SDXL 1.0 | ⭐ 質量增強 |
-| | `sdxl-lightning` 🧪 | Lightning | ⚡ 閃電生成 |
+#### 🎌 **動漫系列** (6 種)
+- `anime` - 動漫風格 ✨
+- `anime-chibi` - Q版動漫 🎎
+- `japanese-manga` - 日本漫畫 📚
+- `shoujo-manga` - 少女漫畫 💕
+- `seinen-manga` - 青年漫畫 🗡️
+- `studio-ghibli` - 吉卜力風格 🍃
 
-> 🧪 = 實驗性模型 (可能自動回退到穩定模型)
+#### 📷 **寫實系列** (3 種)
+- `photorealistic` - 寫實照片 📷
+- `cinematic` - 電影級 🎬
+- `portrait` - 人像攝影 👤
+
+#### 🖌️ **傳統繪畫** (8 種)
+- `oil-painting` - 油畫 🎨
+- `watercolor` - 水彩畫 💧
+- `chinese-painting` - 中國水墨畫 🖌️
+- `ukiyo-e` - 浮世繪 🗾
+- `sketch` - 素描 ✏️
+- `charcoal` - 炭筆畫 🖍️
+- `impressionism` - 印象派 🌅
+- `surrealism` - 超現實主義 🌀
+
+#### 💻 **數位藝術** (4 種)
+- `digital-art` - 數位藝術 💻
+- `pixel-art` - 像素藝術 🕹️
+- `vector-art` - 向量藝術 📐
+- `low-poly` - 低多邊形 🔷
+
+#### 🌌 **幻想科幻** (7 種)
+- `fantasy` - 奇幻風格 🐉
+- `dark-fantasy` - 黑暗奇幻 🌑
+- `fairy-tale` - 童話風格 🧚
+- `cyberpunk` - 賽博朋克 🌃
+- `sci-fi` - 科幻未來 🚀
+- `steampunk` - 蒸汽朋克 ⚙️
+- `vaporwave` - 蒸氣波 🌈
+
+#### 🎬 **動畫影視** (2 種)
+- `disney` - 迪士尼風格 🏰
+- `comic-book` - 美式漫畫 💥
+
+#### 🎭 **藝術流派** (6 種)
+- `pop-art` - 普普藝術 🎭
+- `art-deco` - 裝飾藝術 💎
+- `art-nouveau` - 新藝術風格 🌺
+- `abstract` - 抽象藝術 🎨
+- `minimalist` - 極簡主義 ⬜
+
+#### 🎨 **特殊風格** (3 種)
+- `graffiti` - 塗鴉藝術 🎨
+- `horror` - 恐怖風格 👻
+- `kawaii` - 可愛風格 🌸
 
 </details>
 
-### 8 種藝術風格
+---
 
-| 風格 | 提示詞加成 | 負面提示詞 |
-|------|------------|------------|
-| ✨ Anime | vibrant colors, anime art | realistic, photograph |
-| 📷 Photorealistic | 8k uhd, professional photography | anime, cartoon |
-| 🌃 Cyberpunk | neon lights, futuristic | natural, rustic |
-| 🎨 Oil Painting | classical style, brushstrokes | digital art, anime |
-| 💧 Watercolor | soft colors, hand-painted | digital, sharp edges |
-| ✏️ Sketch | hand-drawn, graphite | colored, digital |
-| 🐉 Fantasy | magical, epic fantasy | modern, mundane |
-| 📐 Vector | flat design, clean lines | realistic, textured |
+### 📐 尺寸預設 (33 種)
+
+<details>
+<summary>點擊查看完整尺寸列表</summary>
+
+#### ⬜ **方形系列** (5 種)
+| 預設 ID | 尺寸 | 說明 |
+|---------|------|------|
+| `square-512` | 512×512 | 快速測試 |
+| `square-1k` | 1024×1024 | 標準方形 |
+| `square-1.5k` | 1536×1536 | 高清方形 |
+| `square-2k` | 2048×2048 | 超清方形 |
+| `square-4k` | 4096×4096 | **4K 方形** 🍌 (僅 Nano Banana Pro) |
+
+#### 📱 **豎屏系列** (6 種)
+| 預設 ID | 尺寸 | 比例 | 說明 |
+|---------|------|------|------|
+| `portrait-9-16` | 768×1344 | 9:16 | TikTok/Story |
+| `portrait-9-16-hd` | 1080×1920 | 9:16 | 1080p 豎屏 |
+| `portrait-9-16-2k` | 1536×2688 | 9:16 | 2K 豎屏 |
+| `portrait-3-4` | 768×1024 | 3:4 | Instagram 豎屏 |
+| `portrait-3-4-hd` | 1152×1536 | 3:4 | HD 豎屏 |
+| `portrait-2-3` | 1024×1536 | 2:3 | Pinterest |
+
+#### 🖥️ **橫屏系列** (6 種)
+| 預設 ID | 尺寸 | 比例 | 說明 |
+|---------|------|------|------|
+| `landscape-16-9` | 1344×768 | 16:9 | YouTube |
+| `landscape-16-9-hd` | 1920×1080 | 16:9 | 1080p 橫屏 |
+| `landscape-16-9-2k` | 2560×1440 | 16:9 | 2K 橫屏 |
+| `landscape-16-9-4k` | 3840×2160 | 16:9 | **4K 橫屏** 🍌 (僅 Nano Banana Pro) |
+| `landscape-4-3` | 1024×768 | 4:3 | 傳統橫屏 |
+| `landscape-21-9` | 2560×1080 | 21:9 | 超寬螢幕 |
+
+#### 📲 **社交媒體** (7 種)
+| 預設 ID | 尺寸 | 平台 |
+|---------|------|------|
+| `instagram-square` | 1080×1080 | Instagram 方形貼文 |
+| `instagram-portrait` | 1080×1350 | Instagram 豎屏貼文 (4:5) |
+| `instagram-story` | 1080×1920 | Instagram Story/Reels |
+| `facebook-cover` | 2048×1152 | Facebook 封面 |
+| `twitter-header` | 1500×500 | Twitter/X 橫幅 |
+| `youtube-thumbnail` | 1280×720 | YouTube 縮圖 |
+| `linkedin-banner` | 1584×396 | LinkedIn 橫幅 |
+
+#### 🖨️ **印刷/設計** (3 種)
+| 預設 ID | 尺寸 | DPI | 說明 |
+|---------|------|-----|------|
+| `a4-portrait` | 2480×3508 | 300 | A4 豎屏 |
+| `a4-landscape` | 3508×2480 | 300 | A4 橫屏 |
+| `poster-24-36` | 2400×3600 | - | 海報 24×36 英吋 |
+
+#### 🖼️ **桌布系列** (5 種)
+| 預設 ID | 尺寸 | 說明 |
+|---------|------|------|
+| `wallpaper-fhd` | 1920×1080 | Full HD 桌布 |
+| `wallpaper-2k` | 2560×1440 | 2K 桌布 |
+| `wallpaper-4k` | 3840×2160 | **4K 桌布** 🍌 (僅 Nano Banana Pro) |
+| `wallpaper-ultrawide` | 3440×1440 | Ultra-Wide 桌布 |
+| `mobile-wallpaper` | 1242×2688 | iPhone 手機桌布 |
+
+#### 🔧 **自定義**
+| 預設 ID | 範圍 | 說明 |
+|---------|------|------|
+| `custom` | 256-4096px | 自定義任意尺寸 |
+
+</details>
 
 ---
 
-## 🚀 部署指南
+## 🚀 一鍵部署
 
-### 前置要求
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (v3.0+)
-- Cloudflare 帳號 (免費計劃即可)
-
-### 快速部署
-
-```bash
-# 1. 克隆項目
-git clone https://github.com/kinai9661/Flux-AI-Pro.git
-cd Flux-AI-Pro
-
-# 2. 安裝 Wrangler
-npm install -g wrangler
-wrangler login
-
-# 3. 部署
-wrangler deploy
-
-# 4. 訪問 Worker URL
-# 例: https://flux-ai-pro.your-subdomain.workers.dev
-```
-
-### 一鍵部署
+### 部署到 Cloudflare Workers
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/kinai9661/Flux-AI-Pro)
 
----
+#### 手動部署步驟:
 
-## 🔌 API 文檔
+```bash
+# 1. 克隆倉庫
+git clone https://github.com/kinai9661/Flux-AI-Pro.git
+cd Flux-AI-Pro
 
-### 1. 圖像生成 (Standard)
+# 2. 安裝 Wrangler (Cloudflare CLI)
+npm install -g wrangler
 
-**Endpoint:** `POST /v1/images/generations`
+# 3. 登錄 Cloudflare
+wrangler login
 
-#### Request Body
-```json
-{
-  "prompt": "a futuristic city with flying cars, highly detailed",
-  "model": "flux-realism",
-  "quality_mode": "ultra",      // 🆕 "economy" | "standard" | "ultra" | "ultra_4k"
-  "width": 1536,
-  "height": 1536,
-  "style": "photorealistic",
-  "n": 1,
-  "auto_hd": true,              // 自動高清
-  "auto_optimize": true,        // 智能優化
-  "negative_prompt": "blurry, low quality",
-  "seed": 123456,
-  "private": true
-}
+# 4. 部署
+wrangler deploy
 ```
 
-#### Response
+#### 配置 Workers AI (可選 - 用於中文翻譯)
+
+```bash
+# 在 Cloudflare Dashboard 中:
+# 1. 進入 Workers & Pages
+# 2. 選擇你的 Worker
+# 3. Settings → Bindings → Add binding
+# 4. 選擇 "Workers AI" → 命名為 "AI"
+```
+
+---
+
+## 📖 使用方法
+
+### 🌐 Web UI
+
+訪問你的部署地址,通過友好的 Web 界面生成圖片:
+
+1. 輸入提示詞 (支持中文)
+2. 選擇模型和風格
+3. 設置尺寸和參數
+4. **(可選)** 上傳參考圖
+5. **(可選)** 設置 Seed
+6. 點擊 "開始生成"
+
+### 🔌 API 調用
+
+#### 端點: `/v1/images/generations`
+
+**基礎請求:**
+
+```bash
+curl -X POST https://your-worker.workers.dev/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "a beautiful sunset over mountains",
+    "model": "flux",
+    "width": 1024,
+    "height": 1024,
+    "n": 1
+  }'
+```
+
+**進階請求 (含 Seed + 風格):**
+
+```bash
+curl -X POST https://your-worker.workers.dev/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "一隻貓在太空中",
+    "model": "flux-realism",
+    "style": "cinematic",
+    "width": 1920,
+    "height": 1080,
+    "quality_mode": "ultra",
+    "seed": 12345,
+    "n": 2,
+    "negative_prompt": "low quality, blurry"
+  }'
+```
+
+**圖生圖請求:**
+
+```bash
+curl -X POST https://your-worker.workers.dev/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "transform into oil painting",
+    "model": "flux-kontext",
+    "reference_images": [
+      "https://example.com/image.jpg"
+    ],
+    "width": 1024,
+    "height": 1024
+  }'
+```
+
+**多圖融合請求:**
+
+```bash
+curl -X POST https://your-worker.workers.dev/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "merge these images into one artwork",
+    "model": "nanobanana-pro",
+    "reference_images": [
+      "https://example.com/img1.jpg",
+      "https://example.com/img2.jpg",
+      "https://example.com/img3.jpg"
+    ],
+    "width": 2048,
+    "height": 2048,
+    "quality_mode": "ultra_4k"
+  }'
+```
+
+#### 響應格式:
+
 ```json
 {
-  "created": 1733923200,
+  "created": 1702425600,
   "data": [
     {
-      "url": "https://image.pollinations.ai/prompt/...",
+      "url": "https://image.pollinations.ai/...",
       "provider": "Pollinations.ai",
       "model": "flux-realism",
-      "width": 1536,
-      "height": 1536,
-      "is_4k": false,
-      "seed": 123456,
-      "quality_mode": "ultra",             // 🆕 使用的質量模式
-      "prompt_complexity": 0.78,           // 🆕 提示詞複雜度 (0-1)
-      "hd_optimized": true,                // 是否 HD 優化
-      "auto_translated": true,             // 🆕 是否自動翻譯
-      "hd_details": {                      // 🆕 HD 優化詳情
-        "hd_level": "maximum",
-        "size_upscaled": true,
-        "optimizations": [
-          "HD增強: maximum",
-          "尺寸優化: 1024x1024 → 1536x1536"
-        ]
-      },
-      "auto_optimized": true,              // 是否智能優化
-      "steps": 48,                         // 🆕 最終步數 (含質量模式加成)
-      "guidance": 9.6,                     // 🆕 最終引導 (含質量模式加成)
+      "seed": 12345,
+      "width": 1920,
+      "height": 1080,
+      "style": "cinematic",
+      "quality_mode": "ultra",
+      "generation_mode": "文生圖",
+      "reference_images_count": 0,
       "cost": "FREE"
     }
-  ]
-}
-```
-
-### 2. 聊天生成 (OpenAI Compatible)
-
-**Endpoint:** `POST /v1/chat/completions`
-
-```json
-{
-  "model": "flux-pro",
-  "messages": [
-    { "role": "user", "content": "畫一隻在太空的貓，極致細節" }
   ],
-  "quality_mode": "ultra",  // 🆕
-  "width": 1536,
-  "height": 1536,
-  "auto_hd": true,
-  "auto_optimize": true
+  "generation_time_ms": 3250
 }
 ```
 
-### 3. 查詢接口
+### 📋 其他 API 端點
 
-| Endpoint | 方法 | 描述 |
-|----------|------|------|
-| `/v1/models` | GET | 列出所有可用模型 + 質量配置 |
-| `/v1/providers` | GET | 查詢提供商資訊 |
-| `/v1/styles` | GET | 列出所有風格預設 |
-| `/health` | GET | 健康檢查 + 版本資訊 |
+```bash
+# 獲取所有模型列表
+GET /v1/models
 
----
+# 獲取所有風格列表
+GET /v1/styles
 
-## ⚙️ 配置文件
+# 獲取服務商信息
+GET /v1/providers
 
-### wrangler.toml
-```toml
-name = "flux-ai-pro"
-main = "worker.js"
-compatibility_date = "2025-12-12"
+# 健康檢查
+GET /health
 
-[vars]
-PROJECT_VERSION = "9.1.1"
-ENABLE_QUALITY_MODES = "true"
-ENABLE_AUTO_TRANSLATE = "true"
-ENABLE_HISTORY = "true"
+# 性能統計
+GET /stats
 ```
 
 ---
 
-## 📅 更新日誌
+## 🎲 Seed 控制說明
 
-### v9.1.1 (2025-12-12) - 🧹 簡化版
-- **移除**: 繁體中文文字優化功能
-- **移除**: ChineseTextOptimizer 類別
-- **移除**: enableChineseBoost 參數
-- **移除**: UI 繁中優化選項
-- **簡化**: 模型配置 (17個模型)
-- **簡化**: 風格配置 (8種風格)
-- **保留**: 計時器、歷史、4K 等核心功能
-- **減少**: 代碼量 -15%
+### 什麼是 Seed?
 
-### v9.1.0 (2025-12-12) - ⏱️ 計時器 + 歷史
-- **新增**: 實時生成計時器 (精確到 0.1 秒)
-- **新增**: 完整歷史記錄系統 (localStorage 存儲)
-- **新增**: 歷史面板 (顯示所有生成記錄)
-- **新增**: 一鍵重新生成歷史圖片
-- **新增**: 清空歷史記錄
-- **新增**: 歷史計數徽章
+Seed (隨機種子) 控制 AI 生成的隨機性。**相同的 prompt + seed = 完全相同的圖片**。
 
-### v9.0.1 (2025-12-11) - 🔧 語法修復
-- **修復**: JavaScript 模板字符串嵌套語法錯誤
-- **優化**: 所有嵌套模板字符串改為字符串拼接
-- **增強**: Cloudflare Workers 編譯器相容性
+### 使用場景:
 
-### v8.8.1 (2025-12-11) - ✨ 優化版
-- **優化**: 移除主界面中文提示詞相關提示文字
-- **保留**: 後台自動翻譯功能仍然工作
-- **增強**: 界面更加簡潔專業
-- **修復**: 代碼完整性驗證和錯誤修復
+✅ **固定 Seed** (0-999999)
+- 精確復現圖片
+- 微調提示詞時保持構圖
+- 批量生成變體
 
-### v8.8.0 (2025-12-10) - 🍌 Nano Banana
-- **新增**: Nano Banana 模型支持 (Google Gemini 2.5 Flash / 3 Pro)
-- **新增**: Nano Banana 專用界面 (/nanobanana)
-- **支持**: 4K 畫質、繁中文字生成、14 圖融合
+✅ **自動隨機** (-1 或留空)
+- 探索不同可能性
+- 每次生成全新圖片
+
+### 批量生成 Seed 規則:
+
+生成 3 張圖片,起始 Seed = 1000:
+- 圖片 1: Seed 1000
+- 圖片 2: Seed 1001
+- 圖片 3: Seed 1002
 
 ---
 
-## 🌐 演示與部署
+## ⚙️ 高級配置
 
-- **最新演示站**: [https://koy.xx.kg/](https://koy.xx.kg/)
-- **GitHub 倉庫**: [kinai9661/Flux-AI-Pro](https://github.com/kinai9661/Flux-AI-Pro)
-- **部署平台**: Cloudflare Workers (免費計劃支持)
+### 質量模式
 
----
+| 模式 | 描述 | 適用場景 |
+|------|------|----------|
+| **economy** | 快速出圖 | 測試提示詞 |
+| **standard** | 平衡質量與速度 | 日常使用 |
+| **ultra** | 極致質量 | 重要作品 |
+| **ultra_4k** | Nano Banana Pro 專屬 | 專業級輸出 |
 
-## 💡 使用建議
+### HD 優化
 
-### 質量模式選擇指南
+啟用 `auto_hd: true` 後,系統會:
+- 自動增強提示詞 (添加高清關鍵詞)
+- 智能調整生成步數
+- 優化負面提示詞
+- 根據質量模式上採樣尺寸
 
-| 場景 | 推薦模式 | 理由 |
-|------|----------|------|
-| 快速測試概念 | ⚡ 經濟 | 速度優先，節省資源 |
-| 日常社交媒體 | ⭐ 標準 | 平衡質量與速度 |
-| 專業作品集 | 💎 超高清 | 極致細節，適合印刷 |
-| 客戶交付 | 💎 超高清 | 最高標準，零妃協 |
-| 4K 頂級畫質 | 🍌 4K超高清 | Nano Banana Pro 專屬 |
+### 速率限制
 
-### 模型 + 模式組合推薦
-
-```
-頂級質量:
-flux-realism + 超高清 + photorealistic 風格
-→ 適合: 商業攝影、產品展示、人像特寫
-
-動漫高清:
-flux-anime + 標準/超高清 + anime 風格
-→ 適合: 遊戲角色、漫畫封面、插畫
-
-快速迭代:
-turbo + 經濟 + 任意風格
-→ 適合: 概念草圖、頭腦風暴、A/B 測試
-
-4K 頂級:
-nanobanana-pro + 4K超高清
-→ 適合: 極致畫質、4K 顯示器、專業交付
-```
+- **每分鐘:** 10 次請求
+- **每小時:** 100 次請求
+- 超過限制將被暫時封禁 1 小時
 
 ---
 
-## ⚠️ 重要提醒
+## 🛠️ 技術棧
 
-### Pollinations.ai 服務說明
-1. **完全免費**，但服務穩定性由第三方控制
-2. 請遵守其 [使用條款](https://pollinations.ai/terms)
-3. 部分實驗性模型可能不可用 (自動回退)
+- **運行環境:** Cloudflare Workers
+- **圖像生成:** Pollinations.ai API
+- **翻譯服務:** Cloudflare Workers AI (m2m100)
+- **圖片托管:** Imgur / ImgBB
+- **本地存儲:** localStorage (歷史記錄)
+- **前端:** 原生 JavaScript + CSS
 
-### 質量模式與效能
-1. **超高清模式**會增加生成時間 (約 +35%)
-2. **4K超高清**會增加生成時間 (約 +50%)
-3. **自動優化**會根據複雜度推薦最佳模式
-4. 建議首次測試使用**標準模式**找到平衡點
+---
 
-### 自動翻譯功能
-1. **自動檢測**中文提示詞並翻譯成英文
-2. **提高質量**：Flux/SD 模型對英文理解更好
-3. **完全免費**：使用 Cloudflare Workers AI
-4. **高可靠**：翻譯失敗時自動使用原文
+## 📊 性能優化
+
+- ✅ **響應緩存** (LRU Cache)
+- ✅ **速率限制** (防濫用)
+- ✅ **性能監控** (請求統計)
+- ✅ **並發控制** (最多 3 個並行請求)
+- ✅ **智能回退** (模型自動降級)
 
 ---
 
 ## 🤝 貢獻
 
-歡迎提交 Issue 或 Pull Request!
+歡迎提交 Issue 和 Pull Request!
 
-### 開發指南
-```bash
-# 本地開發
-wrangler dev
+### 貢獻指南:
 
-# 部署測試
-wrangler deploy --env dev
+1. Fork 本倉庫
+2. 創建你的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交你的更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 開啟 Pull Request
 
-# 生產部署
-wrangler deploy
-```
+---
+
+## 📜 更新日誌
+
+### v9.3.0 (2025-12-13)
+- ✨ 新增 Seed 控制系統
+- ✨ 新增批量生成 (1-4 張)
+- ✨ 新增圖生圖 + 多圖融合
+- ✨ 新增本地上傳圖片
+- ✨ 新增中文自動翻譯
+- ✨ 新增歷史記錄功能
+- ✨ 新增 39 種藝術風格
+- ✨ 新增 33 種尺寸預設
+- ✨ 支持 17 個 AI 模型
+- 🔧 優化 HD 畫質系統
+- 🔧 優化速率限制
+- 🔧 優化性能監控
 
 ---
 
 ## 📄 許可證
 
-MIT License - 查看 [LICENSE](LICENSE) 文件
+本項目採用 [MIT License](LICENSE)。
 
 ---
 
 ## 🙏 致謝
 
-- [Pollinations.ai](https://pollinations.ai/) - 免費 AI 圖像生成服務
-- [Cloudflare Workers](https://workers.cloudflare.com/) - 全球邊緣計算平台
-- [Black Forest Labs](https://blackforestlabs.ai/) - FLUX 系列模型
-- [Stability AI](https://stability.ai/) - Stable Diffusion 系列
-- [Google](https://deepmind.google/) - Gemini AI (用於 Nano Banana)
+- [Pollinations.ai](https://pollinations.ai/) - 提供免費 AI 圖像生成服務
+- [Cloudflare Workers](https://workers.cloudflare.com/) - 強大的邊緣計算平台
+- [Imgur](https://imgur.com/) & [ImgBB](https://imgbb.com/) - 圖片托管服務
+
+---
+
+## 📞 聯繫方式
+
+- **GitHub Issues:** [提交問題](https://github.com/kinai9661/Flux-AI-Pro/issues)
+- **GitHub Discussions:** [參與討論](https://github.com/kinai9661/Flux-AI-Pro/discussions)
 
 ---
 
 <div align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/kinai9661">kinai9661</a></sub>
-  <br><br>
-  <a href="https://workers.cloudflare.com">
-    <img src="https://img.shields.io/badge/Cloudflare-Workers-orange?logo=cloudflare&style=flat-square" alt="Cloudflare Workers">
-  </a>
-  <a href="https://pollinations.ai">
-    <img src="https://img.shields.io/badge/Pollinations-AI-green?style=flat-square" alt="Pollinations AI">
-  </a>
-  <a href="https://github.com/kinai9661/Flux-AI-Pro/stargazers">
-    <img src="https://img.shields.io/github/stars/kinai9661/Flux-AI-Pro?style=flat-square" alt="GitHub stars">
-  </a>
+
+**如果這個項目對你有幫助,請給一個 ⭐ Star!**
+
+Made with ❤️ by [kinai9661](https://github.com/kinai9661)
+
 </div>
