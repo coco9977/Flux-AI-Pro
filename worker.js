@@ -1789,3 +1789,81 @@ function getWebUI() {
 </body>
 </html>`;
 }
+// ============================================
+// 🚀 主 Worker 導出函數
+// ============================================
+
+export default {
+  /**
+   * ✅ 主請求處理函數
+   */
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    
+    try {
+      // CORS 預檢請求
+      if (request.method === 'OPTIONS') {
+        return handleOptions();
+      }
+      
+      // API 路由
+      switch (path) {
+        // 圖片生成端點
+        case '/_internal/generate':
+          return await handleGenerate(request, env);
+        
+        // 健康檢查
+        case '/health':
+          return await handleHealth(env);
+        
+        // 模型列表
+        case '/models':
+          return await handleModels();
+        
+        // Web UI 首頁
+        case '/':
+          return new Response(getWebUI(), {
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600'
+            }
+          });
+        
+        // 404 未找到
+        default:
+          return new Response(JSON.stringify({
+            error: true,
+            message: 'Not found',
+            availableEndpoints: [
+              '/ - Web UI',
+              '/_internal/generate - Image generation API',
+              '/health - Health check',
+              '/models - List available models'
+            ]
+          }), {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json',
+              'Access-Control-Allow-Origin': '*'
+            }
+          });
+      }
+      
+    } catch (error) {
+      console.error('❌ Worker error:', error);
+      
+      return new Response(JSON.stringify({
+        error: true,
+        message: 'Internal server error: ' + error.message,
+        timestamp: new Date().toISOString()
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        }
+      });
+    }
+  }
+};
