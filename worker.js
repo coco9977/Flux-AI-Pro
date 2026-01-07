@@ -14,13 +14,13 @@ const CONFIG = {
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
-  
+
   POLLINATIONS_AUTH: {
     enabled: true,
     token: "",
     method: "header"
   },
-  
+
   PRESET_SIZES: {
     "square-1k": { name: "方形 1024x1024", width: 1024, height: 1024 },
     "square-1.5k": { name: "方形 1536x1536", width: 1536, height: 1536 },
@@ -30,7 +30,7 @@ const CONFIG = {
     "instagram-square": { name: "Instagram 方形", width: 1080, height: 1080 },
     "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 }
   },
-  
+
   PROVIDERS: {
     pollinations: {
       name: "Pollinations.ai",
@@ -110,9 +110,9 @@ const CONFIG = {
       max_size: { width: 2048, height: 2048 }
     }
   },
-  
+
   DEFAULT_PROVIDER: "pollinations",
-  
+
   STYLE_PRESETS: {
     none: { 
       name: "無風格", 
@@ -419,7 +419,7 @@ const CONFIG = {
       description: "奇幻魔法世界"
     }
   },
-  
+
   STYLE_CATEGORIES: {
     'basic': { name: '基礎', icon: '⚡', order: 1 },
     'illustration': { name: '插畫動畫', icon: '🎨', order: 2 },
@@ -435,7 +435,7 @@ const CONFIG = {
     'scifi': { name: '科幻', icon: '🚀', order: 12 },
     'fantasy': { name: '奇幻', icon: '🐉', order: 13 }
   },
-  
+
   OPTIMIZATION_RULES: {
     MODEL_STEPS: {
       "zimage": { min: 8, optimal: 15, max: 25 },
@@ -460,7 +460,7 @@ const CONFIG = {
       "default": 1.0
     }
   },
-  
+
   HD_OPTIMIZATION: {
     enabled: true,
     QUALITY_MODES: {
@@ -564,9 +564,9 @@ async function translateToEnglish(text, env) {
         reason: "No Chinese detected" 
       };
     }
-    
+
     console.log("🌐 檢測到中文，準備翻譯:", text.substring(0, 50) + (text.length > 50 ? "..." : ""));
-    
+
     try {
       const url = new URL('https://translate.googleapis.com/translate_a/single');
       url.searchParams.append('client', 'gtx');
@@ -574,7 +574,7 @@ async function translateToEnglish(text, env) {
       url.searchParams.append('tl', 'en');
       url.searchParams.append('dt', 't');
       url.searchParams.append('q', text);
-      
+
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
@@ -583,7 +583,7 @@ async function translateToEnglish(text, env) {
           'Accept-Language': 'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7'
         }
       });
-      
+
       if (!response.ok) {
         console.error("❌ Google Translate API 回應錯誤:", response.status, response.statusText);
         return { 
@@ -592,10 +592,10 @@ async function translateToEnglish(text, env) {
           reason: "API returned " + response.status
         };
       }
-      
+
       const result = await response.json();
       let translatedText = '';
-      
+
       if (result && Array.isArray(result) && result[0]) {
         for (const item of result[0]) {
           if (Array.isArray(item) && item[0]) {
@@ -603,9 +603,9 @@ async function translateToEnglish(text, env) {
           }
         }
       }
-      
+
       translatedText = translatedText.trim();
-      
+
       if (!translatedText || translatedText === text) {
         console.warn("⚠️ 翻譯結果為空或與原文相同");
         return { 
@@ -614,13 +614,13 @@ async function translateToEnglish(text, env) {
           reason: "Empty or identical translation" 
         };
       }
-      
+
       const detectedLang = result[2] || 'unknown';
-      
+
       console.log("✅ Google 翻譯成功!");
       console.log("   原文 (" + detectedLang + "):", text.substring(0, 50) + (text.length > 50 ? "..." : ""));
       console.log("   譯文 (en):", translatedText.substring(0, 50) + (translatedText.length > 50 ? "..." : ""));
-      
+
       return { 
         text: translatedText, 
         translated: true, 
@@ -630,11 +630,11 @@ async function translateToEnglish(text, env) {
         confidence: 0.95,
         timestamp: new Date().toISOString()
       };
-      
+
     } catch (error) {
       console.error("❌ Google 翻譯過程發生錯誤:", error.message);
       console.error("   錯誤堆疊:", error.stack);
-      
+
       return { 
         text: text, 
         translated: false, 
@@ -642,7 +642,7 @@ async function translateToEnglish(text, env) {
         error: error.message 
       };
     }
-    
+
   } catch (error) {
     console.error("❌ translateToEnglish 函數錯誤:", error);
     return { 
@@ -664,27 +664,27 @@ class PromptAnalyzer {
       'fine details', 'high detail', 'ultra detailed',
       '4k', '8k', 'uhd', 'hdr'
     ];
-    
+
     let score = 0;
     const lowerPrompt = prompt.toLowerCase();
-    
+
     complexKeywords.forEach(keyword => {
       if (lowerPrompt.includes(keyword)) score += 0.1;
     });
-    
+
     if (prompt.length > 100) score += 0.2;
     if (prompt.length > 200) score += 0.3;
     if (prompt.split(',').length > 5) score += 0.15;
-    
+
     return Math.min(score, 1.0);
   }
-  
+
   static recommendQualityMode(prompt, model) {
     const complexity = this.analyzeComplexity(prompt);
     const profile = CONFIG.HD_OPTIMIZATION.MODEL_QUALITY_PROFILES[model];
-    
+
     if (profile?.recommended_quality) return profile.recommended_quality;
-    
+
     if (complexity > 0.7) return 'ultra';
     if (complexity > 0.4) return 'standard';
     return 'economy';
@@ -702,21 +702,21 @@ class HDOptimizer {
         optimized: false 
       };
     }
-    
+
     const hdConfig = CONFIG.HD_OPTIMIZATION;
     const modeConfig = hdConfig.QUALITY_MODES[qualityMode] || hdConfig.QUALITY_MODES.standard;
     const profile = hdConfig.MODEL_QUALITY_PROFILES[model];
     const optimizations = [];
-    
+
     const hdLevel = modeConfig.hd_level;
     let enhancedPrompt = prompt;
-    
+
     if (hdConfig.HD_PROMPTS[hdLevel]) {
       const hdBoost = hdConfig.HD_PROMPTS[hdLevel];
       enhancedPrompt = prompt + ", " + hdBoost;
       optimizations.push("HD增強: " + hdLevel);
     }
-    
+
     let enhancedNegative = negativePrompt || "";
     if (qualityMode !== 'economy') {
       enhancedNegative = enhancedNegative 
@@ -724,15 +724,15 @@ class HDOptimizer {
         : hdConfig.HD_NEGATIVE;
       optimizations.push("負面提示詞: 高清過濾");
     }
-    
+
     let finalWidth = width;
     let finalHeight = height;
     let sizeUpscaled = false;
-    
+
     const maxModelRes = profile?.max_resolution || 2048;
     const minRes = Math.max(modeConfig.min_resolution, profile?.min_resolution || 1024);
     const currentRes = Math.min(width, height);
-    
+
     if (currentRes < minRes || modeConfig.force_upscale) {
       const scale = minRes / currentRes;
       finalWidth = Math.min(Math.round(width * scale / 64) * 64, maxModelRes);
@@ -740,14 +740,14 @@ class HDOptimizer {
       sizeUpscaled = true;
       optimizations.push("尺寸優化: " + width + "x" + height + " → " + finalWidth + "x" + finalHeight);
     }
-    
+
     if (finalWidth > maxModelRes || finalHeight > maxModelRes) {
       const scale = maxModelRes / Math.max(finalWidth, finalHeight);
       finalWidth = Math.round(finalWidth * scale / 64) * 64;
       finalHeight = Math.round(finalHeight * scale / 64) * 64;
       optimizations.push("模型限制: 調整至 " + finalWidth + "x" + finalHeight);
     }
-    
+
     return { 
       prompt: enhancedPrompt, 
       negativePrompt: enhancedNegative, 
@@ -776,20 +776,20 @@ class ParameterOptimizer {
     }
     return this.calculateOptimalSteps(model, width, height, style, qualityMode);
   }
-  
+
   static calculateOptimalSteps(model, width, height, style, qualityMode = 'standard') {
     const rules = CONFIG.OPTIMIZATION_RULES;
     const modelRule = rules.MODEL_STEPS[model] || rules.MODEL_STEPS["flux"];
     const modeConfig = CONFIG.HD_OPTIMIZATION.QUALITY_MODES[qualityMode];
     const profile = CONFIG.HD_OPTIMIZATION.MODEL_QUALITY_PROFILES[model];
-    
+
     let baseSteps = modelRule.optimal;
     const reasoning = [];
     reasoning.push(model + ": " + baseSteps + "步");
-    
+
     const totalPixels = width * height;
     let sizeMultiplier = 1.0;
-    
+
     if (totalPixels >= rules.SIZE_MULTIPLIER.xlarge.threshold) {
       sizeMultiplier = rules.SIZE_MULTIPLIER.xlarge.multiplier;
       reasoning.push("超大 x" + sizeMultiplier);
@@ -801,19 +801,19 @@ class ParameterOptimizer {
     } else {
       sizeMultiplier = rules.SIZE_MULTIPLIER.medium.multiplier;
     }
-    
+
     let styleMultiplier = rules.STYLE_ADJUSTMENT[style] || rules.STYLE_ADJUSTMENT.default;
     let qualityMultiplier = modeConfig?.steps_multiplier || 1.0;
     if (qualityMultiplier !== 1.0) reasoning.push(modeConfig.name + " x" + qualityMultiplier);
-    
+
     let profileBoost = profile?.optimal_steps_boost || 1.0;
     if (profileBoost !== 1.0) reasoning.push("模型配置 x" + profileBoost);
-    
+
     let optimizedSteps = Math.round(baseSteps * sizeMultiplier * styleMultiplier * qualityMultiplier * profileBoost);
     optimizedSteps = Math.max(modelRule.min, Math.min(optimizedSteps, modelRule.max));
-    
+
     reasoning.push("→ " + optimizedSteps + "步");
-    
+
     return { 
       steps: optimizedSteps, 
       optimized: true, 
@@ -827,13 +827,13 @@ class ParameterOptimizer {
       reasoning: reasoning.join(' ') 
     };
   }
-  
+
   static optimizeGuidance(model, style, qualityMode = 'standard') {
     const modeConfig = CONFIG.HD_OPTIMIZATION.QUALITY_MODES[qualityMode];
     const profile = CONFIG.HD_OPTIMIZATION.MODEL_QUALITY_PROFILES[model];
-    
+
     let baseGuidance = 7.5;
-    
+
     if (model.includes('turbo')) {
       baseGuidance = style === 'photorealistic' ? 3.0 : 2.5;
     } else if (style === 'photorealistic') {
@@ -845,10 +845,10 @@ class ParameterOptimizer {
     } else if (['pixel-art', 'low-poly'].includes(style)) {
       baseGuidance = 6.0;
     }
-    
+
     let qualityBoost = modeConfig?.guidance_multiplier || 1.0;
     let profileBoost = profile?.guidance_boost || 1.0;
-    
+
     return Math.round(baseGuidance * qualityBoost * profileBoost * 10) / 10;
   }
 }
@@ -862,7 +862,7 @@ class StyleProcessor {
           enhancedNegative: negativePrompt || "" 
         };
       }
-      
+
       if (!CONFIG.STYLE_PRESETS || typeof CONFIG.STYLE_PRESETS !== 'object') {
         console.warn("⚠️ STYLE_PRESETS not found");
         return { 
@@ -870,7 +870,7 @@ class StyleProcessor {
           enhancedNegative: negativePrompt || "" 
         };
       }
-      
+
       const styleConfig = CONFIG.STYLE_PRESETS[style];
       if (!styleConfig) {
         console.warn("⚠️ Style '" + style + "' not found");
@@ -879,12 +879,12 @@ class StyleProcessor {
           enhancedNegative: negativePrompt || "" 
         };
       }
-      
+
       let enhancedPrompt = prompt;
       if (styleConfig.prompt && styleConfig.prompt.trim()) {
         enhancedPrompt = prompt + ", " + styleConfig.prompt;
       }
-      
+
       let enhancedNegative = negativePrompt || "";
       if (styleConfig.negative && styleConfig.negative.trim()) {
         if (enhancedNegative && enhancedNegative.trim()) {
@@ -893,7 +893,7 @@ class StyleProcessor {
           enhancedNegative = styleConfig.negative;
         }
       }
-      
+
       console.log("✅ Style applied:", style, "-", styleConfig.name);
       return { 
         enhancedPrompt: enhancedPrompt, 
@@ -912,7 +912,7 @@ class StyleProcessor {
 async function fetchWithTimeout(url, options = {}, timeout = CONFIG.FETCH_TIMEOUT) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  
+
   try {
     const response = await fetch(url, { ...options, signal: controller.signal });
     clearTimeout(timeoutId);
@@ -945,7 +945,7 @@ class PollinationsProvider {
     this.name = config.name;
     this.env = env;
   }
-  
+
   async generate(prompt, options, logger) {
     const { 
       model = "zimage", 
@@ -964,11 +964,11 @@ class PollinationsProvider {
       qualityMode = 'standard',
       referenceImages = []
     } = options;
-    
+
     const modelConfig = this.config.models.find(m => m.id === model);
     const supportsRefImages = modelConfig?.supports_reference_images || false;
     const maxRefImages = modelConfig?.max_reference_images || 0;
-    
+
     let validReferenceImages = [];
     if (referenceImages && referenceImages.length > 0) {
       if (!supportsRefImages) {
@@ -993,13 +993,13 @@ class PollinationsProvider {
         });
       }
     }
-    
+
     let hdOptimization = null;
     let finalPrompt = prompt;
     let finalNegativePrompt = negativePrompt;
     let finalWidth = width;
     let finalHeight = height;
-    
+
     const promptComplexity = PromptAnalyzer.analyzeComplexity(prompt);
     const recommendedQuality = PromptAnalyzer.recommendQualityMode(prompt, model);
     logger.add("🧠 Prompt Analysis", { 
@@ -1008,7 +1008,7 @@ class PollinationsProvider {
       selected_quality: qualityMode,
       has_reference_images: validReferenceImages.length > 0
     });
-    
+
     if (autoHD) {
       hdOptimization = HDOptimizer.optimize(
         prompt, 
@@ -1023,7 +1023,7 @@ class PollinationsProvider {
       finalNegativePrompt = hdOptimization.negativePrompt;
       finalWidth = hdOptimization.width;
       finalHeight = hdOptimization.height;
-      
+
       if (hdOptimization.optimized) {
         logger.add("🎨 HD Optimization", { 
           mode: qualityMode, 
@@ -1035,10 +1035,10 @@ class PollinationsProvider {
         });
       }
     }
-    
+
     let finalSteps = steps;
     let finalGuidance = guidance;
-    
+
     if (autoOptimize) {
       const stepsOptimization = ParameterOptimizer.optimizeSteps(
         model, 
@@ -1053,7 +1053,7 @@ class PollinationsProvider {
         steps: stepsOptimization.steps, 
         reasoning: stepsOptimization.reasoning 
       });
-      
+
       if (guidance === null) {
         finalGuidance = ParameterOptimizer.optimizeGuidance(model, style, qualityMode);
       } else {
@@ -1063,13 +1063,13 @@ class PollinationsProvider {
       finalSteps = steps || 20;
       finalGuidance = guidance || 7.5;
     }
-    
+
     const { enhancedPrompt, enhancedNegative } = StyleProcessor.applyStyle(
       finalPrompt, 
       style, 
       finalNegativePrompt
     );
-    
+
     logger.add("🎨 Style Processing", { 
       selected_style: style,
       style_name: CONFIG.STYLE_PRESETS[style]?.name || style,
@@ -1079,10 +1079,10 @@ class PollinationsProvider {
       enhanced_prompt_length: enhancedPrompt.length,
       prompt_added: enhancedPrompt.length - finalPrompt.length
     });
-    
+
     const translation = await translateToEnglish(enhancedPrompt, this.env);
     const finalPromptForAPI = translation.text;
-    
+
     if (translation.translated) {
       logger.add("🌐 Auto Translation", { 
         original_zh: translation.original,
@@ -1099,7 +1099,7 @@ class PollinationsProvider {
         using_original: true
       });
     }
-    
+
     logger.add("🎨 Generation Config", { 
       provider: this.name, 
       model: model, 
@@ -1114,17 +1114,17 @@ class PollinationsProvider {
       guidance: finalGuidance,
       seed: seed
     });
-    
+
     const currentSeed = seed === -1 ? Math.floor(Math.random() * 1000000) : seed;
     let fullPrompt = finalPromptForAPI;
     if (enhancedNegative && enhancedNegative.trim()) {
       fullPrompt = finalPromptForAPI + " [negative: " + enhancedNegative + "]";
     }
-    
+
     const encodedPrompt = encodeURIComponent(fullPrompt);
     const pathPrefix = this.config.pathPrefix || "";
     let baseUrl = this.config.endpoint + pathPrefix + "/" + encodedPrompt;
-    
+
     const params = new URLSearchParams();
     params.append('model', model);
     params.append('width', finalWidth.toString());
@@ -1133,7 +1133,7 @@ class PollinationsProvider {
     params.append('nologo', nologo.toString());
     params.append('enhance', enhance.toString());
     params.append('private', privateMode.toString());
-    
+
     if (validReferenceImages && validReferenceImages.length > 0) {
       params.append('image', validReferenceImages.join(','));
       logger.add("🖼️ Reference Images Added", { 
@@ -1141,16 +1141,16 @@ class PollinationsProvider {
         urls: validReferenceImages 
       });
     }
-    
+
     if (finalGuidance !== 7.5) params.append('guidance', finalGuidance.toString());
     if (finalSteps !== 20) params.append('steps', finalSteps.toString());
-    
+
     const headers = {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       'Accept': 'image/*',
       'Referer': 'https://pollinations.ai/'
     };
-    
+
     const authConfig = CONFIG.POLLINATIONS_AUTH;
     if (authConfig.enabled && authConfig.token) {
       headers['Authorization'] = 'Bearer ' + authConfig.token;
@@ -1168,9 +1168,9 @@ class PollinationsProvider {
         warning: "未認證的請求可能會失敗"
       });
     }
-    
+
     const url = baseUrl + '?' + params.toString();
-    
+
     logger.add("📡 API Request", { 
       endpoint: this.config.endpoint,
       path: pathPrefix + "/" + encodedPrompt.substring(0, 50) + "...",
@@ -1178,14 +1178,14 @@ class PollinationsProvider {
       authenticated: authConfig.enabled && !!authConfig.token,
       full_url: url.substring(0, 100) + "..."
     });
-    
+
     for (let retry = 0; retry < CONFIG.MAX_RETRIES; retry++) {
       try {
         const response = await fetchWithTimeout(url, { 
           method: 'GET', 
           headers: headers
         }, 120000);
-        
+
         if (response.ok) {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.startsWith('image/')) {
@@ -1204,10 +1204,10 @@ class PollinationsProvider {
               authenticated: authConfig.enabled && !!authConfig.token,
               seed: currentSeed 
             });
-            
+
             const imageBlob = await response.blob();
             const imageBuffer = await imageBlob.arrayBuffer();
-            
+
             return { 
               imageData: imageBuffer,
               contentType: contentType,
@@ -1260,7 +1260,7 @@ class PollinationsProvider {
           max_retries: CONFIG.MAX_RETRIES,
           endpoint: this.config.endpoint
         });
-        
+
         if (retry < CONFIG.MAX_RETRIES - 1) {
           await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1)));
         } else {
@@ -1277,7 +1277,7 @@ class MultiProviderRouter {
     this.providers = {};
     this.apiKeys = apiKeys;
     this.env = env;
-    
+
     for (const [key, config] of Object.entries(CONFIG.PROVIDERS)) {
       if (config.enabled) {
         if (key === 'pollinations') {
@@ -1286,7 +1286,7 @@ class MultiProviderRouter {
       }
     }
   }
-  
+
   getProvider(providerName = null) {
     if (providerName && this.providers[providerName]) {
       return { name: providerName, instance: this.providers[providerName] };
@@ -1301,12 +1301,12 @@ class MultiProviderRouter {
     }
     throw new Error('No available provider');
   }
-  
+
   async generate(prompt, options, logger) {
     const { provider: requestedProvider = null, numOutputs = 1 } = options;
     const { name: providerName, instance: provider } = this.getProvider(requestedProvider);
     const results = [];
-    
+
     for (let i = 0; i < numOutputs; i++) {
       const currentOptions = { 
         ...options, 
@@ -1315,7 +1315,7 @@ class MultiProviderRouter {
       const result = await provider.generate(prompt, currentOptions, logger);
       results.push(result);
     }
-    
+
     return results;
   }
 }
@@ -1328,14 +1328,14 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const clientIP = getClientIP(request);
-    
+
     if (request.method === 'OPTIONS') {
       return new Response(null, { 
         status: 204, 
         headers: corsHeaders() 
       });
     }
-    
+
     if (path === '/_internal/generate' && request.method === 'POST') {
       const logger = new Logger();
       logger.add("📥 Request Info", { 
@@ -1344,7 +1344,7 @@ export default {
         ip: clientIP,
         timestamp: new Date().toISOString()
       });
-      
+
       try {
         const body = await request.json();
         const { 
@@ -1368,7 +1368,7 @@ export default {
           qualityMode = 'standard',
           referenceImages = []
         } = body;
-        
+
         if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
           return Response.json({ 
             error: "Missing or invalid 'prompt' parameter" 
@@ -1377,7 +1377,7 @@ export default {
             headers: corsHeaders() 
           });
         }
-        
+
         logger.add("📝 Request Params", { 
           prompt: prompt.substring(0, 100) + (prompt.length > 100 ? '...' : ''),
           model: model, 
@@ -1392,7 +1392,7 @@ export default {
           reference_images: referenceImages?.length || 0,
           generation_mode: referenceImages?.length > 0 ? "圖生圖" : "文生圖"
         });
-        
+
         const pollinationsApiKey = env.POLLINATIONS_API_KEY || "";
         if (pollinationsApiKey) {
           CONFIG.POLLINATIONS_AUTH.token = pollinationsApiKey;
@@ -1407,11 +1407,11 @@ export default {
             warning: "新 API 端點需要 API Key，請設置 POLLINATIONS_API_KEY 環境變量"
           });
         }
-        
+
         const router = new MultiProviderRouter({
           pollinations: pollinationsApiKey
         }, env);
-        
+
         const results = await router.generate(prompt, { 
           provider: provider, 
           model: model, 
@@ -1431,7 +1431,7 @@ export default {
           qualityMode: qualityMode,
           referenceImages: referenceImages
         }, logger);
-        
+
         if (responseFormat === 'b64_json') {
           const data = results.map((result, index) => {
             const base64 = btoa(String.fromCharCode(...new Uint8Array(result.imageData)));
@@ -1453,7 +1453,7 @@ export default {
               authenticated: result.authenticated
             };
           });
-          
+
           return Response.json({ 
             created: Math.floor(Date.now() / 1000), 
             data: data,
@@ -1461,7 +1461,7 @@ export default {
           }, { 
             headers: corsHeaders({ 'Content-Type': 'application/json' }) 
           });
-          
+
         } else {
           if (results.length === 1) {
             return new Response(results[0].imageData, { 
@@ -1499,7 +1499,7 @@ export default {
                 authenticated: result.authenticated
               };
             });
-            
+
             return Response.json({ 
               created: Math.floor(Date.now() / 1000), 
               data: data,
@@ -1514,7 +1514,7 @@ export default {
           error: error.message, 
           stack: error.stack 
         });
-        
+
         return Response.json({ 
           error: error.message, 
           logs: logger.get() 
@@ -1524,7 +1524,7 @@ export default {
         });
       }
     }
-    
+
     if (path === '/api/config' || path === '/_internal/config') {
       const configData = {
         project: {
@@ -1579,15 +1579,15 @@ export default {
           quality_modes: true
         }
       };
-      
+
       return Response.json(configData, { 
         headers: corsHeaders({ 'Content-Type': 'application/json' }) 
       });
     }
-    
+
     if (path === '/health' || path === '/_internal/health') {
       const pollinationsApiKey = env.POLLINATIONS_API_KEY || "";
-      
+
       return Response.json({ 
         status: 'ok', 
         version: CONFIG.PROJECT_VERSION,
@@ -1608,10 +1608,10 @@ export default {
         headers: corsHeaders({ 'Content-Type': 'application/json' }) 
       });
     }
-    
+
     if (path === '/api/styles' || path === '/_internal/styles') {
       const groupedStyles = {};
-      
+
       for (const [styleId, styleConfig] of Object.entries(CONFIG.STYLE_PRESETS)) {
         const category = styleConfig.category || 'basic';
         if (!groupedStyles[category]) {
@@ -1629,11 +1629,11 @@ export default {
           negative: styleConfig.negative
         });
       }
-      
+
       const sortedCategories = Object.entries(groupedStyles)
         .sort(([, a], [, b]) => (a.order || 999) - (b.order || 999))
         .map(([id, data]) => ({ id, ...data }));
-      
+
       return Response.json({ 
         total: Object.keys(CONFIG.STYLE_PRESETS).length,
         categories: sortedCategories 
@@ -1641,7 +1641,7 @@ export default {
         headers: corsHeaders({ 'Content-Type': 'application/json' }) 
       });
     }
-    
+
     if (path === '/api/models' || path === '/_internal/models') {
       const models = CONFIG.PROVIDERS.pollinations.models.map(m => ({
         id: m.id,
@@ -1656,7 +1656,7 @@ export default {
         input_modalities: m.input_modalities || ["text"],
         output_modalities: m.output_modalities || ["image"]
       }));
-      
+
       return Response.json({ 
         provider: "pollinations",
         total: models.length,
@@ -1665,12 +1665,12 @@ export default {
         headers: corsHeaders({ 'Content-Type': 'application/json' }) 
       });
     }
-    
+
     if (path === '/api/translate' && request.method === 'POST') {
       try {
         const body = await request.json();
         const { text } = body;
-        
+
         if (!text) {
           return Response.json({ 
             error: "Missing 'text' parameter" 
@@ -1679,9 +1679,9 @@ export default {
             headers: corsHeaders() 
           });
         }
-        
+
         const result = await translateToEnglish(text, env);
-        
+
         return Response.json({ 
           success: true,
           translated: result.translated,
@@ -1704,13 +1704,13 @@ export default {
         });
       }
     }
-    
+
     if (path === '/' || path === '/index.html') {
       return new Response(HTML_CONTENT, { 
         headers: corsHeaders({ 'Content-Type': 'text/html; charset=utf-8' }) 
       });
     }
-    
+
     return Response.json({ 
       error: 'Not Found',
       available_endpoints: [
@@ -1727,7 +1727,212 @@ export default {
       headers: corsHeaders() 
     });
   }
-};
+
+// =================================================================================
+// 前端 HTML 界面（深色模式 + 雙語 + 100 張歷史記錄）
+// =================================================================================
+
+const HTML_CONTENT = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flux AI Pro - Dark Mode</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif;
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #e5e7eb;
+    }
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      background: rgba(26, 26, 26, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+    .header {
+      background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+      position: relative;
+      border-bottom: 2px solid rgba(168, 85, 247, 0.3);
+    }
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: glow 2s ease-in-out infinite alternate;
+    }
+    @keyframes glow {
+      from { filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.5)); }
+      to { filter: drop-shadow(0 0 20px rgba(168, 85, 247, 0.8)); }
+    }
+    .header .subtitle { font-size: 1.1em; opacity: 0.8; color: #9ca3af; }
+    .header .version {
+      display: inline-block;
+      background: rgba(168, 85, 247, 0.2);
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      margin-top: 10px;
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      color: #a855f7;
+    }
+    .lang-switch {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      background: rgba(45, 45, 45, 0.8);
+      padding: 8px 12px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+    .lang-btn {
+      background: transparent;
+      border: 2px solid rgba(168, 85, 247, 0.5);
+      color: #a855f7;
+      padding: 6px 16px;
+      border-radius: 15px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 600;
+      transition: all 0.3s;
+      font-family: inherit;
+    }
+    .lang-btn:hover { background: rgba(168, 85, 247, 0.2); box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
+    .lang-btn.active {
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.6);
+    }
+    .history-toggle {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(45, 45, 45, 0.8);
+      border: 2px solid rgba(59, 130, 246, 0.5);
+      color: #3b82f6;
+      padding: 8px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 600;
+      transition: all 0.3s;
+      backdrop-filter: blur(10px);
+    }
+    .history-toggle:hover { background: rgba(59, 130, 246, 0.2); box-shadow: 0 0 15px rgba(59, 130, 246, 0.4); }
+    .main-content { display: grid; grid-template-columns: 400px 1fr; gap: 0; }
+    @media (max-width: 1200px) { .main-content { grid-template-columns: 1fr; } }
+    .left-panel {
+      background: rgba(30, 30, 30, 0.95);
+      padding: 25px;
+      border-right: 1px solid rgba(168, 85, 247, 0.2);
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+    .left-panel::-webkit-scrollbar { width: 8px; }
+    .left-panel::-webkit-scrollbar-track { background: rgba(45, 45, 45, 0.5); border-radius: 4px; }
+    .left-panel::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 4px; }
+    .left-panel::-webkit-scrollbar-thumb:hover { background: rgba(168, 85, 247, 0.7); }
+    .right-panel { display: grid; grid-template-rows: 1fr auto; gap: 0; }
+    .result-panel { padding: 25px; background: rgba(26, 26, 26, 0.95); }
+    .history-panel {
+      background: rgba(30, 30, 30, 0.95);
+      border-top: 2px solid rgba(168, 85, 247, 0.3);
+      padding: 20px 25px;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+    }
+    .history-panel.show { display: block; }
+    .history-panel::-webkit-scrollbar { height: 8px; }
+    .history-panel::-webkit-scrollbar-track { background: rgba(45, 45, 45, 0.5); border-radius: 4px; }
+    .history-panel::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 4px; }
+    .panel h2 {
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #9ca3af; font-size: 0.95em; }
+    .form-group input[type="text"],
+    .form-group textarea,
+    .form-group select,
+    .form-group input[type="number"] {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid rgba(168, 85, 247, 0.3);
+      border-radius: 10px;
+      font-size: 1em;
+      transition: all 0.3s;
+      font-family: inherit;
+      background: rgba(45, 45, 45, 0.8);
+      color: #e5e7eb;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #a855f7;
+      box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.2), 0 0 20px rgba(168, 85, 247, 0.3);
+      background: rgba(45, 45, 45, 0.95);
+    }
+    .form-group textarea { min-height: 80px; resize: vertical; }
+    .form-group select option { background: #2d2d2d; color: #e5e7eb; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      color: white;
+      width: 100%;
+      box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+      border: 1px solid rgba(168, 85, 247, 0.5);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6), 0 0 30px rgba(168, 85, 247, 0.4);
+    }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 2px solid rgba(59, 130, 246, 0.5); }
+    .btn-secondary:hover { background: rgba(59, 130, 246, 0.3); box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 2px solid rgba(239, 68, 68, 0.5); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.3); box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+    .btn-small { padding: 6px 12px; font-size: 0.85em; }
     .result-container {
       background: rgba(45, 45, 45, 0.5);
       border-radius: 10px;
@@ -1739,18 +1944,13 @@ export default {
       justify-content: center;
       border: 1px solid rgba(168, 85, 247, 0.2);
     }
-    
     .result-container img {
       max-width: 100%;
       border-radius: 10px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(168, 85, 247, 0.3);
       border: 2px solid rgba(168, 85, 247, 0.3);
     }
-    
-    .loading {
-      text-align: center;
-    }
-    
+    .loading { text-align: center; }
     .loading .spinner {
       width: 60px;
       height: 60px;
@@ -1761,32 +1961,11 @@ export default {
       margin: 0 auto 20px;
       box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
     }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .loading p {
-      color: #9ca3af;
-      font-size: 1.1em;
-    }
-    
-    .placeholder {
-      text-align: center;
-      color: #6b7280;
-    }
-    
-    .placeholder .icon {
-      font-size: 4em;
-      margin-bottom: 20px;
-      opacity: 0.3;
-    }
-    
-    .placeholder p {
-      font-size: 1.1em;
-    }
-    
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .loading p { color: #9ca3af; font-size: 1.1em; }
+    .placeholder { text-align: center; color: #6b7280; }
+    .placeholder .icon { font-size: 4em; margin-bottom: 20px; opacity: 0.3; }
+    .placeholder p { font-size: 1.1em; }
     .info-box {
       background: rgba(59, 130, 246, 0.1);
       border-left: 4px solid #3b82f6;
@@ -1796,45 +1975,13 @@ export default {
       font-size: 0.9em;
       border: 1px solid rgba(59, 130, 246, 0.3);
     }
-    
-    .info-box.success {
-      background: rgba(34, 197, 94, 0.1);
-      border-left-color: #22c55e;
-      border-color: rgba(34, 197, 94, 0.3);
-    }
-    
-    .info-box.warning {
-      background: rgba(251, 146, 60, 0.1);
-      border-left-color: #fb923c;
-      border-color: rgba(251, 146, 60, 0.3);
-    }
-    
-    .info-box h4 {
-      margin-bottom: 6px;
-      font-size: 1em;
-      color: #3b82f6;
-    }
-    
-    .info-box.success h4 {
-      color: #22c55e;
-    }
-    
-    .info-box.warning h4 {
-      color: #fb923c;
-    }
-    
-    .info-box p {
-      color: #9ca3af;
-      line-height: 1.5;
-    }
-    
-    .toggle-switch {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    
+    .info-box.success { background: rgba(34, 197, 94, 0.1); border-left-color: #22c55e; border-color: rgba(34, 197, 94, 0.3); }
+    .info-box.warning { background: rgba(251, 146, 60, 0.1); border-left-color: #fb923c; border-color: rgba(251, 146, 60, 0.3); }
+    .info-box h4 { margin-bottom: 6px; font-size: 1em; color: #3b82f6; }
+    .info-box.success h4 { color: #22c55e; }
+    .info-box.warning h4 { color: #fb923c; }
+    .info-box p { color: #9ca3af; line-height: 1.5; }
+    .toggle-switch { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
     .toggle-switch input[type="checkbox"] {
       width: 50px;
       height: 26px;
@@ -1846,12 +1993,10 @@ export default {
       transition: all 0.3s;
       border: 1px solid rgba(168, 85, 247, 0.3);
     }
-    
     .toggle-switch input[type="checkbox"]:checked {
       background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
       box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
     }
-    
     .toggle-switch input[type="checkbox"]::before {
       content: '';
       position: absolute;
@@ -1864,19 +2009,8 @@ export default {
       transition: all 0.3s;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     }
-    
-    .toggle-switch input[type="checkbox"]:checked::before {
-      left: 26px;
-    }
-    
-    .toggle-switch label {
-      font-weight: 600;
-      color: #9ca3af;
-      margin: 0;
-      cursor: pointer;
-      font-size: 0.9em;
-    }
-    
+    .toggle-switch input[type="checkbox"]:checked::before { left: 26px; }
+    .toggle-switch label { font-weight: 600; color: #9ca3af; margin: 0; cursor: pointer; font-size: 0.9em; }
     .meta-info {
       background: rgba(45, 45, 45, 0.8);
       border-radius: 10px;
@@ -1886,32 +2020,11 @@ export default {
       color: #9ca3af;
       border: 1px solid rgba(168, 85, 247, 0.2);
     }
-    
-    .meta-info div {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(75, 85, 99, 0.3);
-    }
-    
-    .meta-info div:last-child {
-      border-bottom: none;
-    }
-    
-    .meta-info strong {
-      color: #e5e7eb;
-    }
-    
-    .action-buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 12px;
-    }
-    
-    .action-buttons .btn {
-      flex: 1;
-    }
-    
+    .meta-info div { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(75, 85, 99, 0.3); }
+    .meta-info div:last-child { border-bottom: none; }
+    .meta-info strong { color: #e5e7eb; }
+    .action-buttons { display: flex; gap: 10px; margin-top: 12px; }
+    .action-buttons .btn { flex: 1; }
     .translation-info {
       background: rgba(168, 85, 247, 0.1);
       border: 2px solid rgba(168, 85, 247, 0.3);
@@ -1920,7 +2033,6 @@ export default {
       margin-top: 12px;
       font-size: 0.85em;
     }
-    
     .translation-info h4 {
       background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
       -webkit-background-clip: text;
@@ -1929,20 +2041,8 @@ export default {
       margin-bottom: 8px;
       font-size: 1em;
     }
-    
-    .translation-info p {
-      margin: 6px 0;
-      line-height: 1.5;
-      color: #9ca3af;
-    }
-    
-    .history-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-    }
-    
+    .translation-info p { margin: 6px 0; line-height: 1.5; color: #9ca3af; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
     .history-header h3 {
       background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
       -webkit-background-clip: text;
@@ -1953,18 +2053,8 @@ export default {
       align-items: center;
       gap: 8px;
     }
-    
-    .history-actions {
-      display: flex;
-      gap: 8px;
-    }
-    
-    .history-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: 12px;
-    }
-    
+    .history-actions { display: flex; gap: 8px; }
+    .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
     .history-item {
       background: rgba(45, 45, 45, 0.8);
       border: 2px solid rgba(168, 85, 247, 0.3);
@@ -1974,26 +2064,13 @@ export default {
       transition: all 0.3s;
       position: relative;
     }
-    
     .history-item:hover {
       border-color: #a855f7;
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3), 0 0 20px rgba(168, 85, 247, 0.2);
     }
-    
-    .history-item img {
-      width: 100%;
-      height: 150px;
-      object-fit: cover;
-      display: block;
-      border-bottom: 1px solid rgba(168, 85, 247, 0.2);
-    }
-    
-    .history-item-info {
-      padding: 8px;
-      font-size: 0.8em;
-    }
-    
+    .history-item img { width: 100%; height: 150px; object-fit: cover; display: block; border-bottom: 1px solid rgba(168, 85, 247, 0.2); }
+    .history-item-info { padding: 8px; font-size: 0.8em; }
     .history-item-prompt {
       color: #e5e7eb;
       font-weight: 600;
@@ -2002,15 +2079,7 @@ export default {
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    
-    .history-item-meta {
-      color: #6b7280;
-      font-size: 0.9em;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
+    .history-item-meta { color: #6b7280; font-size: 0.9em; display: flex; justify-content: space-between; align-items: center; }
     .history-item-delete {
       position: absolute;
       top: 8px;
@@ -2030,30 +2099,10 @@ export default {
       transition: all 0.3s;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     }
-    
-    .history-item:hover .history-item-delete {
-      opacity: 1;
-    }
-    
-    .history-item-delete:hover {
-      background: #dc2626;
-      transform: scale(1.1);
-      box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-    }
-    
-    .history-empty {
-      text-align: center;
-      padding: 40px;
-      color: #6b7280;
-      grid-column: 1 / -1;
-    }
-    
-    .history-empty .icon {
-      font-size: 3em;
-      margin-bottom: 12px;
-      opacity: 0.3;
-    }
-    
+    .history-item:hover .history-item-delete { opacity: 1; }
+    .history-item-delete:hover { background: #dc2626; transform: scale(1.1); box-shadow: 0 0 20px rgba(239, 68, 68, 0.6); }
+    .history-empty { text-align: center; padding: 40px; color: #6b7280; grid-column: 1 / -1; }
+    .history-empty .icon { font-size: 3em; margin-bottom: 12px; opacity: 0.3; }
     .badge {
       display: inline-block;
       padding: 3px 8px;
@@ -2064,12 +2113,7 @@ export default {
       color: #a855f7;
       border: 1px solid rgba(168, 85, 247, 0.3);
     }
-    
-    .badge.success {
-      background: rgba(34, 197, 94, 0.2);
-      color: #22c55e;
-      border-color: rgba(34, 197, 94, 0.3);
-    }
+    .badge.success { background: rgba(34, 197, 94, 0.2); color: #22c55e; border-color: rgba(34, 197, 94, 0.3); }
   </style>
 </head>
 <body>
@@ -2369,11 +2413,7 @@ export default {
       const grid = document.getElementById('historyGrid');
       
       if (imageHistory.length === 0) {
-        const emptyHTML = '<div class="history-empty">' +
-          '<div class="icon">📭</div>' +
-          '<p data-i18n="historyEmpty">' + translations[currentLang].historyEmpty + '</p>' +
-          '</div>';
-        grid.innerHTML = emptyHTML;
+        grid.innerHTML = '<div class="history-empty"><div class="icon">📭</div><p data-i18n="historyEmpty">' + translations[currentLang].historyEmpty + '</p></div>';
         return;
       }
       
@@ -2397,9 +2437,7 @@ export default {
           '<div class="history-item-meta">' +
           '<span>' + record.model + '</span>' +
           '<span>' + dateStr + '</span>' +
-          '</div>' +
-          '</div>' +
-          '</div>';
+          '</div></div></div>';
       });
       
       grid.innerHTML = items.join('');
@@ -2505,11 +2543,7 @@ export default {
       
       generateBtn.disabled = true;
       generateBtn.innerHTML = translations[currentLang].generating;
-      resultContainer.innerHTML = '<div class="loading">' +
-        '<div class="spinner"></div>' +
-        '<p>' + translations[currentLang].generating_text + '</p>' +
-        translationHint +
-        '</div>';
+      resultContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>' + translations[currentLang].generating_text + '</p>' + translationHint + '</div>';
       metaInfo.style.display = 'none';
       translationInfo.style.display = 'none';
       actionButtons.style.display = 'none';
@@ -2517,9 +2551,7 @@ export default {
       try {
         const response = await fetch('/_internal/generate', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: prompt,
             model: model,
@@ -2587,17 +2619,10 @@ export default {
         
       } catch (error) {
         console.error('❌ 生成失敗:', error);
-        resultContainer.innerHTML = '<div class="placeholder">' +
-          '<div class="icon" style="color: #ef4444;">❌</div>' +
-          '<p style="color: #ef4444;">生成失敗：' + error.message + '</p>' +
-          '<p style="font-size: 0.9em; color: #6b7280; margin-top: 10px;">請檢查網絡連接或稍後重試</p>' +
-          '</div>';
+        resultContainer.innerHTML = '<div class="placeholder"><div class="icon" style="color: #ef4444;">❌</div><p style="color: #ef4444;">生成失敗：' + error.message + '</p><p style="font-size: 0.9em; color: #6b7280; margin-top: 10px;">請檢查網絡連接或稍後重試</p></div>';
       } finally {
         generateBtn.disabled = false;
-        const btnText = document.querySelector('#generateBtn span');
-        if (btnText) {
-          btnText.textContent = translations[currentLang].generateBtn;
-        }
+        generateBtn.innerHTML = '<span data-i18n="generateBtn">' + translations[currentLang].generateBtn + '</span>';
       }
     }
     function displayResult(imageUrl, metadata) {
@@ -2668,10 +2693,7 @@ export default {
     }
     
     function generateNew() {
-      document.getElementById('resultContainer').innerHTML = '<div class="placeholder">' +
-        '<div class="icon">🎨</div>' +
-        '<p data-i18n="resultPlaceholder">' + translations[currentLang].resultPlaceholder + '</p>' +
-        '</div>';
+      document.getElementById('resultContainer').innerHTML = '<div class="placeholder"><div class="icon">🎨</div><p data-i18n="resultPlaceholder">' + translations[currentLang].resultPlaceholder + '</p></div>';
       document.getElementById('metaInfo').style.display = 'none';
       document.getElementById('translationInfo').style.display = 'none';
       document.getElementById('actionButtons').style.display = 'none';
@@ -2716,7 +2738,7 @@ export default {
         }
         
         console.log('🌐 翻譯引擎:', health.translation_engine);
-        console.log('✅ 免費翻譯:', health.features?.translation_free ? '是' : '否');
+        console.log('✅ 免費翻譯:', health.features && health.features.translation_free ? '是' : '否');
         console.log('📜 歷史記錄:', imageHistory.length, '/ 100 條');
         console.log('🌙 深色模式已啟用');
       } catch (error) {
@@ -2730,3 +2752,5 @@ export default {
 </body>
 </html>
 `;
+
+export { HTML_CONTENT };
