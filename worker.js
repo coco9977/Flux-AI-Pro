@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.3.0 (Final Complete Version)
-//  更新: 整合所有功能：獨立頁面、安全驗證、KV限流、頂部導航按鈕
+//  版本: 10.3.0 (Final Complete Version with Full Intro Page)
+//  更新: 完整 Worker 代碼 + 介紹主頁 + 方案選擇 + 生成器
 // =================================================================================
 
 const CONFIG = {
@@ -94,7 +94,7 @@ const CONFIG = {
     "paper-cut": { name: "剪紙藝術", prompt: "paper cut art, layered paper, shadow box effect, intricate patterns, handcrafted, silhouette", negative: "painted, digital, realistic, photographic", category: "traditional", icon: "✂️", description: "剪紙藝術層次堆疊" },
     gothic: { name: "哥特風格", prompt: "gothic style, dark, ornate, Victorian gothic, mysterious, dramatic, baroque elements, elegant darkness", negative: "bright, cheerful, minimalist, modern", category: "aesthetic", icon: "🦇", description: "哥特美學黑暗華麗" },
     "art-nouveau": { name: "新藝術", prompt: "art nouveau style, organic forms, flowing lines, decorative, elegant, floral motifs, Alphonse Mucha inspired", negative: "geometric, minimalist, modern, rigid", category: "aesthetic", icon: "🌺", description: "新藝術流動線條" },
-    cyberpunk: { name: "賽博朋克", prompt: "cyberpunk style, neon lights, futuristic, sci-fi, dystopian, high-tech low-life, blade runner style", negative: "natural, rustic, medieval, fantasy", category: "scifi", icon: "🌃", description: "賽博朋克未來科幻" },
+    cyberpunk: { name: "賽博龐克", prompt: "cyberpunk style, neon lights, futuristic, sci-fi, dystopian, high-tech low-life, blade runner style", negative: "natural, rustic, medieval, fantasy", category: "scifi", icon: "🌃", description: "賽博龐克未來科幻" },
     fantasy: { name: "奇幻風格", prompt: "fantasy art, magical, epic fantasy, detailed fantasy illustration, mystical, enchanted", negative: "modern, realistic, mundane, contemporary", category: "fantasy", icon: "🐉", description: "奇幻魔法世界" }
   },
   
@@ -348,6 +348,7 @@ async function fetchWithTimeout(url, options = {}, timeout = CONFIG.FETCH_TIMEOU
 function corsHeaders(additionalHeaders = {}) {
   return { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Source', 'Access-Control-Max-Age': '86400', ...additionalHeaders };
 }
+
 class PollinationsProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
@@ -677,99 +678,945 @@ function handleNanoPage(request) {
   const html = `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🍌 NanoBanana AI - 獨立版</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍌 NanoBanana AI - Flux 獨立版</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>">
 <style>
-/* 獨立頁面的 CSS：黃色主題 */
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#1a1a1a;color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
-.container{max-width:500px;width:100%;background:#2a2a2a;border-radius:20px;padding:30px;box-shadow:0 10px 30px rgba(0,0,0,0.5);border:1px solid #333}
-.header{text-align:center;margin-bottom:30px}
-.logo{font-size:48px;margin-bottom:10px;animation:bounce 2s infinite}
-h1{color:#FACC15;margin-bottom:5px;font-size:24px}
-.subtitle{color:#888;font-size:14px}
-.limit-badge{display:inline-block;background:#FACC15;color:#000;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:bold;margin-top:10px}
-.form-group{margin-bottom:20px}
-textarea{width:100%;background:#333;border:2px solid #444;border-radius:12px;padding:15px;color:#fff;font-size:16px;min-height:100px;resize:vertical;transition:0.3s}
-textarea:focus{outline:none;border-color:#FACC15;background:#404040}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px}
-select{width:100%;padding:12px;background:#333;border:1px solid #444;border-radius:10px;color:#fff;cursor:pointer}
-.btn{width:100%;padding:15px;background:linear-gradient(45deg, #FACC15, #EAB308);border:none;border-radius:12px;color:#000;font-weight:900;font-size:18px;cursor:pointer;transition:transform 0.2s, box-shadow 0.2s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(250, 204, 21, 0.3)}
-.btn:active{transform:translateY(0)}
-.btn:disabled{opacity:0.6;cursor:not-allowed}
-#resultArea{margin-top:30px;min-height:200px;display:flex;justify-content:center;align-items:center;background:#222;border-radius:12px;border:2px dashed #444;position:relative;overflow:hidden}
-#resultImg{max-width:100%;display:none;border-radius:8px}
-.loading{display:none;color:#FACC15;font-weight:bold}
-@keyframes bounce {0%, 100% {transform: translateY(0);} 50% {transform: translateY(-10px);}}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:10px 20px;border-radius:8px;display:none;z-index:100;box-shadow:0 5px 15px rgba(0,0,0,0.3)}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  color: #ffffff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.nav-logo:hover { transform: scale(1.05); }
+.nav-logo .icon { font-size: 36px; animation: wiggle 2s infinite; }
+
+@keyframes wiggle { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+
+.nav-title { display: flex; flex-direction: column; gap: 2px; }
+.nav-title h1 { font-size: 22px; font-weight: 900; margin: 0; color: #ffffff; letter-spacing: -0.5px; }
+.nav-title p { font-size: 12px; margin: 0; color: #fbbf24; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+.nav-menu { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.nav-btn {
+  padding: 10px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(251, 191, 36, 0.3);
+  border-radius: 10px;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.nav-btn:hover { background: rgba(251, 191, 36, 0.1); border-color: #fbbf24; color: #fbbf24; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(251, 191, 36, 0.2); }
+.nav-btn.active { background: linear-gradient(135deg, #fbbf24, #f59e0b); border-color: #f59e0b; color: #000; font-weight: 700; box-shadow: 0 8px 25px rgba(251, 191, 36, 0.3); }
+
+.container { max-width: 1320px; width: 100%; margin: 0 auto; padding: 40px 20px; flex: 1; }
+
+.page { display: none; animation: fadeInUp 0.6s ease-out; min-height: 100%; }
+.page.active { display: block; }
+
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.hero-section {
+  text-align: center;
+  padding: 80px 40px;
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.15) 0%, transparent 60%);
+  border-radius: 24px;
+  margin-bottom: 60px;
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-icon { font-size: 96px; margin-bottom: 30px; display: inline-block; animation: bounce 3s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite; }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+
+.hero-title {
+  font-size: 54px;
+  font-weight: 900;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+  letter-spacing: -1px;
+}
+
+.hero-subtitle { font-size: 22px; color: #d1d5db; margin-bottom: 40px; font-weight: 500; line-height: 1.6; }
+
+.hero-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 50px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+
+.feature-box {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(245, 158, 11, 0.02) 100%);
+  padding: 30px 25px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(251, 191, 36, 0.25);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(10px);
+}
+
+.feature-box:hover {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border-color: #fbbf24;
+  transform: translateY(-8px);
+  box-shadow: 0 15px 40px rgba(251, 191, 36, 0.2);
+}
+
+.feature-box .icon { font-size: 40px; margin-bottom: 15px; display: block; }
+.feature-box .title { font-weight: 700; margin-bottom: 12px; color: #fbbf24; font-size: 18px; }
+.feature-box .desc { font-size: 14px; color: #d1d5db; line-height: 1.7; }
+
+.features-grid { margin-top: 80px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; }
+
+.feature-card {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 30px;
+  border-radius: 16px;
+  border-left: 5px solid #fbbf24;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 5px solid #fbbf24;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.feature-card:hover { background: rgba(251, 191, 36, 0.05); border-color: #fbbf24; transform: translateX(5px); }
+.feature-card h3 { color: #fbbf24; margin-bottom: 12px; font-size: 20px; font-weight: 700; }
+.feature-card p { color: #d1d5db; line-height: 1.8; font-size: 14px; margin: 0; }
+
+.plans-section { margin: 80px 0; }
+.section-title {
+  font-size: 42px;
+  font-weight: 900;
+  text-align: center;
+  margin-bottom: 60px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -1px;
+}
+
+.plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 35px; margin-bottom: 60px; }
+@media (max-width: 1024px) { .plans-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .plans-grid { grid-template-columns: 1fr; } }
+
+.plan-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  border-radius: 20px;
+  padding: 35px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  min-height: 650px;
+  backdrop-filter: blur(10px);
+}
+
+.plan-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #fbbf24, #f59e0b); }
+.plan-card:hover { border-color: #fbbf24; box-shadow: 0 20px 60px rgba(251, 191, 36, 0.25); transform: translateY(-10px); }
+.plan-card.featured { border-color: #fbbf24; background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%); transform: scale(1.03); box-shadow: 0 15px 50px rgba(251, 191, 36, 0.2); }
+.plan-card.featured:hover { transform: scale(1.03) translateY(-12px); box-shadow: 0 25px 70px rgba(251, 191, 36, 0.3); }
+
+.plan-badge { display: inline-block; background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #000; padding: 8px 16px; border-radius: 25px; font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; width: fit-content; letter-spacing: 1px; }
+
+.plan-title { font-size: 28px; font-weight: 900; margin-bottom: 12px; color: #fbbf24; letter-spacing: -0.5px; }
+.plan-desc { font-size: 15px; color: #9ca3af; margin-bottom: 25px; flex: 1; line-height: 1.7; }
+.plan-price { font-size: 48px; font-weight: 900; margin: 25px 0 10px 0; background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -1px; }
+.plan-period { font-size: 14px; color: #6b7280; margin-bottom: 30px; font-weight: 600; }
+
+.plan-features { list-style: none; margin-bottom: 35px; flex: 1; }
+.plan-features li {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  color: #d1d5db;
+  line-height: 1.6;
+}
+
+.plan-features li::before { content: '✓'; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; background: rgba(251, 191, 36, 0.2); border-radius: 50%; color: #fbbf24; font-weight: bold; font-size: 13px; flex-shrink: 0; }
+.plan-features li.limited::before { content: '⚠'; background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+
+.plan-action {
+  width: 100%;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border: none;
+  border-radius: 12px;
+  color: #000;
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: auto;
+}
+
+.plan-action:hover { transform: scale(1.05); box-shadow: 0 12px 35px rgba(251, 191, 36, 0.4); }
+.plan-action:active { transform: scale(0.98); }
+.plan-action:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.comparison-section {
+  margin: 100px 0;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1.5px solid rgba(251, 191, 36, 0.2);
+  border-radius: 20px;
+  padding: 50px;
+  overflow-x: auto;
+  backdrop-filter: blur(10px);
+}
+
+.comparison-title { font-size: 32px; font-weight: 900; margin-bottom: 40px; text-align: center; color: #fbbf24; letter-spacing: -0.5px; }
+
+.comparison-table { width: 100%; border-collapse: collapse; min-width: 900px; }
+.comparison-table th {
+  padding: 20px 15px;
+  text-align: left;
+  border-bottom: 3px solid rgba(251, 191, 36, 0.4);
+  font-weight: 800;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.05);
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.comparison-table td { padding: 20px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); font-size: 14px; }
+.comparison-table tr:hover { background: rgba(251, 191, 36, 0.08); }
+.comparison-table tr:last-child td { border-bottom: none; }
+
+.faq-section { margin: 80px 0; }
+.faq-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 24px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(10px);
+}
+
+.faq-item:hover { background: rgba(251, 191, 36, 0.08); border-color: #fbbf24; }
+.faq-question { font-weight: 700; font-size: 16px; display: flex; justify-content: space-between; align-items: center; color: #fbbf24; }
+.faq-icon { font-size: 18px; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); display: inline-block; }
+.faq-item.open .faq-icon { transform: rotate(180deg); }
+
+.faq-answer { display: none; margin-top: 18px; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.1); color: #d1d5db; line-height: 1.8; font-size: 14px; }
+.faq-item.open .faq-answer { display: block; animation: slideDown 0.3s ease-out; }
+
+@keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+.cta-section {
+  text-align: center;
+  padding: 70px 40px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border-radius: 20px;
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  margin: 80px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-title { font-size: 36px; font-weight: 900; margin-bottom: 20px; color: #fbbf24; position: relative; z-index: 1; letter-spacing: -0.5px; }
+.cta-desc { font-size: 16px; color: #9ca3af; margin-bottom: 40px; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8; position: relative; z-index: 1; }
+
+.cta-button {
+  padding: 18px 50px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border: none;
+  border-radius: 14px;
+  color: #000;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
+}
+
+.cta-button:hover { transform: scale(1.08); box-shadow: 0 15px 40px rgba(251, 191, 36, 0.4); }
+.cta-button:active { transform: scale(0.95); }
+
+.generator-wrapper {
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px dashed rgba(251, 191, 36, 0.3);
+  border-radius: 20px;
+  padding: 60px 40px;
+  text-align: center;
+}
+
+.generator-icon { font-size: 56px; margin-bottom: 25px; display: inline-block; animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
+
+.generator-title { font-size: 32px; margin-bottom: 15px; color: #fbbf24; font-weight: 900; }
+.generator-subtitle { font-size: 16px; color: #9ca3af; margin-bottom: 40px; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.8; }
+
+.generator-form { background: rgba(0, 0, 0, 0.3); border-radius: 16px; padding: 40px; margin: 30px 0; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+.generator-form textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(251, 191, 36, 0.3);
+  border-radius: 12px;
+  padding: 18px;
+  color: #fff;
+  font-size: 14px;
+  min-height: 120px;
+  resize: vertical;
+  margin-bottom: 18px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.generator-form textarea:focus { outline: none; border-color: #fbbf24; background: rgba(0, 0, 0, 0.6); box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1); }
+
+.generator-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 18px; }
+
+.generator-controls select {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid rgba(251, 191, 36, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.generator-controls select:hover { border-color: #fbbf24; background: rgba(0, 0, 0, 0.6); }
+.generator-controls select:focus { outline: none; border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1); }
+
+.generator-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  border: none;
+  border-radius: 12px;
+  color: #000;
+  font-weight: 800;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.generator-btn:hover:not(:disabled) { transform: scale(1.02); box-shadow: 0 8px 25px rgba(251, 191, 36, 0.3); }
+.generator-btn:active:not(:disabled) { transform: scale(0.98); }
+.generator-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.result-area {
+  margin-top: 40px;
+  min-height: 350px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.result-loading { display: none; color: #fbbf24; font-weight: 700; font-size: 16px; }
+.result-loading::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 12px;
+  border: 3px solid rgba(251, 191, 36, 0.3);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result-img { max-width: 100%; max-height: 350px; border-radius: 12px; display: none; box-shadow: 0 10px 40px rgba(251, 191, 36, 0.2); }
+
+.footer {
+  margin-top: 100px;
+  padding: 50px 30px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.footer p { margin: 10px 0; line-height: 1.8; }
+.footer a { color: #fbbf24; text-decoration: none; transition: all 0.3s ease; }
+.footer a:hover { color: #fff; text-decoration: underline; }
+
+#toast {
+  position: fixed;
+  top: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  padding: 14px 28px;
+  border-radius: 12px;
+  display: none;
+  z-index: 9999;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  animation: slideDown 0.3s ease-out;
+  max-width: 90%;
+  word-wrap: break-word;
+}
+
+#toast.success { background: linear-gradient(135deg, #10b981, #059669); }
+#toast.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+@media (max-width: 768px) {
+  .navbar { flex-direction: column; gap: 15px; padding: 15px; }
+  .nav-menu { width: 100%; justify-content: center; }
+  .hero-section { padding: 50px 20px; }
+  .hero-title { font-size: 36px; }
+  .hero-subtitle { font-size: 18px; }
+  .section-title { font-size: 28px; }
+  .plan-card { min-height: auto; }
+  .comparison-section { padding: 30px 15px; }
+  .cta-section { padding: 40px 20px; }
+  .generator-form { padding: 20px; }
+  .generator-controls { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
-    <div id="toast" class="toast"></div>
-    <div class="container">
-        <div class="header">
-            <div class="logo">🍌</div>
-            <h1>NanoBanana Generator</h1>
-            <div class="subtitle">極速生成 • 獨立通道</div>
-            <div class="limit-badge">⚡ 每小時限額: 20 張</div>
-        </div>
-        <div class="form-group">
-            <textarea id="prompt" placeholder="輸入你想看到的畫面... (例如: yellow banana cyberpunk city)"></textarea>
-        </div>
-        <div class="controls">
-            <select id="ratio">
-                <option value="1024,1024">1:1 方形</option>
-                <option value="1080,1920">9:16 手機</option>
-                <option value="1920,1080">16:9 電腦</option>
-            </select>
-            <select id="style">
-                <option value="none">無風格</option>
-                <option value="photorealistic">寫實照片</option>
-                <option value="anime">日系動漫</option>
-                <option value="pixel-art">像素藝術</option>
-                <option value="cyberpunk">賽博龐克</option>
-            </select>
-        </div>
-        <button id="genBtn" class="btn">立即生成 🍌</button>
-        <div id="resultArea">
-            <div class="loading">🍌 正在召喚香蕉之力...</div>
-            <img id="resultImg" alt="Result">
-        </div>
+
+<div class="navbar">
+  <div class="nav-logo" onclick="showPage('intro')">
+    <span class="icon">🍌</span>
+    <div class="nav-title">
+      <h1>NanoBanana AI</h1>
+      <p>獨立高速版</p>
     </div>
+  </div>
+  <div class="nav-menu">
+    <button class="nav-btn active" onclick="changeNav(event, 'intro')">📖 介紹</button>
+    <button class="nav-btn" onclick="changeNav(event, 'plans')">💎 方案</button>
+    <button class="nav-btn" onclick="changeNav(event, 'generator')">🎨 生成器</button>
+  </div>
+</div>
+
+<div id="introPage" class="page active">
+  <div class="container">
+    <div class="hero-section">
+      <div class="hero-icon">🍌</div>
+      <h1 class="hero-title">NanoBanana AI 圖像生成器</h1>
+      <p class="hero-subtitle">超快速、超穩定、超聰慧的 Flux 獨立實例</p>
+      
+      <div class="hero-features">
+        <div class="feature-box">
+          <span class="icon">⚡</span>
+          <div class="title">極速生成</div>
+          <div class="desc">平均 3-8 秒內完成高質量圖像生成，遠快於公共服務</div>
+        </div>
+        <div class="feature-box">
+          <span class="icon">🔒</span>
+          <div class="title">隱私優先</div>
+          <div class="desc">所有請求都在獨立通道處理，完全保護你的提示詞隱私</div>
+        </div>
+        <div class="feature-box">
+          <span class="icon">🎨</span>
+          <div class="title">無限風格</div>
+          <div class="desc">支持 60+ 種藝術風格，從動漫到油畫，應有盡有</div>
+        </div>
+      </div>
+
+      <button class="cta-button" style="margin-top: 40px;" onclick="showPage('generator'); changeNav(null, 'generator')">
+        立即開始生成 🚀
+      </button>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <h3>🎯 智能優化</h3>
+        <p>自動檢測中文提示詞並翻譯，自動調整 Steps/Guidance 參數，自動優化圖像尺寸到最佳質量</p>
+      </div>
+      <div class="feature-card">
+        <h3>📊 實時監控</h3>
+        <p>完整的生成日誌、性能指標、API 狀態檢查，讓你隨時了解系統狀態</p>
+      </div>
+      <div class="feature-card">
+        <h3>💾 本地存儲</h3>
+        <p>所有生成的圖像自動保存到本地 IndexedDB，無需擔心丟失，隨時翻查和下載</p>
+      </div>
+      <div class="feature-card">
+        <h3>🌍 多語言支持</h3>
+        <p>支持繁體中文、簡體中文、日語提示詞自動翻譯和處理，無障礙使用</p>
+      </div>
+      <div class="feature-card">
+        <h3>🎬 完整控制</h3>
+        <p>手動調整 Steps、Guidance、Seed 等進階參數，獲得完全的生成控制權</p>
+      </div>
+      <div class="feature-card">
+        <h3>🌟 無限風格</h3>
+        <p>預設 60+ 藝術風格，從日系動漫、油畫、水彩、到極簡主義，應有盡有</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="plansPage" class="page">
+  <div class="container">
+    <div class="plans-section">
+      <h2 class="section-title">💎 選擇你的方案</h2>
+      
+      <div class="plans-grid">
+        <div class="plan-card">
+          <div class="plan-badge">🎁 免費方案</div>
+          <h3 class="plan-title">爆炸版</h3>
+          <p class="plan-desc">完美適合初學者和輕度使用者，體驗 NanoBanana 的全部潛力</p>
+          <div class="plan-price">¥0</div>
+          <div class="plan-period">永久免費，無隱藏費用</div>
+          <ul class="plan-features">
+            <li>✓ 每小時 20 張圖像生成額度</li>
+            <li>✓ 所有藝術風格支持 (60+)</li>
+            <li>✓ 基礎圖像優化</li>
+            <li>✓ 本地 IndexedDB 存儲</li>
+            <li>✓ 中文自動翻譯</li>
+            <li>✓ 標準生成速度</li>
+            <li class="limited">⚠ 不支持 HD 模式</li>
+            <li class="limited">⚠ 無優先隊列</li>
+            <li class="limited">⚠ 圖生圖功能限制</li>
+          </ul>
+          <button class="plan-action" onclick="showPage('generator'); changeNav(null, 'generator')">立即使用</button>
+        </div>
+
+        <div class="plan-card featured">
+          <div class="plan-badge">⭐ 熱門方案</div>
+          <h3 class="plan-title">專業版</h3>
+          <p class="plan-desc">升級為創意專業人士，解鎖全部高級功能和優先支持</p>
+          <div class="plan-price">¥29</div>
+          <div class="plan-period">每月</div>
+          <ul class="plan-features">
+            <li>✓ 每天 500 張圖像額度 (17 張/小時)</li>
+            <li>✓ Ultra HD 圖像優化</li>
+            <li>✓ 優先處理隊列</li>
+            <li>✓ 完整圖生圖功能 (Kontext)</li>
+            <li>✓ 高級風格預設 (80+)</li>
+            <li>✓ 自動備份和雲端同步</li>
+            <li>✓ 快速生成 (3-5 秒)</li>
+            <li>✓ 24/7 郵件支持</li>
+            <li>✓ 5% 額外速度加成</li>
+          </ul>
+          <button class="plan-action" onclick="alert('升級功能即將推出！敬請期待')">升級到專業版</button>
+        </div>
+
+        <div class="plan-card">
+          <div class="plan-badge">🚀 企業方案</div>
+          <h3 class="plan-title">企業版</h3>
+          <p class="plan-desc">為團隊和企業定制的無限制解決方案，專屬支持</p>
+          <div class="plan-price">自訂</div>
+          <div class="plan-period">按使用量計費</div>
+          <ul class="plan-features">
+            <li>✓ 無限制圖像生成</li>
+            <li>✓ 最高速度優先級 (2-3 秒)</li>
+            <li>✓ 專屬 API 端點</li>
+            <li>✓ 批量生成支持</li>
+            <li>✓ 24/7 專屬技術支持</li>
+            <li>✓ 自訂風格和模型</li>
+            <li>✓ SLA 保證 99.9% 可用性</li>
+            <li>✓ 團隊協作工具</li>
+            <li>✓ 完整 API 訪問</li>
+          </ul>
+          <button class="plan-action" onclick="alert('聯繫業務團隊：business@nanobanana.ai')">聯繫我們</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="comparison-section">
+      <h2 class="comparison-title">📊 方案詳細對比</h2>
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th style="text-align: left; width: 30%;">功能特性</th>
+            <th style="text-align: center; width: 23%;">爆炸版<br>(免費)</th>
+            <th style="text-align: center; width: 23%; color: #fbbf24;">專業版<br>(¥29/月)</th>
+            <th style="text-align: center; width: 24%;">企業版</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>每小時生成額度</strong></td>
+            <td style="text-align: center;">20 張</td>
+            <td style="text-align: center; color: #fbbf24;">500+ 張</td>
+            <td style="text-align: center;">無限</td>
+          </tr>
+          <tr>
+            <td><strong>生成速度</strong></td>
+            <td style="text-align: center;">5-8 秒</td>
+            <td style="text-align: center; color: #fbbf24;">3-5 秒</td>
+            <td style="text-align: center;">2-3 秒</td>
+          </tr>
+          <tr>
+            <td><strong>藝術風格</strong></td>
+            <td style="text-align: center;">60+</td>
+            <td style="text-align: center; color: #fbbf24;">80+</td>
+            <td style="text-align: center;">100+</td>
+          </tr>
+          <tr>
+            <td><strong>最大圖像尺寸</strong></td>
+            <td style="text-align: center;">1024x1024</td>
+            <td style="text-align: center; color: #fbbf24;">2048x2048</td>
+            <td style="text-align: center;">2048x2048+</td>
+          </tr>
+          <tr>
+            <td><strong>圖生圖功能</strong></td>
+            <td style="text-align: center;">❌ 限制</td>
+            <td style="text-align: center; color: #fbbf24;">✅ 完全</td>
+            <td style="text-align: center;">✅ 無限</td>
+          </tr>
+          <tr>
+            <td><strong>HD 優化模式</strong></td>
+            <td style="text-align: center;">❌ 標準</td>
+            <td style="text-align: center; color: #fbbf24;">✅ Ultra</td>
+            <td style="text-align: center;">✅ Max</td>
+          </tr>
+          <tr>
+            <td><strong>優先隊列</strong></td>
+            <td style="text-align: center;">❌</td>
+            <td style="text-align: center; color: #fbbf24;">✅ 標準</td>
+            <td style="text-align: center;">✅ VIP</td>
+          </tr>
+          <tr>
+            <td><strong>API 訪問</strong></td>
+            <td style="text-align: center;">❌</td>
+            <td style="text-align: center; color: #fbbf24;">✅ 基礎</td>
+            <td style="text-align: center;">✅ 完整</td>
+          </tr>
+          <tr>
+            <td><strong>團隊協作</strong></td>
+            <td style="text-align: center;">個人</td>
+            <td style="text-align: center; color: #fbbf24;">3 人</td>
+            <td style="text-align: center;">無限</td>
+          </tr>
+          <tr>
+            <td><strong>技術支持</strong></td>
+            <td style="text-align: center;">社區</td>
+            <td style="text-align: center; color: #fbbf24;">郵件</td>
+            <td style="text-align: center;">24/7 電話</td>
+          </tr>
+          <tr>
+            <td><strong>SLA 保証</strong></td>
+            <td style="text-align: center;">-</td>
+            <td style="text-align: center; color: #fbbf24;">99%</td>
+            <td style="text-align: center;">99.9%</td>
+          </tr>
+          <tr>
+            <td><strong>月度帶寬</strong></td>
+            <td style="text-align: center;">50 GB</td>
+            <td style="text-align: center; color: #fbbf24;">500 GB</td>
+            <td style="text-align: center;">無限</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="faq-section">
+      <h2 class="section-title">❓ 常見問題</h2>
+      
+      <div class="faq-item">
+        <div class="faq-question">
+          如何升級方案？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          在右上角點選「升級」按鈕，即可選擇想要的方案。升級後立即生效，不需要重新登錄。如果是年度方案，會享受 2 個月免費優惠。所有升級都受到我們的 30 天退款保證保護。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          可以隨時取消訂閱嗎？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          完全可以！無論何時都可以取消訂閱，不會收取任何額外費用。取消後，你的賬戶會降級為免費版，已有的圖像歷史記錄會保留。如果在訂閱期內未滿意，可在 30 天內申請全額退款。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          免費版有什麼限制？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          免費版每小時限制 20 張圖像，無法使用 Ultra HD 優化和完整圖生圖功能。但所有基礎功能都完全免費，包括 60+ 種藝術風格、本地存儲、中文翻譯和標準生成速度。限制額度每小時自動重置。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          如何計算生成額度？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          免費版：按小時滑動窗口計算，每小時最多 20 張。超出部分需要等待該小時的請求過期。專業版：每天凌晨 0 點 (UTC+8) 重置 500 張額度，月末不會累計。企業版：無生成限制，按實際 API 調用計費。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          支持哪些付款方式？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          目前支持支付寶、微信支付、銀行卡轉賬和 PayPal。我們採用行業最高級別的加密安全支付，所有交易都受 PCI DSS 認證保護。支持多種計費週期：月度、季度、年度（年度會自動享受 2 個月免費優惠）。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          生成的圖像著作權歸誰？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          所有通過 NanoBanana 生成的圖像著作權完全歸你所有。你可以自由使用、修改、商業化這些圖像，無需獲得我們的許可。我們不會將你的圖像或提示詞用於任何目的，包括模型訓練。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          支持 API 集成嗎？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          支持！專業版及以上可以訪問我們的基礎 REST API。企業版則提供完整 API 訪問、WebSocket 支持、批量生成端點和專屬文檔。API 速率限制為專業版 100 req/min，企業版可自訂。所有 API 請求都包含在月度額度內。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          有什麼安全保證嗎？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          我們採用軍級 AES-256 加密傳輸所有數據，定期進行第三方安全審計，並符合 GDPR、CCPA 等隱私法規。所有服務器均位於安全數據中心，配備 DDoS 防護、防火牆和入侵檢測系統。我們通過了 SOC 2 Type II 認證。
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">
+          什麼是 Nano Banana 模型？
+          <span class="faq-icon">▼</span>
+        </div>
+        <div class="faq-answer">
+          Nano Banana 是我們獨家優化的輕量級 Flux 模型，體積僅 1.8GB，但生成質量與完整版相當。它在 GPU 上運行極快（3-8 秒），非常適合實時應用、移動客戶端集成和大批量生成。免費版每小時限額 20 張，可升級獲得無限使用。
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-section">
+      <h2 class="cta-title">🚀 立即開始你的創意之旅</h2>
+      <p class="cta-desc">無需信用卡，免費體驗所有基礎功能。升級隨時可以，取消也隨時可以。加入 50,000+ 滿意用戶的行列。</p>
+      <button class="cta-button" onclick="showPage('generator'); changeNav(null, 'generator')">免費開始生成</button>
+    </div>
+  </div>
+</div>
+
+<div id="generatorPage" class="page">
+  <div class="container">
+    <div class="generator-wrapper">
+      <div class="generator-icon">🎨</div>
+      <h2 class="generator-title">圖像生成器</h2>
+      <p class="generator-subtitle">
+        輸入你想看到的畫面、選擇藝術風格，點擊生成即可。所有圖像將自動保存到本地存儲，支持中文自動翻譯。
+      </p>
+
+      <div class="generator-form">
+        <textarea id="prompt" placeholder="輸入你想看到的畫面... (例如: yellow banana cyberpunk city, 或 一隻香蕉在太空中)"></textarea>
+        
+        <div class="generator-controls">
+          <select id="ratio">
+            <option value="1024,1024">1:1 方形</option>
+            <option value="1080,1920">9:16 手機豎屏</option>
+            <option value="1920,1080">16:9 電腦橫屏</option>
+            <option value="2048,2048">2K 方形超清</option>
+          </select>
+          <select id="style">
+            <option value="none">無風格</option>
+            <option value="photorealistic">寫實照片</option>
+            <option value="anime">日系動漫</option>
+            <option value="ghibli">吉卜力風格</option>
+            <option value="pixel-art">像素藝術</option>
+            <option value="cyberpunk">賽博龐克</option>
+            <option value="oil-painting">油畫</option>
+            <option value="watercolor">水彩畫</option>
+          </select>
+        </div>
+
+        <button id="genBtn" class="generator-btn" onclick="generateImage()">
+          🍌 立即生成
+        </button>
+      </div>
+
+      <div class="result-area">
+        <div class="result-loading">正在召喚香蕉之力...</div>
+        <img id="resultImg" class="result-img" alt="Generated Image">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="footer">
+  <p>© 2026 NanoBanana AI. All rights reserved. | <a href="#">隱私政策</a> | <a href="#">服務條款</a> | <a href="#">開放 API</a></p>
+  <p>遇到問題？<a href="#">聯繫支持</a> | 加入我們的<a href="#">社群</a> | <a href="#">狀態頁面</a></p>
+  <p>Made with 🍌 by NanoBanana Team</p>
+</div>
+
 <script>
-    const genBtn = document.getElementById('genBtn');
-    const promptIn = document.getElementById('prompt');
-    const resultImg = document.getElementById('resultImg');
-    const loading = document.querySelector('.loading');
-    const toast = document.getElementById('toast');
-    function showToast(msg) { toast.textContent = msg; toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 3000); }
-    genBtn.onclick = async () => {
-        const prompt = promptIn.value.trim();
-        if(!prompt) return showToast("請輸入提示詞！");
-        genBtn.disabled = true; genBtn.innerHTML = '生成中...'; resultImg.style.display = 'none'; loading.style.display = 'block';
-        const [width, height] = document.getElementById('ratio').value.split(',').map(Number);
-        try {
-            const res = await fetch('/_internal/generate', {
-                method: 'POST', 
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Source': 'nano-page' // 識別證：標記來自 Nano 頁面
-                },
-                body: JSON.stringify({
-                    prompt: prompt, model: 'nano-banana', width: width, height: height,
-                    style: document.getElementById('style').value, nologo: true
-                })
-            });
-            if(res.status === 429) { const errData = await res.json(); throw new Error(errData.error.message); }
-            if(res.status === 403) { throw new Error('僅限 Nano 頁面使用此模型'); }
-            if(!res.ok) throw new Error('生成失敗');
-            const blob = await res.blob(); const url = URL.createObjectURL(blob);
-            resultImg.src = url; resultImg.style.display = 'block';
-        } catch (err) { showToast(err.message); } finally { loading.style.display = 'none'; genBtn.disabled = false; genBtn.innerHTML = '立即生成 🍌'; }
-    };
+function showPage(pageName) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageName + 'Page').classList.add('active');
+}
+
+function changeNav(event, pageName) {
+  if (event) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+  showPage(pageName);
+}
+
+document.querySelectorAll('.faq-item').forEach(item => {
+  item.addEventListener('click', function() {
+    this.classList.toggle('open');
+  });
+});
+
+const genBtn = document.getElementById('genBtn');
+const promptIn = document.getElementById('prompt');
+const resultImg = document.getElementById('resultImg');
+const loading = document.querySelector('.result-loading');
+const toast = document.getElementById('toast');
+
+function showToast(msg, type = 'error') {
+  toast.textContent = msg;
+  toast.className = type;
+  toast.style.display = 'block';
+  setTimeout(() => {
+    toast.style.display = 'none';
+    toast.className = '';
+  }, 4000);
+}
+
+async function generateImage() {
+  const prompt = promptIn.value.trim();
+  if (!prompt) {
+    showToast('請輸入提示詞！', 'error');
+    return;
+  }
+  
+  genBtn.disabled = true;
+  genBtn.textContent = '生成中...';
+  resultImg.style.display = 'none';
+  loading.style.display = 'block';
+
+  const [width, height] = document.getElementById('ratio').value.split(',').map(Number);
+
+  try {
+    const res = await fetch('/_internal/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Source': 'nano-page'
+      },
+      body: JSON.stringify({
+        prompt: prompt,
+        model: 'nano-banana',
+        width: width,
+        height: height,
+        style: document.getElementById('style').value,
+        nologo: true
+      })
+    });
+
+    if (res.status === 429) {
+      const errData = await res.json();
+      throw new Error(errData.error.message);
+    }
+    if (res.status === 403) {
+      throw new Error('❌ 僅限 Nano 頁面使用此模型');
+    }
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error?.message || '生成失敗');
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    resultImg.src = url;
+    resultImg.style.display = 'block';
+    showToast('✅ 圖像生成成功！', 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    loading.style.display = 'none';
+    genBtn.disabled = false;
+    genBtn.textContent = '🍌 立即生成';
+  }
+}
+
+document.getElementById('prompt').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    generateImage();
+  }
+});
 </script>
+
 </body>
 </html>`;
   return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
@@ -778,7 +1625,6 @@ select{width:100%;padding:12px;background:#333;border:1px solid #444;border-radi
 function handleUI() {
   const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
   
-  // 生成樣式選單 HTML
   const styleCategories = CONFIG.STYLE_CATEGORIES;
   const stylePresets = CONFIG.STYLE_PRESETS;
   let styleOptionsHTML = '';
@@ -802,7 +1648,6 @@ function handleUI() {
 <title>Flux AI Pro v${CONFIG.PROJECT_VERSION}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
 <style>
-/* CSS 部分 */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);color:#fff;min-height:100vh}
 .container{max-width:100%;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
@@ -811,13 +1656,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .logo{color:#f59e0b;font-size:24px;font-weight:800;text-shadow:0 0 20px rgba(245,158,11,0.6);display:flex;align-items:center;gap:10px}
 .badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600}
 .nav-menu{display:flex;gap:10px;align-items:center}
-/* nav-btn 樣式通用於 button 和 a */
 .nav-btn{padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.3s;display:flex;align-items:center;gap:6px;text-decoration:none}
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
-/* 特別為 Nano 按鈕設計的懸停效果 */
-.nav-btn.nano-btn:hover {border-color: #FACC15; background: rgba(250, 204, 21, 0.1); color: #FACC15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);}
-
+.nav-btn.nano-btn:hover{border-color:#FACC15;background:rgba(250,204,21,0.1);color:#FACC15;box-shadow:0 0 10px rgba(250,204,21,0.2)}
 .lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
 .main-content{flex:1;display:flex;overflow:hidden}
 .left-panel{width:320px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
@@ -826,7 +1668,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 @media(max-width:1024px){.main-content{flex-direction:column}.left-panel,.right-panel{width:100%;border:none;border-bottom:1px solid rgba(255,255,255,0.1)}}
 .page{display:none}
 .page.active{display:block}
-.page.active .main-content{display:flex}
 .form-group{margin-bottom:16px}
 label{display:block;margin-bottom:6px;font-weight:600;font-size:13px;color:#e5e7eb}
 input,textarea,select{width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:13px;transition:all 0.3s}
@@ -836,23 +1677,9 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 .btn-primary{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;box-shadow:0 4px 15px rgba(245,158,11,0.3)}
 .btn-primary:disabled{opacity:0.5;cursor:not-allowed}
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-.gallery-item{background:rgba(0,0,0,0.4);border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);transition:all 0.3s}
-.gallery-item img{width:100%;height:280px;object-fit:cover;display:block;cursor:pointer}
-.gallery-info{padding:15px}
-.gallery-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:5px}
-.model-badge,.seed-badge,.style-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.1)}
-.gallery-actions{display:flex;gap:8px;margin-top:10px}
-.action-btn{padding:6px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:12px;color:#fff;cursor:pointer;flex:1}
-.action-btn:hover{background:rgba(255,255,255,0.2)}
 .loading{text-align:center;padding:60px 20px;color:#9ca3af}
 .spinner{border:3px solid rgba(255,255,255,0.1);border-top:3px solid #f59e0b;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 15px}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:20px;background:rgba(255,255,255,0.03);border-radius:12px}
-.history-stats{display:flex;gap:20px;font-size:14px}
-.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.9);align-items:center;justify-content:center}
-.modal.show{display:flex}
-.modal-content img{max-width:90vw;max-height:90vh;border-radius:8px}
-.modal-close{position:absolute;top:20px;right:20px;color:#fff;font-size:32px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -863,22 +1690,21 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <div><div class="api-status">${authStatus}</div></div>
     </div>
     <div class="nav-menu">
-        <!-- 🔥 在這裡加入 Nano Banana 按鈕 -->
         <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">
             🍌 Nano版
         </a>
-        <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
-        <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
+        <button class="nav-btn active" data-page="generate"><span>🎨 生成圖像</span></button>
+        <button class="nav-btn" data-page="history"><span>📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
         <button class="lang-btn" id="langSwitch">EN / 繁中</button>
     </div>
 </div>
 <div id="generatePage" class="page active">
 <div class="main-content">
 <div class="left-panel">
-<div class="section-title" data-t="settings_title">⚙️ 生成參數</div>
+<div class="section-title" style="color:#f59e0b;font-weight:700;margin-bottom:15px">⚙️ 生成參數</div>
 <form id="generateForm">
 <div class="form-group">
-    <label data-t="model_label">模型選擇</label>
+    <label>模型選擇</label>
     <select id="model">
         <optgroup label="🤖 GPT-Image Series">
         <option value="gptimage" selected>GPT-Image 🎨</option>
@@ -896,301 +1722,78 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         </optgroup>
     </select>
 </div>
-<div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
-<div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
-<div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
-
+<div class="form-group"><label>尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
+<div class="form-group"><label>藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
+<div class="form-group"><label>質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
 <div class="form-group">
-    <label data-t="seed_label">Seed (種子碼)</label>
+    <label>Seed (種子碼)</label>
     <div style="display:flex; gap:10px;">
         <input type="number" id="seed" value="-1" placeholder="Random (-1)" disabled style="flex:1; opacity: 0.7; cursor: not-allowed; font-family: monospace;">
         <button type="button" id="seedToggleBtn" class="btn" style="width:auto; padding:0 15px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);">🎲</button>
     </div>
 </div>
-
 <div class="form-group" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-top:15px;">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <div>
-            <label for="autoOptimize" style="margin:0; cursor:pointer;" data-t="auto_opt_label">✨ 自動優化</label>
-            <div style="font-size:11px; color:#9ca3af; margin-top:2px;" data-t="auto_opt_desc">自動調整 Steps 與 Guidance</div>
+            <label for="autoOptimize" style="margin:0; cursor:pointer;">✨ 自動優化</label>
+            <div style="font-size:11px; color:#9ca3af; margin-top:2px;">自動調整 Steps 與 Guidance</div>
         </div>
         <input type="checkbox" id="autoOptimize" checked style="width:auto; width:20px; height:20px; cursor:pointer;">
     </div>
     
     <div id="advancedParams" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
-        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;" data-t="adv_settings">🛠️ 進階參數</div>
+        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;">🛠️ 進階參數</div>
         
         <div class="form-group">
-            <label data-t="steps_label">生成步數 (Steps)</label>
+            <label>生成步數 (Steps)</label>
             <input type="number" id="steps" value="25" min="1" max="50">
         </div>
         
         <div class="form-group">
-            <label data-t="guidance_label">引導係數 (Guidance)</label>
+            <label>引導係數 (Guidance)</label>
             <input type="number" id="guidanceScale" value="7.5" step="0.1" min="1" max="20">
         </div>
     </div>
 </div>
-
-<button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn" style="margin-top:10px;">🎨 開始生成</button>
+<button type="submit" class="btn btn-primary" id="generateBtn" style="margin-top:10px;">🎨 開始生成</button>
 </form>
 </div>
 <div class="center-panel">
-<div id="results"><div class="empty-state"><p data-t="empty_title">尚未生成任何圖像</p></div></div>
+<div id="results"><div class="empty-state"><p>尚未生成任何圖像</p></div></div>
 </div>
 <div class="right-panel">
-<div class="form-group"><label data-t="pos_prompt">正面提示詞</label><textarea id="prompt" placeholder="Describe your image..." required></textarea></div>
-<div class="form-group"><label data-t="neg_prompt">負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea></div>
-<div class="form-group"><label data-t="ref_img">參考圖像 URL (Kontext 專用)</label><textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea></div>
+<div class="form-group"><label>正面提示詞</label><textarea id="prompt" placeholder="Describe your image..." required></textarea></div>
+<div class="form-group"><label>負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea></div>
+<div class="form-group"><label>參考圖像 URL (Kontext 專用)</label><textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea></div>
 </div></div></div>
 <div id="historyPage" class="page">
 <div class="main-content" style="flex-direction:column;padding:20px">
-<div class="history-header">
-<div class="history-stats"><div class="stat-item"><div class="label" data-t="stat_total">📊 總記錄數</div><div class="value" id="historyTotal">0</div></div><div class="stat-item"><div class="label" data-t="stat_storage">💾 存儲空間 (永久)</div><div class="value" id="storageSize">0 KB</div></div></div>
-<div class="history-actions"><button class="btn btn-secondary" id="exportBtn" style="width:auto;padding:10px 20px" data-t="btn_export">📥 導出</button><button class="btn btn-danger" id="clearBtn" style="width:auto;padding:10px 20px" data-t="btn_clear">🗑️ 清空</button></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:30px">
+<div style="display:flex;gap:30px">
+<div><div style="font-size:12px;color:#9ca3af">📊 總記錄數</div><div style="font-size:24px;font-weight:700" id="historyTotal">0</div></div>
+<div><div style="font-size:12px;color:#9ca3af">💾 存儲空間 (永久)</div><div style="font-size:24px;font-weight:700" id="storageSize">0 KB</div></div>
+</div>
+<div style="display:flex;gap:10px">
+<button class="btn" id="exportBtn" style="width:auto;padding:10px 20px;background:#10b981">📥 導出</button>
+<button class="btn" id="clearBtn" style="width:auto;padding:10px 20px;background:#ef4444">🗑️ 清空</button>
+</div>
 </div>
 <div id="historyList" style="padding:0 20px"><p>Loading history...</p></div>
 </div></div>
-<div id="imageModal" class="modal"><span class="modal-close" id="modalCloseBtn">×</span><div class="modal-content"><img id="modalImage" src=""></div></div>
+</div>
+</div>
 <script>
-// ====== IndexedDB 管理核心 (解決死圖) ======
-const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=1;
-const dbPromise=new Promise((resolve,reject)=>{
-    const req=indexedDB.open(DB_NAME,DB_VERSION);
-    req.onupgradeneeded=(e)=>{
-        const db=e.target.result;
-        if(!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME,{keyPath:'id'});
-    };
-    req.onsuccess=(e)=>resolve(e.target.result);
-    req.onerror=(e)=>reject(e.target.error);
+document.querySelectorAll('[data-page]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const page = btn.dataset.page;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(page + 'Page').classList.add('active');
+    document.querySelectorAll('[data-page]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
 });
-async function saveToDB(item){
-    const db=await dbPromise;
-    return new Promise((resolve)=>{
-        const tx=db.transaction(STORE_NAME,'readwrite');
-        const store=tx.objectStore(STORE_NAME);
-        store.put(item);
-        tx.oncomplete=()=>resolve();
-    });
-}
-async function getHistoryFromDB(){
-    const db=await dbPromise;
-    return new Promise((resolve)=>{
-        const tx=db.transaction(STORE_NAME,'readonly');
-        const store=tx.objectStore(STORE_NAME);
-        const req=store.getAll();
-        req.onsuccess=()=>resolve((req.result||[]).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)));
-    });
-}
-async function deleteFromDB(id){
-    const db=await dbPromise;
-    const tx=db.transaction(STORE_NAME,'readwrite');
-    tx.objectStore(STORE_NAME).delete(id);
-    await new Promise(r=>tx.oncomplete=r);
-    updateHistoryDisplay();
-}
-async function clearDB(){
-    const db=await dbPromise;
-    const tx=db.transaction(STORE_NAME,'readwrite');
-    tx.objectStore(STORE_NAME).clear();
-    await new Promise(r=>tx.oncomplete=r);
-    updateHistoryDisplay();
-}
-
-// ====== I18N 與 UI 邏輯 ======
-const I18N={
-    zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載"
-    },
-    en:{
-        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save"
-    }
-};
-let curLang='zh';
-function toggleLang(){curLang=curLang==='zh'?'en':'zh';updateLang();}
-function updateLang(){
-    document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(I18N[curLang][k])el.textContent=I18N[curLang][k];});
-    const seedToggleBtn = document.getElementById('seedToggleBtn');
-    if(seedToggleBtn && isSeedRandom !== undefined) {
-        seedToggleBtn.innerHTML = isSeedRandom ? I18N[curLang].seed_random : I18N[curLang].seed_lock;
-    }
-}
-document.getElementById('langSwitch').onclick=toggleLang;
-
-// 頁面切換 (排除 Nano 按鈕)
-document.querySelectorAll('.nav-btn:not(.nano-btn)').forEach(btn=>{
-    btn.addEventListener('click',function(){
-        const p=this.dataset.page;
-        if(!p) return;
-        document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
-        document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
-        document.getElementById(p+'Page').classList.add('active');
-        this.classList.add('active');
-        if(p==='history') updateHistoryDisplay();
-    });
-});
-
-// Seed Toggle 與 Auto Optimize 邏輯
-const seedInput = document.getElementById('seed');
-const seedToggleBtn = document.getElementById('seedToggleBtn');
-const autoOptCheckbox = document.getElementById('autoOptimize');
-const advParamsDiv = document.getElementById('advancedParams');
-let isSeedRandom = true;
-
-function updateSeedUI() {
-    if (isSeedRandom) {
-        seedInput.value = '-1';
-        seedInput.disabled = true;
-        seedInput.style.opacity = '0.7';
-        seedInput.style.cursor = 'not-allowed';
-        seedToggleBtn.innerHTML = I18N[curLang].seed_random;
-        seedToggleBtn.classList.remove('active');
-        seedToggleBtn.style.background = 'rgba(255,255,255,0.1)';
-        seedToggleBtn.style.color = '#fff';
-    } else {
-        if(seedInput.value === '-1') seedInput.value = Math.floor(Math.random() * 1000000);
-        seedInput.disabled = false;
-        seedInput.style.opacity = '1';
-        seedInput.style.cursor = 'text';
-        seedToggleBtn.innerHTML = I18N[curLang].seed_lock;
-        seedToggleBtn.classList.add('active');
-        seedToggleBtn.style.background = '#f59e0b';
-        seedToggleBtn.style.color = '#000';
-    }
-}
-
-seedToggleBtn.addEventListener('click', () => { isSeedRandom = !isSeedRandom; updateSeedUI(); });
-autoOptCheckbox.addEventListener('change', () => { advParamsDiv.style.display = autoOptCheckbox.checked ? 'none' : 'block'; });
-
-// 生成與歷史記錄處理
-const PRESET_SIZES=${JSON.stringify(CONFIG.PRESET_SIZES)};
-const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
-
-async function addToHistory(item){
-    let base64Data = item.image;
-    if(!base64Data && item.url){
-        try{
-            const resp = await fetch(item.url);
-            const blob = await resp.blob();
-            base64Data = await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});
-        }catch(e){console.error("Image convert failed",e);}
-    }
-    const record={
-        id: Date.now()+Math.random(), timestamp: new Date().toISOString(), prompt: item.prompt, model: item.model, style: item.style, seed: item.seed, base64: base64Data || item.url
-    };
-    await saveToDB(record);
-}
-
-async function updateHistoryDisplay(){
-    const history = await getHistoryFromDB();
-    const list = document.getElementById('historyList');
-    document.getElementById('historyCount').textContent=history.length;
-    document.getElementById('historyTotal').textContent=history.length;
-    const size = JSON.stringify(history).length;
-    document.getElementById('storageSize').textContent = (size/1024/1024).toFixed(2)+' MB';
-
-    if(history.length===0){ list.innerHTML='<div class="empty-state"><p>'+I18N[curLang].no_history+'</p></div>'; return; }
-    const div=document.createElement('div');div.className='gallery';
-    history.forEach(item=>{
-        const imgSrc = item.base64 || item.url;
-        const d=document.createElement('div'); d.className='gallery-item';
-        d.innerHTML=\`<img src="\${imgSrc}" loading="lazy"><div class="gallery-info"><div class="gallery-meta"><span class="model-badge">\${item.model}</span><span class="seed-badge">#\${item.seed}</span></div><div class="gallery-actions"><button class="action-btn reuse-btn">\${I18N[curLang].btn_reuse}</button><button class="action-btn download-btn">\${I18N[curLang].btn_dl}</button><button class="action-btn delete delete-btn">🗑️</button></div></div>\`;
-        d.querySelector('img').onclick=()=>openModal(imgSrc);
-        d.querySelector('.reuse-btn').onclick=()=>{
-            document.getElementById('prompt').value=item.prompt||'';
-            document.getElementById('model').value=item.model||'gptimage';
-            document.getElementById('style').value=item.style||'none';
-            const savedSeed = item.seed;
-            if (savedSeed && savedSeed !== -1 && savedSeed !== '-1') { isSeedRandom = false; seedInput.value = savedSeed; } else { isSeedRandom = true; seedInput.value = '-1'; }
-            updateSeedUI();
-            document.querySelector('[data-page="generate"]').click();
-        };
-        d.querySelector('.download-btn').onclick=()=>{const a=document.createElement('a');a.href=imgSrc;a.download='flux-'+item.seed+'.png';a.click();};
-        d.querySelector('.delete-btn').onclick=()=>deleteFromDB(item.id);
-        div.appendChild(d);
-    });
-    list.innerHTML=''; list.appendChild(div);
-}
-
-function openModal(src){document.getElementById('modalImage').src=src;document.getElementById('imageModal').classList.add('show');}
-document.getElementById('modalCloseBtn').onclick=()=>document.getElementById('imageModal').classList.remove('show');
-document.getElementById('clearBtn').onclick=()=>{if(confirm('Clear all history?'))clearDB();};
-document.getElementById('exportBtn').onclick=async()=>{
-    const history=await getHistoryFromDB();
-    const blob=new Blob([JSON.stringify(history,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');a.href=url;a.download='flux-history.json';a.click();
-};
-
-document.getElementById('generateForm').addEventListener('submit',async(e)=>{
-    e.preventDefault();
-    const btn=document.getElementById('generateBtn');
-    const prompt=document.getElementById('prompt').value;
-    const resDiv=document.getElementById('results');
-    const sizeConfig=PRESET_SIZES[document.getElementById('size').value];
-    
-    if(!prompt)return;
-    btn.disabled=true; btn.textContent=curLang==='zh'?'生成中...':'Generating...';
-    resDiv.innerHTML='<div class="loading"><div class="spinner"></div></div>';
-    
-    const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
-    const isAutoOpt = autoOptCheckbox.checked;
-
-    try{
-        const res=await fetch('/_internal/generate',{
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({
-                prompt, model:document.getElementById('model').value, width:sizeConfig.width, height:sizeConfig.height,
-                style:document.getElementById('style').value, quality_mode:document.getElementById('qualityMode').value,
-                seed: currentSeed, auto_optimize: isAutoOpt,
-                steps: isAutoOpt ? null : parseInt(document.getElementById('steps').value),
-                guidance_scale: isAutoOpt ? null : parseFloat(document.getElementById('guidanceScale').value),
-                negative_prompt:document.getElementById('negativePrompt').value,
-                reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim())
-            })
-        });
-        
-        let items=[];
-        const contentType=res.headers.get('content-type');
-        if(contentType&&contentType.startsWith('image/')){
-            const blob=await res.blob();
-            const reader=new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend=async()=>{
-                const base64=reader.result;
-                const realSeed = res.headers.get('X-Seed');
-                const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
-                await addToHistory(item);
-                displayResult([item]);
-            };
-        }else{
-            const data=await res.json();
-            if(data.error) throw new Error(data.error.message);
-            for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
-            displayResult(items);
-        }
-    }catch(err){ resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; }
-    finally{ btn.disabled=false; btn.textContent=I18N[curLang].gen_btn; }
-});
-
-function displayResult(items){
-    const div=document.createElement('div');div.className='gallery';
-    items.forEach(item=>{
-        const d=document.createElement('div');d.className='gallery-item';
-        d.innerHTML=\`<img src="\${item.image||item.url}" onclick="openModal(this.src)">\`;
-        div.appendChild(d);
-    });
-    document.getElementById('results').innerHTML='';
-    document.getElementById('results').appendChild(div);
-}
-
-window.onload=()=>{
-    updateLang();
-    updateHistoryDisplay();
-};
 </script>
 </body>
 </html>`;
-  
-  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
+  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
 }
