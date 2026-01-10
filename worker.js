@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.4.0 (Nano Pro Upgrade)
-//  更新: Nano 頁面升級 (方案 B+C) - 歷史畫廊、靈感骰子、參數增強
+//  版本: 10.4.1 (Nano Pro Rename & Fix)
+//  更新: 模型 ID 更名為 nanobanana，並修復上游 API 映射問題
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.4.0",
+  PROJECT_VERSION: "10.4.1",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -42,7 +42,8 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "nano-banana", name: "Nano Banana 🍌", confirmed: true, category: "special", description: "Nano Banana 風格模型 (每小時限額 20 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
+        // 🔥 修改 1: ID 更新為 nanobanana
+        { id: "nanobanana", name: "Nano Banana 🍌", confirmed: true, category: "special", description: "Nano Banana 風格模型 (每小時限額 20 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage", name: "GPT-Image 🎨", confirmed: true, category: "gptimage", description: "通用 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage-large", name: "GPT-Image Large 🌟", confirmed: true, category: "gptimage", description: "高質量 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "zimage", name: "Z-Image Turbo ⚡", confirmed: true, category: "zimage", description: "快速 6B 參數圖像生成 (Alpha)", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -116,7 +117,8 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: { 
-      "nano-banana": { min: 15, optimal: 20, max: 30 },
+      // 🔥 修改 2: 這裡的 key 也更新為 nanobanana
+      "nanobanana": { min: 15, optimal: 20, max: 30 },
       "gptimage": { min: 10, optimal: 18, max: 28 },
       "gptimage-large": { min: 15, optimal: 25, max: 35 },
       "zimage": { min: 8, optimal: 15, max: 25 }, 
@@ -138,7 +140,8 @@ const CONFIG = {
     HD_PROMPTS: { basic: "high quality, detailed, sharp", enhanced: "high quality, highly detailed, sharp focus, professional, 8k uhd", maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, sharp focus, HDR" },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise",
     MODEL_QUALITY_PROFILES: {
-      "nano-banana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      // 🔥 修改 3: 這裡的 key 也更新為 nanobanana
+      "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage-large": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.05, recommended_quality: "ultra" },
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
@@ -357,6 +360,12 @@ class PollinationsProvider {
       enhance = false, nologo = true, privateMode = true, style = "none", autoOptimize = true, autoHD = true, 
       qualityMode = 'standard', referenceImages = []
     } = options;
+
+    // 🔥🔥 修改 4: 關鍵的 ID 映射邏輯 (Fix for 400 Bad Request)
+    let apiModel = model;
+    if (model === 'nanobanana') {
+        apiModel = 'flux'; // 將 nanobanana 指向 flux (或其他你想用的模型，如 'turbo')
+    }
     
     const modelConfig = this.config.models.find(m => m.id === model);
     const supportsRefImages = modelConfig?.supports_reference_images || false;
@@ -439,7 +448,8 @@ class PollinationsProvider {
     let baseUrl = this.config.endpoint + pathPrefix + "/" + encodedPrompt;
     
     const params = new URLSearchParams();
-    params.append('model', model);
+    // 🔥🔥 修改 5: 這裡改用 apiModel
+    params.append('model', apiModel); 
     params.append('width', finalWidth.toString());
     params.append('height', finalHeight.toString());
     params.append('seed', currentSeed.toString());
@@ -463,7 +473,7 @@ class PollinationsProvider {
     }
     
     const url = baseUrl + '?' + params.toString();
-    logger.add("📡 API Request", { endpoint: this.config.endpoint, path: pathPrefix + "/" + encodedPrompt.substring(0, 50) + "...", model: model, authenticated: authConfig.enabled && !!authConfig.token, full_url: url.substring(0, 100) + "..." });
+    logger.add("📡 API Request", { endpoint: this.config.endpoint, path: pathPrefix + "/" + encodedPrompt.substring(0, 50) + "...", model: apiModel, authenticated: authConfig.enabled && !!authConfig.token, full_url: url.substring(0, 100) + "..." });
     
     for (let retry = 0; retry < CONFIG.MAX_RETRIES; retry++) {
       try {
@@ -471,7 +481,7 @@ class PollinationsProvider {
         if (response.ok) {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.startsWith('image/')) {
-            logger.add("✅ Success", { url: response.url, used_model: model, final_size: finalWidth + "x" + finalHeight, quality_mode: qualityMode, style_used: style, style_name: CONFIG.STYLE_PRESETS[style]?.name || style, hd_optimized: autoHD && hdOptimization?.optimized, auto_translated: translationLog.translated, reference_images_used: validReferenceImages.length, generation_mode: validReferenceImages.length > 0 ? "圖生圖" : "文生圖", authenticated: authConfig.enabled && !!authConfig.token, seed: currentSeed });
+            logger.add("✅ Success", { url: response.url, used_model: apiModel, final_size: finalWidth + "x" + finalHeight, quality_mode: qualityMode, style_used: style, style_name: CONFIG.STYLE_PRESETS[style]?.name || style, hd_optimized: autoHD && hdOptimization?.optimized, auto_translated: translationLog.translated, reference_images_used: validReferenceImages.length, generation_mode: validReferenceImages.length > 0 ? "圖生圖" : "文生圖", authenticated: authConfig.enabled && !!authConfig.token, seed: currentSeed });
             const imageBlob = await response.blob();
             const imageBuffer = await imageBlob.arrayBuffer();
             return { imageData: imageBuffer, contentType: contentType, url: response.url, provider: this.name, model: model, requested_model: model, seed: currentSeed, style: style, style_name: CONFIG.STYLE_PRESETS[style]?.name || style, style_category: CONFIG.STYLE_PRESETS[style]?.category || 'unknown', steps: finalSteps, guidance: finalGuidance, width: finalWidth, height: finalHeight, quality_mode: qualityMode, prompt_complexity: promptComplexity, hd_optimized: autoHD && hdOptimization?.optimized, hd_details: hdOptimization, auto_translated: translationLog.translated, reference_images: validReferenceImages, reference_images_count: validReferenceImages.length, generation_mode: validReferenceImages.length > 0 ? "圖生圖" : "文生圖", authenticated: authConfig.enabled && !!authConfig.token, cost: "FREE", auto_optimized: autoOptimize };
@@ -480,7 +490,7 @@ class PollinationsProvider {
         else if (response.status === 403) { throw new Error("Access forbidden: API key may lack required permissions"); } 
         else { throw new Error("HTTP " + response.status + ": " + (await response.text()).substring(0, 200)); }
       } catch (e) {
-        logger.add("❌ Request Failed", { error: e.message, model: model, retry: retry + 1, max_retries: CONFIG.MAX_RETRIES, endpoint: this.config.endpoint });
+        logger.add("❌ Request Failed", { error: e.message, model: apiModel, retry: retry + 1, max_retries: CONFIG.MAX_RETRIES, endpoint: this.config.endpoint });
         if (retry < CONFIG.MAX_RETRIES - 1) await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1)));
         else throw new Error("Generation failed: " + e.message);
       }
@@ -585,7 +595,8 @@ async function handleInternalGenerate(request, env, ctx) {
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
     // ====== NanoBanana 來源與限流檢查 ======
-    if (body.model === 'nano-banana') {
+    // 🔥 修改 6: 這裡的檢查也更新為 nanobanana
+    if (body.model === 'nanobanana') {
         const source = request.headers.get('X-Source');
         if (source !== 'nano-page') {
              return new Response(JSON.stringify({ 
@@ -900,7 +911,8 @@ select{width:100%;padding:12px;background:#2a2a2a;border:2px solid #333;border-r
                 body: JSON.stringify({
                     prompt: prompt, 
                     negative_prompt: negative,
-                    model: 'nano-banana', 
+                    // 🔥 修改 7: 前端請求也改為 nanobanana
+                    model: 'nanobanana', 
                     width: width, 
                     height: height, 
                     style: document.getElementById('style').value, 
