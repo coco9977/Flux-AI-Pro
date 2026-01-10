@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.6.0 (Cyber-Banana UI + Hourly Quota + Lightbox)
-//  更新: 整合所有 UI 優化、API 映射修復、每小時限額邏輯
+//  版本: 10.6.2 (Direct Pro Model Access)
+//  更新: 直接使用 nanobanana-pro 模型，移除 API 映射
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.6.0",
+  PROJECT_VERSION: "10.6.2",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -42,8 +42,8 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        // 🔥 核心模型設定: ID 為 nanobanana
-        { id: "nanobanana", name: "Nano Banana 🍌", confirmed: true, category: "special", description: "Nano Banana 風格模型 (每小時限額 20 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
+        // 🔥 核心模型設定: ID 為 nanobanana-pro
+        { id: "nanobanana-pro", name: "Nano Banana Pro 🍌", confirmed: true, category: "special", description: "Nano Banana Pro 風格模型 (每小時限額 5 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage", name: "GPT-Image 🎨", confirmed: true, category: "gptimage", description: "通用 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage-large", name: "GPT-Image Large 🌟", confirmed: true, category: "gptimage", description: "高質量 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "zimage", name: "Z-Image Turbo ⚡", confirmed: true, category: "zimage", description: "快速 6B 參數圖像生成 (Alpha)", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -117,7 +117,8 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: { 
-      "nanobanana": { min: 15, optimal: 20, max: 30 },
+      // 保持使用 nanobanana-pro
+      "nanobanana-pro": { min: 15, optimal: 20, max: 30 },
       "gptimage": { min: 10, optimal: 18, max: 28 },
       "gptimage-large": { min: 15, optimal: 25, max: 35 },
       "zimage": { min: 8, optimal: 15, max: 25 }, 
@@ -139,7 +140,7 @@ const CONFIG = {
     HD_PROMPTS: { basic: "high quality, detailed, sharp", enhanced: "high quality, highly detailed, sharp focus, professional, 8k uhd", maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, sharp focus, HDR" },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise",
     MODEL_QUALITY_PROFILES: {
-      "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      "nanobanana-pro": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage-large": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.05, recommended_quality: "ultra" },
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
@@ -169,7 +170,8 @@ class RateLimiter {
     }
     const key = `nano_limit:${ip}`;
     const windowSize = 3600 * 1000; // 1小時 (毫秒)
-    const maxRequests = 20; // 限制數量
+    // 限制數量為 5
+    const maxRequests = 5; 
     try {
       const rawData = await this.KV.get(key);
       let timestamps = rawData ? JSON.parse(rawData) : [];
@@ -179,7 +181,7 @@ class RateLimiter {
         const oldest = timestamps[0];
         const resetTime = oldest + windowSize;
         const waitMin = Math.ceil((resetTime - now) / 60000);
-        return { allowed: false, reason: `🍌 香蕉能量耗盡！限額已滿 (20張/小時)。請休息 ${waitMin} 分鐘後再來。`, remaining: 0 };
+        return { allowed: false, reason: `🍌 香蕉能量耗盡！限額已滿 (5張/小時)。請休息 ${waitMin} 分鐘後再來。`, remaining: 0 };
       }
       timestamps.push(now);
       await this.KV.put(key, JSON.stringify(timestamps), { expirationTtl: 3600 });
@@ -359,11 +361,10 @@ class PollinationsProvider {
       qualityMode = 'standard', referenceImages = []
     } = options;
 
-    // 🔥 修復 400 Bad Request: 將 nanobanana 映射為 flux
-    let apiModel = model;
-    if (model === 'nanobanana') {
-        apiModel = 'flux';
-    }
+    // 🔥🔥 修改：不再做任何映射，直接使用傳入的 model
+    // 之前: if (model === 'nanobanana-pro') apiModel = 'flux';
+    // 現在:
+    let apiModel = model; 
     
     const modelConfig = this.config.models.find(m => m.id === model);
     const supportsRefImages = modelConfig?.supports_reference_images || false;
@@ -446,7 +447,7 @@ class PollinationsProvider {
     let baseUrl = this.config.endpoint + pathPrefix + "/" + encodedPrompt;
     
     const params = new URLSearchParams();
-    // 使用映射後的 apiModel 避免 400 錯誤
+    // 使用 apiModel (即 nanobanana-pro)
     params.append('model', apiModel); 
     params.append('width', finalWidth.toString());
     params.append('height', finalHeight.toString());
@@ -592,12 +593,13 @@ async function handleInternalGenerate(request, env, ctx) {
     const prompt = body.prompt;
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
-    // ====== NanoBanana 來源與限流檢查 ======
-    if (body.model === 'nanobanana') {
+    // ====== NanoBanana Pro 來源與限流檢查 ======
+    // 直接檢查 nanobanana-pro
+    if (body.model === 'nanobanana-pro') {
         const source = request.headers.get('X-Source');
         if (source !== 'nano-page') {
              return new Response(JSON.stringify({ 
-                error: { message: "🍌 Nano Banana 模型僅限於獨立頁面使用！", type: 'access_denied' } 
+                error: { message: "🍌 Nano Banana Pro 模型僅限於獨立頁面使用！", type: 'access_denied' } 
             }), { status: 403, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
         }
         
@@ -681,7 +683,7 @@ async function handleInternalGenerate(request, env, ctx) {
   }
 }
 
-// 🔥 Cyber-Banana UI: 包含每小時限額、燈箱、下載功能
+// 🔥 Cyber-Banana UI: 包含每小時限額(5張)、Pro模型、燈箱、下載功能
 function handleNanoPage(request) {
   const html = `<!DOCTYPE html>
 <html lang="zh-TW">
@@ -818,7 +820,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <div class="logo-icon">🍌</div>
                 <div class="logo-text">
                     <h1>Nano Pro <span class="badge">V10.6</span></h1>
-                    <p style="color:#666; font-size:12px">Flux Engine • Free Tier</p>
+                    <p style="color:#666; font-size:12px">Flux Engine • Pro Model</p>
                 </div>
             </div>
 
@@ -887,7 +889,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             <div class="quota-box">
                 <div class="quota-info">
                     <span>每小時能量</span>
-                    <span id="quotaText" class="quota-text">20 / 20</span>
+                    <span id="quotaText" class="quota-text">5 / 5</span>
                 </div>
                 <div class="quota-bar">
                     <div id="quotaFill" class="quota-fill"></div>
@@ -946,23 +948,24 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         lbDownload: document.getElementById('lbDownload')
     };
     
-    let currentQuota = 20;
-    const maxQuota = 20;
+    // UI Quota Logic (Syncs with server limit of 5)
+    let currentQuota = 5;
+    const maxQuota = 5;
     
     const now = new Date();
     const currentHourStr = now.toDateString() + '-' + now.getHours();
-    const stored = localStorage.getItem('nano_quota_hourly');
+    const stored = localStorage.getItem('nano_quota_hourly_v2'); // New key for 5 limit
     
     if(stored) {
         const data = JSON.parse(stored);
         if(data.hour === currentHourStr) {
             currentQuota = data.val;
         } else {
-            localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+            localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
             currentQuota = maxQuota;
         }
     } else {
-        localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+        localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
     }
     updateQuotaUI();
     
@@ -982,7 +985,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             currentQuota--;
             const n = new Date();
             const h = n.toDateString() + '-' + n.getHours();
-            localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: h, val: currentQuota}));
+            localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: h, val: currentQuota}));
             updateQuotaUI();
         }
     }
@@ -1071,7 +1074,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 body: JSON.stringify({
                     prompt: p,
                     negative_prompt: els.negative.value,
-                    model: 'nanobanana',
+                    model: 'nanobanana-pro',
                     width: parseInt(els.width.value),
                     height: parseInt(els.height.value),
                     style: els.style.value,
@@ -1086,7 +1089,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 currentQuota = 0;
                 const n = new Date();
                 const h = n.toDateString() + '-' + n.getHours();
-                localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: h, val: 0}));
+                localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: h, val: 0}));
                 updateQuotaUI();
                 throw new Error(err.error?.message || '限額已滿');
             }
@@ -1120,7 +1123,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 </script>
 </body>
 </html>`;
-  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8' } });
+  
+  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
 }
 
 function handleUI() {
