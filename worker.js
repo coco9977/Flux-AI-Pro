@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.6.3 (Direct API Access)
-//  更新: 直連 nanobanana-pro 模型 (gen.pollinations.ai)，每小時限額 5 張
+//  版本: 10.6.4 (Cooldown Update)
+//  更新: 主頁新增生成後 60 秒冷卻限制
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.6.3",
+  PROJECT_VERSION: "10.6.4",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -1345,10 +1345,12 @@ async function clearDB(){
 // ====== I18N 與 UI 邏輯 ======
 const I18N={
     zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載"
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
+        cooldown_msg: "⏳ 請等待冷卻時間..."
     },
     en:{
-        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save"
+        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save",
+        cooldown_msg: "⏳ Cooldown..."
     }
 };
 let curLang='zh';
@@ -1464,15 +1466,26 @@ document.getElementById('exportBtn').onclick=async()=>{
     const a=document.createElement('a');a.href=url;a.download='flux-history.json';a.click();
 };
 
+// ====== 生成邏輯與 60秒冷卻 ======
+let cooldownTimer = null;
+const COOLDOWN_SEC = 60; // 60秒冷卻
+
 document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     e.preventDefault();
+    
+    // 檢查冷卻狀態
     const btn=document.getElementById('generateBtn');
+    if(btn.disabled && btn.classList.contains('cooldown-active')) return;
+
     const prompt=document.getElementById('prompt').value;
     const resDiv=document.getElementById('results');
     const sizeConfig=PRESET_SIZES[document.getElementById('size').value];
     
     if(!prompt)return;
-    btn.disabled=true; btn.textContent=curLang==='zh'?'生成中...':'Generating...';
+    
+    // 開始生成，鎖定按鈕
+    btn.disabled=true; 
+    btn.textContent=curLang==='zh'?'生成中...':'Generating...';
     resDiv.innerHTML='<div class="loading"><div class="spinner"></div></div>';
     
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
@@ -1504,16 +1517,50 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
                 await addToHistory(item);
                 displayResult([item]);
+                startCooldown(); // 成功後啟動冷卻
             };
         }else{
             const data=await res.json();
             if(data.error) throw new Error(data.error.message);
             for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
             displayResult(items);
+            startCooldown(); // 成功後啟動冷卻
         }
-    }catch(err){ resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; }
-    finally{ btn.disabled=false; btn.textContent=I18N[curLang].gen_btn; }
+    }catch(err){ 
+        resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; 
+        // 失敗時不冷卻，直接解鎖
+        btn.disabled=false; 
+        btn.textContent=I18N[curLang].gen_btn;
+    }
 });
+
+function startCooldown() {
+    const btn = document.getElementById('generateBtn');
+    btn.classList.add('cooldown-active');
+    btn.disabled = true;
+    let secondsLeft = COOLDOWN_SEC;
+    
+    // 立即更新 UI
+    updateBtnText(secondsLeft);
+    
+    cooldownTimer = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft <= 0) {
+            clearInterval(cooldownTimer);
+            btn.disabled = false;
+            btn.classList.remove('cooldown-active');
+            btn.textContent = I18N[curLang].gen_btn;
+        } else {
+            updateBtnText(secondsLeft);
+        }
+    }, 1000);
+}
+
+function updateBtnText(sec) {
+    const btn = document.getElementById('generateBtn');
+    const msg = curLang === 'zh' ? \`⏳ 冷卻中 (\${sec}s)\` : \`⏳ Cooldown (\${sec}s)\`;
+    btn.textContent = msg;
+}
 
 function displayResult(items){
     const div=document.createElement('div');div.className='gallery';
