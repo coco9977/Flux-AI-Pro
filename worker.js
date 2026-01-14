@@ -2327,11 +2327,68 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
         await addToHistory(item);
         displayResult([item]);
         startCooldown();
-      };
+        for(const d of data.data){
+      const item={...d, prompt, provider:d.provider||selectedProvider};
+      await addToHistory(item);
+      items.push(item);
+    }
+    displayResult(items);
+    startCooldown();
+
+  }catch(err){
+    resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>';
+    btn.disabled=false;
+    btn.textContent=I18N[curLang].gen_btn;
+  }
+});
+
+function startCooldown(){
+  const btn=document.getElementById('generateBtn');
+  btn.classList.add('cooldown-active');
+  btn.disabled=true;
+  let secondsLeft=60;
+  btn.textContent = (curLang==='zh') ? `⏳ 冷卻中 (${secondsLeft}s)` : `⏳ Cooldown (${secondsLeft}s)`;
+
+  const t=setInterval(()=>{
+    secondsLeft--;
+    if(secondsLeft<=0){
+      clearInterval(t);
+      btn.disabled=false;
+      btn.classList.remove('cooldown-active');
+      btn.textContent=I18N[curLang].gen_btn;
       return;
     }
+    btn.textContent = (curLang==='zh') ? `⏳ 冷卻中 (${secondsLeft}s)` : `⏳ Cooldown (${secondsLeft}s)`;
+  },1000);
+}
 
-    const data=await res.json();
-    if(data.error) throw new Error(data.error.message);
-    for(const d of data.data){
-      const item={...d, prompt, provider:d.provider||selectedProvider};
+function displayResult(items){
+  const div=document.createElement('div');div.className='gallery';
+  items.forEach(item=>{
+    const d=document.createElement('div');d.className='gallery-item';
+    d.innerHTML=`<img src="${item.image||item.url}" onclick="openModal(this.src)">
+      <div class="gallery-info">
+        <div class="gallery-meta">
+          <span class="provider-badge">${item.provider || 'unknown'}</span>
+          <span class="model-badge">${item.model}</span>
+        </div>
+      </div>`;
+    div.appendChild(d);
+  });
+  document.getElementById('results').innerHTML='';
+  document.getElementById('results').appendChild(div);
+}
+
+window.onload=()=>{
+  updateLang();
+  updateHistoryDisplay();
+  updateSeedUI();
+};
+</script>
+</body>
+</html>`;
+
+  return new Response(html, {
+    headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() }
+  });
+}
