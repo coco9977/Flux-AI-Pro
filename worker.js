@@ -30,7 +30,6 @@ const CONFIG = {
   PROVIDERS: {
     pollinations: {
       name: "Pollinations.ai",
-      // 🔥 修改：使用 gen.pollinations.ai (需要 API Key)
       endpoint: "https://gen.pollinations.ai",
       pathPrefix: "/image",
       type: "direct",
@@ -43,7 +42,6 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        // 🔥 核心模型: nanobanana-pro (直連)
         { id: "nanobanana-pro", name: "Nano Banana Pro 🍌", confirmed: true, category: "special", description: "Nano Banana Pro 風格模型 (每小時限額 5 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage", name: "GPT-Image 🎨", confirmed: true, category: "gptimage", description: "通用 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage-large", name: "GPT-Image Large 🌟", confirmed: true, category: "gptimage", description: "高質量 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -1349,7 +1347,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div id="imageModal" class="modal"><span class="modal-close" id="modalCloseBtn">×</span><div class="modal-content"><img id="modalImage" src=""></div></div>
 <script>
 // ====== IndexedDB 管理核心 (解決死圖) ======
-const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=1;
+const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=2;
 const dbPromise=new Promise((resolve,reject)=>{
     const req=indexedDB.open(DB_NAME,DB_VERSION);
     req.onupgradeneeded=(e)=>{
