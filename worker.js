@@ -1972,8 +1972,8 @@ function removeWatermark(imageUrl) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Assume watermark is in the bottom 50px (adjustable)
-            const cropBottom = 50; 
+            // Increased crop area to ensure watermark removal (50px -> 60px)
+            const cropBottom = 60; 
             
             if (img.height <= cropBottom) {
                 resolve(imageUrl); // Image too small, return original
