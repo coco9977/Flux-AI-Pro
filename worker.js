@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.0.0 (KV Online Count & History Fix)
-//  更新: 真實線上人數統計(KV)、歷史記錄模型修復、檔案下載優化
+//  版本: 11.1.0 (Whos.amung.us Stats)
+//  更新: 使用 whos.amung.us 進行第三方流量統計
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.0.0",
+  PROJECT_VERSION: "11.1.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -716,15 +716,12 @@ class MultiProviderRouter {
     return results;
   }
 }
+// Global Cache for Online Count (To save KV List operations)
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const startTime = Date.now();
 
-    // Heartbeat for online count (KV based)
-    if (url.pathname === '/heartbeat') {
-      return handleHeartbeat(request, env);
-    }
     const clientIP = getClientIP(request);
     if (env.POLLINATIONS_API_KEY) { CONFIG.POLLINATIONS_AUTH.enabled = true; CONFIG.POLLINATIONS_AUTH.token = env.POLLINATIONS_API_KEY; } 
     else { console.warn("⚠️ POLLINATIONS_API_KEY not set - requests may fail on new API endpoint"); CONFIG.POLLINATIONS_AUTH.enabled = false; CONFIG.POLLINATIONS_AUTH.token = ""; }
@@ -1015,8 +1012,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <h1>Nano Pro <span class="badge">V10.6</span></h1>
                     <p style="color:#666; font-size:12px">Flux Engine • Pro Model</p>
                     <div style="font-size:11px; color:#22c55e; margin-top:4px; display:flex; align-items:center; gap:4px">
-                        <span style="width:6px; height:6px; background:#22c55e; border-radius:50%; display:inline-block; animation:pulse 2s infinite"></span>
-                        <span id="onlineCount">--</span> Online
+                        <script id="_wauxns">var _wau = _wau || []; _wau.push(["small", "fluxnanopro", "22c55e"]);</script><script async src="//waust.at/s.js"></script>
                     </div>
                 </div>
             </div>
@@ -1154,23 +1150,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     const COOLDOWN_SEC = 180;
     let cooldownInterval = null;
 
-    // Online Count (KV Heartbeat)
-    function startHeartbeat() {
-        const update = async () => {
-            try {
-                const res = await fetch('/heartbeat');
-                const data = await res.json();
-                const el = document.getElementById('onlineCount');
-                if(el) {
-                    el.textContent = data.count;
-                    el.parentElement.title = "Active users (KV-based)";
-                }
-            } catch(e) { console.error("Heartbeat failed", e); }
-        };
-        update();
-        setInterval(update, 10000); // Poll every 10s
-    }
-    startHeartbeat();
+    // Online Count (whos.amung.us widget handled in HTML)
 
     function checkAndStartCooldown() {
         const lastTime = localStorage.getItem(COOLDOWN_KEY);
@@ -1422,7 +1402,9 @@ async function handleHeartbeat(request, env) {
   });
 }
 
-function handleUI(request, env) {
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const now = Math.floor(Date.now() / 1000);
+  const key = `ratelimit:${ip}`;
     const hasInfipServerKey = !!(env && env.INFIP_API_KEY);
     const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
     
@@ -1508,8 +1490,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <div class="logo">
     🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span>
     <div style="font-size:12px; color:#22c55e; margin-left:15px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none;">
-        <span style="width:8px; height:8px; background:#22c55e; border-radius:50%; display:inline-block; animation:pulse 2s infinite"></span>
-        <span id="mainOnlineCount">--</span> Online
+        <script id="_waumain">var _wau = _wau || []; _wau.push(["small", "fluxnanopro", "22c55e"]);</script><script async src="//waust.at/s.js"></script>
     </div>
 </div>
         <div><div class="api-status">${authStatus}</div></div>
@@ -2051,22 +2032,8 @@ function displayResult(items){
     document.getElementById('results').appendChild(div);
 }
 
-// Online Count (KV Heartbeat)
-function startMainHeartbeat() {
-    const update = async () => {
-        try {
-            const res = await fetch('/heartbeat');
-            const data = await res.json();
-            const el = document.getElementById('mainOnlineCount');
-            if(el) el.textContent = data.count;
-        } catch(e) { console.error("Heartbeat failed", e); }
-    };
-    update();
-    setInterval(update, 10000);
-}
-
+// Online Count (whos.amung.us widget handled in HTML)
 window.onload=()=>{
-    startMainHeartbeat();
     updateLang();
     updateHistoryDisplay();
     updateModelOptions();
