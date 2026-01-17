@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
 //  版本: 11.1.0 (Whos.amung.us Stats)
-//  更新: 使用 whos.amung.us 進行第三方流量統計 
+//  更新: 使用 whos.amung.us 進行第三方流量統計
 // =================================================================================
 
 const CONFIG = {
@@ -221,7 +221,7 @@ function corsHeaders(extra = {}) {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Worker-Version, X-Source',
-    'Content-Security-Policy': "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: ws: wss:;",
+    'Content-Security-Policy': "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://waust.at https://*.whos.amung.us https:;",
     ...extra
   };
 }
@@ -1499,8 +1499,8 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <div class="logo">
     🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span>
 </div>
-<div style="font-size:12px; color:#22c55e; margin-left:20px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none;">
-    <script id="_waudw4_main">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
+<div style="font-size:12px; color:#22c55e; margin-left:20px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none; min-width:80px; min-height:20px;">
+    <script id="_waudw4_main">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="https://waust.at/s.js"></script>
 </div>
         <div><div class="api-status">${authStatus}</div></div>
     </div>
