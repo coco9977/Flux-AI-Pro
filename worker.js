@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.6.5 (Nano Cooldown)
-//  更新: Nano Pro 頁面加入 180 秒強制冷卻機制 (抗重整)
+//  版本: 11.1.0 (Whos.amung.us Stats)
+//  更新: 使用 whos.amung.us 進行第三方流量統計
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.6.5",
+  PROJECT_VERSION: "11.1.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -30,7 +30,6 @@ const CONFIG = {
   PROVIDERS: {
     pollinations: {
       name: "Pollinations.ai",
-      // 🔥 修改：使用 gen.pollinations.ai (需要 API Key)
       endpoint: "https://gen.pollinations.ai",
       pathPrefix: "/image",
       type: "direct",
@@ -43,17 +42,38 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        // 🔥 核心模型: nanobanana-pro (直連)
-        { id: "nanobanana-pro", name: "Nano Banana Pro 🍌", confirmed: true, category: "special", description: "Nano Banana Pro 風格模型 (每小時限額 5 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage", name: "GPT-Image 🎨", confirmed: true, category: "gptimage", description: "通用 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage-large", name: "GPT-Image Large 🌟", confirmed: true, category: "gptimage", description: "高質量 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "zimage", name: "Z-Image Turbo ⚡", confirmed: true, category: "zimage", description: "快速 6B 參數圖像生成 (Alpha)", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "flux", name: "Flux 標準版", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "turbo", name: "Flux Turbo ⚡", confirmed: true, category: "flux", description: "超快速圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] }
+        { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
+        { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "seedream-pro", name: "SeeDream Pro 🌟", confirmed: true, category: "seedream", description: "高品質夢幻圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
+    },
+    infip: {
+      name: "Ghostbot (Infip)",
+      endpoint: "https://api.infip.pro",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Ghostbot Web API (High Limit)",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+      },
+      models: [
+        { id: "img4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
+        { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
+        { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
+        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 }
+      ],
+      rate_limit: { requests: 30, interval: 60 },
+      max_size: { width: 1792, height: 1792 }
     }
   },
   
@@ -194,6 +214,16 @@ class RateLimiter {
 
 function getClientIP(request) {
   return request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+}
+
+function corsHeaders(extra = {}) {
+  return {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Worker-Version, X-Source',
+    'Content-Security-Policy': "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob: ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://waust.at https://*.whos.amung.us https:;",
+    ...extra
+  };
 }
 
 async function translateToEnglish(text, env) {
@@ -347,9 +377,7 @@ async function fetchWithTimeout(url, options = {}, timeout = CONFIG.FETCH_TIMEOU
   }
 }
 
-function corsHeaders(additionalHeaders = {}) {
-  return { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Source', 'Access-Control-Max-Age': '86400', ...additionalHeaders };
-}
+
 class PollinationsProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
@@ -495,6 +523,156 @@ class PollinationsProvider {
   }
 }
 
+class InfipProvider {
+  constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
+  
+  async generate(prompt, options, logger) {
+    const { model = "img4", width = 1024, height = 1024, apiKey = "", nsfw = false, style = "none", negativePrompt = "" } = options;
+    
+    // Prefer environment variable if available
+    const finalApiKey = this.env.INFIP_API_KEY || apiKey;
+
+    if (!finalApiKey) throw new Error("Infip API Key is required (Set INFIP_API_KEY env var or provide via UI)");
+
+    let basePrompt = prompt;
+    let translationLog = { translated: false };
+    if (/[\u4e00-\u9fa5]/.test(prompt)) {
+      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
+      const translation = await translateToEnglish(prompt, this.env);
+      if (translation.translated) {
+        basePrompt = translation.text;
+        translationLog = translation;
+        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
+      }
+    }
+
+    // Apply Style
+    const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
+    logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
+
+    const url = `${this.config.endpoint}/v1/images/generations`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${finalApiKey}`,
+      'User-Agent': 'Flux-AI-Pro-Worker'
+    };
+    
+    // Infip supports 1024x1024, 1792x1024, 1024x1792
+    let sizeStr = "1024x1024";
+    if (width > height && width >= 1500) sizeStr = "1792x1024";
+    else if (height > width && height >= 1500) sizeStr = "1024x1792";
+    
+    // Infip supports up to 4 images per request
+    const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
+
+    const body = {
+      model: model,
+      prompt: enhancedPrompt,
+      n: batchSize,
+      size: sizeStr,
+      response_format: "url"
+    };
+
+    if (nsfw) {
+        body.safety_check = false;
+        body.censor_nsfw = false;
+        logger.add("🔞 NSFW Mode", { enabled: true, note: "Safety checks disabled" });
+    }
+
+    logger.add("📡 Infip Request", { endpoint: url, model: model, size: sizeStr });
+
+    try {
+      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Infip API Error (${response.status}): ${errText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Handle Async Task (if any accidental async model used)
+      if (data.task_id) {
+         throw new Error("Async models (task_id) are not supported in this version. Please use Sync models like img4.");
+      }
+      
+      if (data.data && data.data.length > 0) {
+        // Handle multiple images response
+        if (data.data.length > 1) {
+            const results = [];
+            for(const item of data.data) {
+                if(item.url) {
+                    const imgUrl = item.url;
+                    // For batch results, we return simplified objects
+                    // Note: The caller (MultiProviderRouter) expects a single result object if called once, 
+                    // but here we are inside generate().
+                    // Since MultiProviderRouter loops numOutputs, we need to be careful.
+                    // However, for Infip we are now doing batching INSIDE generate().
+                    // To support this, we need to return an array or change how MultiProviderRouter works.
+                    // BUT, to keep compatibility, let's just return the FIRST image here if called via standard loop,
+                    // OR if we want to support true batching, we should return an array.
+                    // Let's modify MultiProviderRouter to handle array returns from provider.generate().
+                    
+                    // Actually, simpler approach: Return the first image as main, and others as extra_images
+                    // But that complicates the flow. 
+                    
+                    // Let's fetch all images in parallel
+                    const imgResp = await fetch(imgUrl);
+                    const imageBuffer = await imgResp.arrayBuffer();
+                    results.push({
+                        imageData: imageBuffer,
+                        contentType: imgResp.headers.get('content-type') || 'image/png',
+                        url: imgUrl,
+                        provider: this.name,
+                        model: model,
+                        seed: -1,
+                        width: width,
+                        height: height,
+                        authenticated: true
+                    });
+                }
+            }
+            // Return array of results (Special case handled by router/caller?)
+            // No, the router expects a single object. 
+            // We will return a special object that contains "batch_results"
+            return {
+                batch_results: results,
+                provider: this.name,
+                cost: "QUOTA"
+            };
+        }
+
+        const imgUrl = data.data[0].url;
+        logger.add("⬇️ Downloading Image", { url: imgUrl });
+        
+        // Download image to return binary
+        const imgResp = await fetch(imgUrl);
+        const imageBuffer = await imgResp.arrayBuffer();
+        const contentType = imgResp.headers.get('content-type') || 'image/png';
+        
+        return { 
+            imageData: imageBuffer, 
+            contentType: contentType, 
+            url: imgUrl, 
+            provider: this.name, 
+            model: model, 
+            seed: -1, // Infip doesn't return seed usually
+            width: width, 
+            height: height, 
+            auto_translated: translationLog.translated,
+            authenticated: true,
+            cost: "QUOTA"
+        };
+      } else {
+        throw new Error("Invalid response format from Infip API");
+      }
+    } catch (e) {
+      logger.add("❌ Infip Failed", { error: e.message });
+      throw e;
+    }
+  }
+}
+
 class MultiProviderRouter {
   constructor(apiKeys = {}, env = null) {
     this.providers = {};
@@ -503,6 +681,7 @@ class MultiProviderRouter {
     for (const [key, config] of Object.entries(CONFIG.PROVIDERS)) {
       if (config.enabled) {
         if (key === 'pollinations') this.providers[key] = new PollinationsProvider(config, env);
+        else if (key === 'infip') this.providers[key] = new InfipProvider(config, env);
       }
     }
   }
@@ -518,6 +697,25 @@ class MultiProviderRouter {
     const { provider: requestedProvider = null, numOutputs = 1 } = options;
     const { name: providerName, instance: provider } = this.getProvider(requestedProvider);
     const results = [];
+    
+    // Optimization for Infip: Use native batching if available
+    if (providerName === 'infip' && numOutputs > 1) {
+         const batchOptions = { ...options, numOutputs: numOutputs, seed: options.seed };
+         try {
+             const result = await provider.generate(prompt, batchOptions, logger);
+             if (result.batch_results) {
+                 results.push(...result.batch_results);
+                 return results;
+             } else {
+                 results.push(result);
+             }
+         } catch (e) {
+             logger.add("❌ Batch Generation Failed", { error: e.message });
+             throw e;
+         }
+         return results;
+    }
+
     for (let i = 0; i < numOutputs; i++) {
       const currentOptions = { ...options, seed: options.seed === -1 ? -1 : options.seed + i };
       const result = await provider.generate(prompt, currentOptions, logger);
@@ -526,10 +724,12 @@ class MultiProviderRouter {
     return results;
   }
 }
+// Global Cache for Online Count (To save KV List operations)
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const startTime = Date.now();
+
     const clientIP = getClientIP(request);
     if (env.POLLINATIONS_API_KEY) { CONFIG.POLLINATIONS_AUTH.enabled = true; CONFIG.POLLINATIONS_AUTH.token = env.POLLINATIONS_API_KEY; } 
     else { console.warn("⚠️ POLLINATIONS_API_KEY not set - requests may fail on new API endpoint"); CONFIG.POLLINATIONS_AUTH.enabled = false; CONFIG.POLLINATIONS_AUTH.token = ""; }
@@ -549,7 +749,7 @@ export default {
         response = handleNanoPage(request); 
       } 
       else if (url.pathname === '/' || url.pathname === '') { 
-        response = handleUI(request); 
+        response = handleUI(request, env); 
       } 
       else if (url.pathname === '/_internal/generate') { 
         response = await handleInternalGenerate(request, env, ctx); 
@@ -635,6 +835,7 @@ async function handleInternalGenerate(request, env, ctx) {
     const options = { 
       provider: body.provider || null, 
       model: body.model || "gptimage", 
+      apiKey: request.headers.get('X-API-Key') || body.api_key || "",
       width: Math.min(Math.max(width, 256), 2048), 
       height: Math.min(Math.max(height, 256), 2048), 
       numOutputs: Math.min(Math.max(body.n || 1, 1), 4), 
@@ -649,7 +850,8 @@ async function handleInternalGenerate(request, env, ctx) {
       autoOptimize: autoOptimize, 
       autoHD: body.auto_hd !== false, 
       qualityMode: body.quality_mode || 'standard', 
-      referenceImages: referenceImages
+      referenceImages: referenceImages,
+      nsfw: body.nsfw === true
     };
     
     const router = new MultiProviderRouter({}, env);
@@ -803,6 +1005,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 @keyframes spin-bounce { 0% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.2) rotate(10deg); } 100% { transform: scale(1) rotate(0deg); } }
 .toast { position: fixed; top: 20px; right: 20px; background: #333; border-left: 4px solid var(--primary); color: #fff; padding: 15px 25px; border-radius: 8px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 14px; animation: slideIn 0.3s forwards; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -816,6 +1019,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <div class="logo-text">
                     <h1>Nano Pro <span class="badge">V10.6</span></h1>
                     <p style="color:#666; font-size:12px">Flux Engine • Pro Model</p>
+                    <div style="font-size:11px; color:#22c55e; margin-top:4px; display:flex; align-items:center; gap:4px">
+                        <script id="_waudw4">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
+                    </div>
                 </div>
             </div>
 
@@ -920,6 +1126,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         </div>
     </div>
 
+    <div class="footer">
+    </div>
+</div>
 <script>
     const els = {
         prompt: document.getElementById('prompt'),
@@ -951,6 +1160,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     const COOLDOWN_KEY = 'nano_cooldown_timestamp';
     const COOLDOWN_SEC = 180;
     let cooldownInterval = null;
+
+    // Online Count (whos.amung.us widget handled in HTML)
 
     function checkAndStartCooldown() {
         const lastTime = localStorage.getItem(COOLDOWN_KEY);
@@ -1174,10 +1385,42 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
   
   return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
 }
-function handleUI() {
-  const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
+// KV-based Online Counter (Free)
+async function handleHeartbeat(request, env) {
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const now = Math.floor(Date.now() / 1000);
+  const key = `online:${ip}`;
   
-  // 生成樣式選單 HTML
+  // 1. Update current user's heartbeat
+  await env.FLUX_KV.put(key, now.toString(), { expirationTtl: 60 }); // Expire in 60s
+  
+  // 2. Count active keys (Approximate)
+  // Note: KV list is eventually consistent and might be slow for huge lists.
+  // For free tier small traffic, this is acceptable.
+  // Ideally, we would use a counter in KV, but race conditions exist.
+  // Instead, we just list keys with prefix 'online:'
+  
+  let count = 0;
+  try {
+      const list = await env.FLUX_KV.list({ prefix: 'online:' });
+      count = list.keys.length;
+  } catch(e) {
+      count = 1; // Fallback
+  }
+
+  return new Response(JSON.stringify({ count }), { 
+    headers: { 'Content-Type': 'application/json', ...corsHeaders() } 
+  });
+}
+
+function handleUI(request, env) {
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  const now = Math.floor(Date.now() / 1000);
+  const key = `ratelimit:${ip}`;
+    const hasInfipServerKey = !!(env && env.INFIP_API_KEY);
+    const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
+    
+    // 生成樣式選單 HTML
   const styleCategories = CONFIG.STYLE_CATEGORIES;
   const stylePresets = CONFIG.STYLE_PRESETS;
   let styleOptionsHTML = '';
@@ -1201,7 +1444,11 @@ function handleUI() {
 <title>Flux AI Pro v${CONFIG.PROJECT_VERSION}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
 <style>
-/* 完整版 CSS 樣式 - Flux Pro 主界面 */
+/* 完整版 CSS 樣式 - Flux Pro 主界面 (深空紫主題) */
+/* 頁腳樣式 */
+.footer{padding:20px;text-align:center;font-size:12px;color:#64748b;border-top:1px solid rgba(255,255,255,0.05);margin-top:auto;line-height:1.8}
+.footer a{color:#fbbf24;text-decoration:none;transition:0.3s;margin:0 4px}
+.footer a:hover{text-decoration:underline;color:#f59e0b}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);color:#fff;min-height:100vh}
 .container{max-width:100%;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
@@ -1249,13 +1496,19 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 .modal.show{display:flex}
 .modal-content img{max-width:90vw;max-height:90vh;border-radius:8px}
 .modal-close{position:absolute;top:20px;right:20px;color:#fff;font-size:32px;cursor:pointer}
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 </style>
 </head>
 <body>
 <div class="container">
 <div class="top-nav">
     <div class="nav-left">
-        <div class="logo">🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span></div>
+        <div class="logo">
+    🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span>
+</div>
+<div style="font-size:12px; color:#22c55e; margin-left:20px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none; min-width:80px; min-height:20px;">
+    <script id="_wau96x">var _wau = _wau || []; _wau.push(["dynamic", "yrofl40dzz", "96x", "c4302bffffff", "small"]);</script><script async src="https://waust.at/d.js"></script>
+</div>
         <div><div class="api-status">${authStatus}</div></div>
     </div>
     <div class="nav-menu">
@@ -1273,22 +1526,32 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="section-title" data-t="settings_title">⚙️ 生成參數</div>
 <form id="generateForm">
 <div class="form-group">
+    <label data-t="provider_label">API Provider (供應商)</label>
+    <select id="provider">
+        <option value="pollinations" selected>Pollinations.ai (Free)</option>
+        <option value="infip">Ghostbot (Infip) 🌟</option>
+    </select>
+</div>
+<div class="form-group" id="apiKeyGroup" style="display:none; background:rgba(245, 158, 11, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
+    <label>API Key <span style="font-weight:normal;opacity:0.7">(Stored locally)</span></label>
+    <input type="password" id="apiKey" placeholder="Paste your API Key here">
+    <div style="font-size:11px;color:#ccc;margin-top:6px">
+        Get free key from <a href="https://infip.pro/api-keys" target="_blank" style="color:#f59e0b;text-decoration:underline">infip.pro/api-keys</a>
+    </div>
+</div>
+
+<div class="form-group" id="nsfwGroup" style="display:none; align-items:center; justify-content:space-between; background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.3);">
+    <div>
+        <label for="nsfwToggle" style="margin:0; cursor:pointer; color:#f87171;">🔞 解除成人內容限制 (NSFW)</label>
+        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">啟用此選項將允許生成成人內容 (僅 Infip)</div>
+    </div>
+    <input type="checkbox" id="nsfwToggle" style="width:20px; height:20px; cursor:pointer;">
+</div>
+
+<div class="form-group">
     <label data-t="model_label">模型選擇</label>
     <select id="model">
-        <optgroup label="🤖 GPT-Image Series">
-        <option value="gptimage" selected>GPT-Image 🎨</option>
-        <option value="gptimage-large">GPT-Image Large 🌟</option>
-        </optgroup>
-        <optgroup label="⚡ Z-Image Series">
-        <option value="zimage">Z-Image Turbo ⚡ (6B)</option>
-        </optgroup>
-        <optgroup label="🎨 Flux Series">
-        <option value="flux">Flux Standard</option>
-        <option value="turbo">Flux Turbo ⚡</option>
-        </optgroup>
-        <optgroup label="🖼️ Kontext Series">
-        <option value="kontext">Kontext 🎨 (Img2Img)</option>
-        </optgroup>
+        <!-- JS will populate this -->
     </select>
 </div>
 <div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
@@ -1312,6 +1575,19 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <input type="checkbox" id="autoOptimize" checked style="width:auto; width:20px; height:20px; cursor:pointer;">
     </div>
     
+    <div id="batchGroup" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;">🖼️ 批量生成</div>
+        <div class="form-group">
+            <label>生成數量 (Batch Size)</label>
+            <select id="batchSize">
+                <option value="1">1 張</option>
+                <option value="2">2 張</option>
+                <option value="3">3 張</option>
+                <option value="4">4 張</option>
+            </select>
+        </div>
+    </div>
+
     <div id="advancedParams" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
         <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;" data-t="adv_settings">🛠️ 進階參數</div>
         
@@ -1346,10 +1622,23 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 </div>
 <div id="historyList" style="padding:0 20px"><p>Loading history...</p></div>
 </div></div>
-<div id="imageModal" class="modal"><span class="modal-close" id="modalCloseBtn">×</span><div class="modal-content"><img id="modalImage" src=""></div></div>
+<div id="imageModal" class="modal">
+    <div class="modal-content" style="position:relative; display:flex; flex-direction:column; align-items:center;">
+        <img id="modalImage" src="" style="max-height:85vh; margin-bottom:15px;">
+        <div style="display:flex; gap:15px;">
+            <a id="modalDownload" href="#" class="btn btn-primary" download="image.png" style="text-decoration:none; width:auto; padding:10px 25px;">
+                📥 保存圖片
+            </a>
+            <button class="btn" onclick="document.getElementById('imageModal').classList.remove('show')" style="width:auto; background:rgba(255,255,255,0.1);">
+                ❌ 關閉
+            </button>
+        </div>
+    </div>
+    <div class="modal-close" id="modalCloseBtn">×</div>
+</div>
 <script>
 // ====== IndexedDB 管理核心 (解決死圖) ======
-const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=1;
+const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=2;
 const dbPromise=new Promise((resolve,reject)=>{
     const req=indexedDB.open(DB_NAME,DB_VERSION);
     req.onupgradeneeded=(e)=>{
@@ -1395,11 +1684,11 @@ async function clearDB(){
 // ====== I18N 與 UI 邏輯 ======
 const I18N={
     zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
         cooldown_msg: "⏳ 請等待冷卻時間..."
     },
     en:{
-        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save",
+        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", provider_label:"API Provider", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save",
         cooldown_msg: "⏳ Cooldown..."
     }
 };
@@ -1457,8 +1746,79 @@ function updateSeedUI() {
 seedToggleBtn.addEventListener('click', () => { isSeedRandom = !isSeedRandom; updateSeedUI(); });
 autoOptCheckbox.addEventListener('change', () => { advParamsDiv.style.display = autoOptCheckbox.checked ? 'none' : 'block'; });
 
+const providerSelect = document.getElementById('provider');
+const apiKeyGroup = document.getElementById('apiKeyGroup');
+const apiKeyInput = document.getElementById('apiKey');
+const modelSelect = document.getElementById('model');
+
+function updateModelOptions() {
+    const p = providerSelect.value;
+    const config = PROVIDERS[p];
+    if(!config) return;
+    
+    // Logic: Show API Key input only if required AND not provided by server
+    if(config.requires_key && config.auth_mode === 'bearer') {
+        if (config.has_server_key) {
+            apiKeyGroup.style.display = 'none';
+        } else {
+            apiKeyGroup.style.display = 'block';
+            let storedKey = '';
+            if (p === 'infip') storedKey = localStorage.getItem('infip_api_key');
+            
+            apiKeyInput.value = storedKey || '';
+            apiKeyInput.placeholder = "Paste your API Key here";
+        }
+    } else {
+        apiKeyGroup.style.display = 'none';
+    }
+    
+    // Logic: Show NSFW Toggle only for Infip
+    const nsfwGroup = document.getElementById('nsfwGroup');
+    const batchGroup = document.getElementById('batchGroup');
+    
+    if (p === 'infip') {
+        nsfwGroup.style.display = 'flex';
+        batchGroup.style.display = 'block';
+    } else {
+        nsfwGroup.style.display = 'none';
+        batchGroup.style.display = 'none';
+        document.getElementById('nsfwToggle').checked = false;
+        document.getElementById('batchSize').value = '1';
+    }
+
+    modelSelect.innerHTML = '';
+    const models = config.models;
+    const groups = {};
+    models.forEach(m => {
+        const cat = m.category || 'other';
+        if(!groups[cat]) groups[cat] = [];
+        groups[cat].push(m);
+    });
+    
+    for(const [cat, list] of Object.entries(groups)) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = cat.toUpperCase();
+        list.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            optgroup.appendChild(opt);
+        });
+        modelSelect.appendChild(optgroup);
+    }
+}
+
+providerSelect.addEventListener('change', updateModelOptions);
+apiKeyInput.addEventListener('input', (e) => localStorage.setItem('infip_api_key', e.target.value));
+
 const PRESET_SIZES=${JSON.stringify(CONFIG.PRESET_SIZES)};
 const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
+// Inject server-side key status
+const frontendProviders = ${JSON.stringify(CONFIG.PROVIDERS)};
+if (${hasInfipServerKey} && frontendProviders.infip) {
+    frontendProviders.infip.has_server_key = true;
+}
+const PROVIDERS=frontendProviders;
 
 async function addToHistory(item){
     let base64Data = item.image;
@@ -1492,21 +1852,57 @@ async function updateHistoryDisplay(){
         d.querySelector('img').onclick=()=>openModal(imgSrc);
         d.querySelector('.reuse-btn').onclick=()=>{
             document.getElementById('prompt').value=item.prompt||'';
-            document.getElementById('model').value=item.model||'gptimage';
+            const modelSelect = document.getElementById('model');
+            const targetModel = item.model || 'gptimage';
+            
+            // Check if model exists in current provider, if not, try to switch provider or just warn
+            // Ideally we should switch provider based on model, but we don't store provider in history yet (we should!)
+            // For now, let's just try to set value. If not found, it stays default.
+            
+            // Try to find which provider has this model
+            let providerFound = null;
+            for(const [pKey, pConfig] of Object.entries(PROVIDERS)) {
+                if(pConfig.models.some(m => m.id === targetModel)) {
+                    providerFound = pKey;
+                    break;
+                }
+            }
+            
+            if(providerFound) {
+                document.getElementById('provider').value = providerFound;
+                updateModelOptions(); // Refresh model list
+            }
+            
+            modelSelect.value = targetModel;
             document.getElementById('style').value=item.style||'none';
             const savedSeed = item.seed;
             if (savedSeed && savedSeed !== -1 && savedSeed !== '-1') { isSeedRandom = false; seedInput.value = savedSeed; } else { isSeedRandom = true; seedInput.value = '-1'; }
             updateSeedUI();
             document.querySelector('[data-page="generate"]').click();
         };
-        d.querySelector('.download-btn').onclick=()=>{const a=document.createElement('a');a.href=imgSrc;a.download='flux-'+item.seed+'.png';a.click();};
+        d.querySelector('.download-btn').onclick=()=>{
+            const a=document.createElement('a');
+            a.href=imgSrc;
+            a.download=\`\${item.model}-\${item.seed}.png\`;
+            a.click();
+        };
         d.querySelector('.delete-btn').onclick=()=>deleteFromDB(item.id);
         div.appendChild(d);
     });
     list.innerHTML=''; list.appendChild(div);
 }
 
-function openModal(src){document.getElementById('modalImage').src=src;document.getElementById('imageModal').classList.add('show');}
+function openModal(src){
+    const modalImg = document.getElementById('modalImage');
+    const downloadBtn = document.getElementById('modalDownload');
+    modalImg.src=src;
+    
+    // Auto set download filename
+    downloadBtn.href = src;
+    downloadBtn.download = \`flux-pro-\${Date.now()}.png\`;
+    
+    document.getElementById('imageModal').classList.add('show');
+}
 document.getElementById('modalCloseBtn').onclick=()=>document.getElementById('imageModal').classList.remove('show');
 document.getElementById('clearBtn').onclick=()=>{if(confirm('Clear all history?'))clearDB();};
 document.getElementById('exportBtn').onclick=async()=>{
@@ -1518,7 +1914,8 @@ document.getElementById('exportBtn').onclick=async()=>{
 
 // ====== 生成邏輯與 60秒冷卻 ======
 let cooldownTimer = null;
-const COOLDOWN_SEC = 60; // 60秒冷卻
+const COOLDOWN_SEC = 60; // Default cooldown
+const INFIP_COOLDOWN_SEC = 30; // Infip specific cooldown
 
 document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     e.preventDefault();
@@ -1526,6 +1923,11 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     // 檢查冷卻狀態
     const btn=document.getElementById('generateBtn');
     if(btn.disabled && btn.classList.contains('cooldown-active')) return;
+
+    // Save API Keys
+    const curProvider = document.getElementById('provider').value;
+    const curKey = document.getElementById('apiKey').value;
+    if(curProvider === 'infip') localStorage.setItem('infip_api_key', curKey);
 
     const prompt=document.getElementById('prompt').value;
     const resDiv=document.getElementById('results');
@@ -1540,6 +1942,17 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
     const isAutoOpt = autoOptCheckbox.checked;
+    const isNSFW = document.getElementById('nsfwToggle').checked;
+    const batchSize = parseInt(document.getElementById('batchSize').value) || 1;
+    
+    let finalNegative = document.getElementById('negativePrompt').value;
+    if (isNSFW && document.getElementById('provider').value === 'infip') {
+        // Filter out common NSFW keywords from negative prompt
+        const nsfwKeywords = ['nsfw', 'nudity', 'naked', 'porn', 'xxx', 'uncensored'];
+        let negParts = finalNegative.split(',').map(s => s.trim());
+        negParts = negParts.filter(p => !nsfwKeywords.some(k => p.toLowerCase().includes(k)));
+        finalNegative = negParts.join(', ');
+    }
 
     try{
         const res=await fetch('/_internal/generate',{
@@ -1550,8 +1963,12 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 seed: currentSeed, auto_optimize: isAutoOpt,
                 steps: isAutoOpt ? null : parseInt(document.getElementById('steps').value),
                 guidance_scale: isAutoOpt ? null : parseFloat(document.getElementById('guidanceScale').value),
-                negative_prompt:document.getElementById('negativePrompt').value,
-                reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim())
+                negative_prompt: finalNegative,
+                reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim()),
+                provider: document.getElementById('provider').value,
+                api_key: document.getElementById('apiKey').value,
+                nsfw: isNSFW,
+                n: batchSize
             })
         });
         
@@ -1562,19 +1979,27 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
             const reader=new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend=async()=>{
-                const base64=reader.result;
+                let base64=reader.result;
                 const realSeed = res.headers.get('X-Seed');
                 const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
                 await addToHistory(item);
                 displayResult([item]);
-                startCooldown(); // 成功後啟動冷卻
+                
+                // Determine cooldown based on provider
+                const provider = document.getElementById('provider').value;
+                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
+                startCooldown(cooldownTime);
             };
         }else{
             const data=await res.json();
             if(data.error) throw new Error(data.error.message);
             for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
             displayResult(items);
-            startCooldown(); // 成功後啟動冷卻
+            
+            // Determine cooldown based on provider
+            const provider = document.getElementById('provider').value;
+            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
+            startCooldown(cooldownTime); 
         }
     }catch(err){ 
         resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; 
@@ -1584,11 +2009,11 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     }
 });
 
-function startCooldown() {
+function startCooldown(duration = COOLDOWN_SEC) {
     const btn = document.getElementById('generateBtn');
     btn.classList.add('cooldown-active');
     btn.disabled = true;
-    let secondsLeft = COOLDOWN_SEC;
+    let secondsLeft = duration;
     
     // 立即更新 UI
     updateBtnText(secondsLeft);
@@ -1623,11 +2048,20 @@ function displayResult(items){
     document.getElementById('results').appendChild(div);
 }
 
+// Online Count (whos.amung.us widget handled in HTML)
 window.onload=()=>{
     updateLang();
     updateHistoryDisplay();
+    updateModelOptions();
 };
 </script>
+<div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap;">
+    <span>Powered by Flux AI Pro • <a href="https://github.com/pollinations/pollinations" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
+    <span style="opacity:0.5">|</span>
+    <span style="opacity:0.9">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
+    <span style="opacity:0.5">|</span>
+    <a href="https://showmebest.ai" target="_blank" style="display:flex; align-items:center;"><img src="https://showmebest.ai/badge/feature-badge-dark.webp" alt="Featured on ShowMeBestAI" width="165" height="45"></a>
+</div>
 </body>
 </html>`;
   
