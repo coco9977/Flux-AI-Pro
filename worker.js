@@ -1494,6 +1494,13 @@ function handleUI(request, env) {
       styleOptionsHTML += '</optgroup>';
     }
   }
+
+  // 生成尺寸選單 HTML
+  let sizeOptionsHTML = '';
+  for (const [key, size] of Object.entries(CONFIG.PRESET_SIZES)) {
+      const selected = key === 'square-1k' ? ' selected' : '';
+      sizeOptionsHTML += `<option value="${key}"${selected}>${size.name} (${size.width}x${size.height})</option>`;
+  }
   
   const html = `<!DOCTYPE html>
 <html lang="zh-TW">
@@ -1664,7 +1671,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <!-- JS will populate this -->
     </select>
 </div>
-<div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
+<div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size">${sizeOptionsHTML}</select></div>
 <div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
 <div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
 
