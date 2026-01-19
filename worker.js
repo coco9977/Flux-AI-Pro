@@ -761,6 +761,9 @@ export default {
       else if (url.pathname === '/_internal/generate') { 
         response = await handleInternalGenerate(request, env, ctx); 
       } 
+      else if (url.pathname === '/api/upload') {
+        response = await handleUpload(request);
+      }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
           status: 'ok', version: CONFIG.PROJECT_VERSION, timestamp: new Date().toISOString(),
@@ -785,6 +788,52 @@ export default {
     }
   }
 };
+
+async function handleUpload(request) {
+  if (request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
+  }
+  
+  try {
+    const formData = await request.formData();
+    const file = formData.get('fileToUpload');
+    
+    if (!file) {
+      return new Response('No file provided', { status: 400, headers: corsHeaders() });
+    }
+
+    // Forward to Catbox
+    const catboxData = new FormData();
+    catboxData.append('reqtype', 'fileupload');
+    catboxData.append('fileToUpload', file);
+    
+    const response = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      body: catboxData,
+      headers: {
+        'User-Agent': 'FluxAIPro-Worker/1.0'
+      }
+    });
+
+    if (response.ok) {
+      const url = await response.text();
+      return new Response(JSON.stringify({ url: url }), { 
+        status: 200, 
+        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      });
+    } else {
+      return new Response(JSON.stringify({ error: 'Upstream upload failed', status: response.status }), { 
+        status: 502, 
+        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      });
+    }
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500, 
+      headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    });
+  }
+}
 
 async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
@@ -1855,39 +1904,31 @@ imageUpload.addEventListener('change', async (e) => {
             
             const formData = new FormData();
             formData.append('fileToUpload', file);
-            formData.append('reqtype', 'fileupload');
-            
-            // Catbox API doesn't support CORS for browser requests directly.
-            // We need to use a CORS proxy or our own worker as proxy.
-            // For simplicity, let's use a public CORS proxy (demo only) or fallback to a different method.
-            // Actually, for Pollinations, we can try to use their upload if available, but they don't have a public upload endpoint documented.
-            
-            // ALTERNATIVE: Use tmpfiles.org API which is more CORS friendly or imgbb with key.
-            // Let's try to use a CORS proxy for catbox for now.
             
             try {
-                const response = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://catbox.moe/user/api.php'), {
+                // Use our own worker proxy endpoint to avoid CORS issues
+                const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData
                 });
 
                 if (response.ok) {
-                    const url = await response.text();
-                    if (url.startsWith('http')) {
+                    const data = await response.json();
+                    if (data.url && data.url.startsWith('http')) {
                          const textarea = document.getElementById('referenceImages');
                          const currentVal = textarea.value.trim();
-                         textarea.value = currentVal ? currentVal + ', ' + url : url;
+                         textarea.value = currentVal ? currentVal + ', ' + data.url : data.url;
                          btn.textContent = "✅ Uploaded!";
                     } else {
-                        throw new Error("Invalid response from upload server");
+                        throw new Error("Invalid response from server");
                     }
                 } else {
-                    throw new Error("Upload failed status: " + response.status);
+                    const errData = await response.json().catch(()=>({}));
+                    throw new Error("Upload failed: " + (errData.error || response.status));
                 }
             } catch (proxyError) {
-                console.error("Proxy upload failed, trying direct...", proxyError);
-                // Fallback: simple alert for now as direct upload will likely fail due to CORS
-                alert("Upload failed due to network restrictions. Please use an image URL directly.");
+                console.error("Upload error:", proxyError);
+                alert("Upload failed: " + proxyError.message);
             }
 
             setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
