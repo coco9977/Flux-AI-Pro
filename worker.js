@@ -6,7 +6,7 @@
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.2.0",
+  PROJECT_VERSION: "11.4.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -24,7 +24,12 @@ const CONFIG = {
     "portrait-9-16-hd": { name: "豎屏 9:16 HD", width: 1080, height: 1920 },
     "landscape-16-9-hd": { name: "橫屏 16:9 HD", width: 1920, height: 1080 },
     "instagram-square": { name: "Instagram 方形", width: 1080, height: 1080 },
-    "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 }
+    "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 },
+    "portrait-3-4": { name: "豎屏 3:4", width: 768, height: 1024 },
+    "portrait-4-5": { name: "豎屏 4:5", width: 1080, height: 1350 },
+    "landscape-4-3": { name: "橫屏 4:3", width: 1024, height: 768 },
+    "landscape-3-2": { name: "橫屏 3:2", width: 1200, height: 800 },
+    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 }
   },
   
   PROVIDERS: {
@@ -139,14 +144,13 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: { 
-      "nanobanana-pro": { min: 15, optimal: 20, max: 30 },
-      "gptimage": { min: 10, optimal: 18, max: 28 },
-      "gptimage-large": { min: 15, optimal: 25, max: 35 },
-      "zimage": { min: 8, optimal: 15, max: 25 }, 
-      "flux": { min: 15, optimal: 20, max: 30 }, 
-      "klein": { min: 20, optimal: 25, max: 35 }, 
-      "turbo": { min: 4, optimal: 8, max: 12 }, 
-      "kontext": { min: 18, optimal: 25, max: 35 } 
+      "nanobanana-pro": { min: 20, optimal: 25, max: 40 },
+      "gptimage": { min: 15, optimal: 25, max: 35 },
+      "gptimage-large": { min: 20, optimal: 30, max: 45 },
+      "zimage": { min: 10, optimal: 20, max: 30 }, 
+      "flux": { min: 20, optimal: 28, max: 40 }, 
+      "klein": { min: 25, optimal: 30, max: 50 }, 
+      "kontext": { min: 20, optimal: 28, max: 40 } 
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
     STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
@@ -156,11 +160,15 @@ const CONFIG = {
     enabled: true,
     QUALITY_MODES: {
       economy: { name: "經濟模式", description: "快速出圖", min_resolution: 1024, max_resolution: 2048, steps_multiplier: 0.85, guidance_multiplier: 0.9, hd_level: "basic" },
-      standard: { name: "標準模式", description: "平衡質量與速度", min_resolution: 1280, max_resolution: 2048, steps_multiplier: 1.0, guidance_multiplier: 1.0, hd_level: "enhanced" },
-      ultra: { name: "超高清模式", description: "極致質量", min_resolution: 1536, max_resolution: 2048, steps_multiplier: 1.35, guidance_multiplier: 1.15, hd_level: "maximum", force_upscale: true }
+      standard: { name: "標準模式", description: "平衡質量與速度", min_resolution: 1280, max_resolution: 2048, steps_multiplier: 1.15, guidance_multiplier: 1.05, hd_level: "enhanced" },
+      ultra: { name: "超高清模式", description: "極致質量", min_resolution: 1536, max_resolution: 2048, steps_multiplier: 1.5, guidance_multiplier: 1.25, hd_level: "maximum", force_upscale: true }
     },
-    HD_PROMPTS: { basic: "high quality, detailed, sharp", enhanced: "high quality, highly detailed, sharp focus, professional, 8k uhd", maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, sharp focus, HDR" },
-    HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise",
+    HD_PROMPTS: { 
+      basic: "high quality, detailed, sharp focus", 
+      enhanced: "best quality, highly detailed, sharp focus, professional, 4k, 8k, hdr, aesthetic", 
+      maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, perfect lighting, sharp focus, HDR, cinematic lighting, hyperrealistic, award winning, intricate details, 32k" 
+    },
+    HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise, jpeg artifacts, watermark, text, signature, mutation, deformed, extra limbs, extra fingers, bad hands, bad feet, poor composition, out of frame, worst quality, normal quality, error, missing fingers, extra digit, fewer digits, cropped",
     MODEL_QUALITY_PROFILES: {
       "nanobanana-pro": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
@@ -757,6 +765,9 @@ export default {
       else if (url.pathname === '/_internal/generate') { 
         response = await handleInternalGenerate(request, env, ctx); 
       } 
+      else if (url.pathname === '/api/upload') {
+        response = await handleUpload(request);
+      }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
           status: 'ok', version: CONFIG.PROJECT_VERSION, timestamp: new Date().toISOString(),
@@ -781,6 +792,52 @@ export default {
     }
   }
 };
+
+async function handleUpload(request) {
+  if (request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
+  }
+  
+  try {
+    const formData = await request.formData();
+    const file = formData.get('fileToUpload');
+    
+    if (!file) {
+      return new Response('No file provided', { status: 400, headers: corsHeaders() });
+    }
+
+    // Forward to Catbox
+    const catboxData = new FormData();
+    catboxData.append('reqtype', 'fileupload');
+    catboxData.append('fileToUpload', file);
+    
+    const response = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST',
+      body: catboxData,
+      headers: {
+        'User-Agent': 'FluxAIPro-Worker/1.0'
+      }
+    });
+
+    if (response.ok) {
+      const url = await response.text();
+      return new Response(JSON.stringify({ url: url }), { 
+        status: 200, 
+        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      });
+    } else {
+      return new Response(JSON.stringify({ error: 'Upstream upload failed', status: response.status }), { 
+        status: 502, 
+        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      });
+    }
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500, 
+      headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    });
+  }
+}
 
 async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
@@ -1439,6 +1496,13 @@ function handleUI(request, env) {
       styleOptionsHTML += '</optgroup>';
     }
   }
+
+  // 生成尺寸選單 HTML
+  let sizeOptionsHTML = '';
+  for (const [key, size] of Object.entries(CONFIG.PRESET_SIZES)) {
+      const selected = key === 'square-1k' ? ' selected' : '';
+      sizeOptionsHTML += `<option value="${key}"${selected}>${size.name} (${size.width}x${size.height})</option>`;
+  }
   
   const html = `<!DOCTYPE html>
 <html lang="zh-TW">
@@ -1557,7 +1621,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <!-- JS will populate this -->
     </select>
 </div>
-<div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
+<div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size">${sizeOptionsHTML}</select></div>
 <div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
 <div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
 
@@ -1614,8 +1678,15 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 </div>
 <div class="right-panel">
 <div class="form-group"><label data-t="pos_prompt">正面提示詞</label><textarea id="prompt" placeholder="Describe your image..." required></textarea></div>
-<div class="form-group"><label data-t="neg_prompt">負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea></div>
-<div class="form-group"><label data-t="ref_img">參考圖像 URL (Kontext 專用)</label><textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea></div>
+<div class="form-group"><label data-t="neg_prompt">負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4">nsfw, ugly, text, watermark, low quality, bad anatomy, distortion, blurry</textarea></div>
+<div class="form-group"><label data-t="ref_img">參考圖像 (Img2Img) 📸</label>
+    <div style="margin-bottom:10px;">
+        <input type="file" id="imageUpload" accept="image/*" style="display:none">
+        <button type="button" class="btn" onclick="document.getElementById('imageUpload').click()" style="background:rgba(255,255,255,0.1); width:100%;">📤 上傳參考圖</button>
+    </div>
+    <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3"></textarea>
+    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein</div>
+</div>
 </div></div></div>
 <div id="historyPage" class="page">
 <div class="main-content" style="flex-direction:column;padding:20px">
@@ -1810,6 +1881,76 @@ function updateModelOptions() {
         modelSelect.appendChild(optgroup);
     }
 }
+
+const imageUpload = document.getElementById('imageUpload');
+imageUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert("Image too large! Max size is 5MB.");
+        return;
+    }
+
+    const btn = e.target.nextElementSibling;
+    const originalText = btn.textContent;
+    btn.textContent = "⏳ Uploading...";
+    btn.disabled = true;
+
+    try {
+        // Convert to Base64
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64 = event.target.result;
+            // Upload to catbox.moe (or similar temporary host) for URL
+            // Since we need a public URL for the API
+            // For now, let's use a simple cors-proxy trick or just assume direct base64 support if API allows
+            // Pollinations supports base64 in some endpoints but URL is safer.
+            
+            // Using a free image host upload via backend proxy would be best, 
+            // but for a static-like worker, we can try to use the image directly if the model supports it.
+            // However, 'reference_images' usually expects URLs.
+            // Let's use a reliable temporary host service.
+            
+            const formData = new FormData();
+            formData.append('fileToUpload', file);
+            
+            try {
+                // Use our own worker proxy endpoint to avoid CORS issues
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.url && data.url.startsWith('http')) {
+                         const textarea = document.getElementById('referenceImages');
+                         const currentVal = textarea.value.trim();
+                         textarea.value = currentVal ? currentVal + ', ' + data.url : data.url;
+                         btn.textContent = "✅ Uploaded!";
+                    } else {
+                        throw new Error("Invalid response from server");
+                    }
+                } else {
+                    const errData = await response.json().catch(()=>({}));
+                    throw new Error("Upload failed: " + (errData.error || response.status));
+                }
+            } catch (proxyError) {
+                console.error("Upload error:", proxyError);
+                alert("Upload failed: " + proxyError.message);
+            }
+
+            setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+        };
+        reader.readAsDataURL(file);
+    } catch (err) {
+        console.error(err);
+        btn.textContent = "❌ Error";
+        setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    }
+});
 
 providerSelect.addEventListener('change', updateModelOptions);
 apiKeyInput.addEventListener('input', (e) => localStorage.setItem('infip_api_key', e.target.value));
