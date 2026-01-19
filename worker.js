@@ -24,7 +24,12 @@ const CONFIG = {
     "portrait-9-16-hd": { name: "豎屏 9:16 HD", width: 1080, height: 1920 },
     "landscape-16-9-hd": { name: "橫屏 16:9 HD", width: 1920, height: 1080 },
     "instagram-square": { name: "Instagram 方形", width: 1080, height: 1080 },
-    "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 }
+    "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 },
+    "portrait-3-4": { name: "豎屏 3:4", width: 768, height: 1024 },
+    "portrait-4-5": { name: "豎屏 4:5", width: 1080, height: 1350 },
+    "landscape-4-3": { name: "橫屏 4:3", width: 1024, height: 768 },
+    "landscape-3-2": { name: "橫屏 3:2", width: 1200, height: 800 },
+    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 }
   },
   
   PROVIDERS: {
@@ -50,7 +55,12 @@ const CONFIG = {
         { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
         { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "seedream-pro", name: "SeeDream Pro 🌟", confirmed: true, category: "seedream", description: "高品質夢幻圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
+        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux-realism", name: "Flux Realism", confirmed: true, category: "flux", description: "Enhanced photorealism", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux-coda", name: "Flux Coda", confirmed: true, category: "flux", description: "Artistic and creative", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux-3d", name: "Flux 3D", confirmed: true, category: "flux", description: "3D render style", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux-anime", name: "Flux Anime", confirmed: true, category: "flux", description: "Anime style specialized", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "any-dark", name: "Any Dark", confirmed: true, category: "other", description: "Dark and moody atmosphere", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
@@ -145,6 +155,11 @@ const CONFIG = {
       "zimage": { min: 8, optimal: 15, max: 25 }, 
       "flux": { min: 15, optimal: 20, max: 30 }, 
       "klein": { min: 20, optimal: 25, max: 35 }, 
+      "flux-realism": { min: 20, optimal: 28, max: 35 },
+      "flux-coda": { min: 15, optimal: 20, max: 30 },
+      "flux-3d": { min: 20, optimal: 25, max: 35 },
+      "flux-anime": { min: 15, optimal: 20, max: 30 },
+      "any-dark": { min: 15, optimal: 20, max: 30 },
       "turbo": { min: 4, optimal: 8, max: 12 }, 
       "kontext": { min: 18, optimal: 25, max: 35 } 
     },
@@ -168,6 +183,11 @@ const CONFIG = {
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
       "flux": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.0, recommended_quality: "standard" },
       "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
+      "flux-realism": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.05, recommended_quality: "ultra" },
+      "flux-coda": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      "flux-3d": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.1, recommended_quality: "ultra" },
+      "flux-anime": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      "any-dark": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "turbo": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 0.9, guidance_boost: 0.95, recommended_quality: "economy" },
       "kontext": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" }
     }
@@ -1615,7 +1635,14 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="right-panel">
 <div class="form-group"><label data-t="pos_prompt">正面提示詞</label><textarea id="prompt" placeholder="Describe your image..." required></textarea></div>
 <div class="form-group"><label data-t="neg_prompt">負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea></div>
-<div class="form-group"><label data-t="ref_img">參考圖像 URL (Kontext 專用)</label><textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea></div>
+<div class="form-group"><label data-t="ref_img">參考圖像 (Img2Img) 📸</label>
+    <div style="margin-bottom:10px;">
+        <input type="file" id="imageUpload" accept="image/*" style="display:none">
+        <button type="button" class="btn" onclick="document.getElementById('imageUpload').click()" style="background:rgba(255,255,255,0.1); width:100%;">📤 上傳參考圖</button>
+    </div>
+    <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3"></textarea>
+    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein</div>
+</div>
 </div></div></div>
 <div id="historyPage" class="page">
 <div class="main-content" style="flex-direction:column;padding:20px">
@@ -1810,6 +1837,65 @@ function updateModelOptions() {
         modelSelect.appendChild(optgroup);
     }
 }
+
+const imageUpload = document.getElementById('imageUpload');
+imageUpload.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        alert("Image too large! Max size is 5MB.");
+        return;
+    }
+
+    const btn = e.target.nextElementSibling;
+    const originalText = btn.textContent;
+    btn.textContent = "⏳ Uploading...";
+    btn.disabled = true;
+
+    try {
+        // Convert to Base64
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const base64 = event.target.result;
+            // Upload to catbox.moe (or similar temporary host) for URL
+            // Since we need a public URL for the API
+            // For now, let's use a simple cors-proxy trick or just assume direct base64 support if API allows
+            // Pollinations supports base64 in some endpoints but URL is safer.
+            
+            // Using a free image host upload via backend proxy would be best, 
+            // but for a static-like worker, we can try to use the image directly if the model supports it.
+            // However, 'reference_images' usually expects URLs.
+            // Let's use a reliable temporary host service.
+            
+            const formData = new FormData();
+            formData.append('fileToUpload', file);
+            formData.append('reqtype', 'fileupload');
+            
+            const response = await fetch('https://catbox.moe/user/api.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                const url = await response.text();
+                const textarea = document.getElementById('referenceImages');
+                const currentVal = textarea.value.trim();
+                textarea.value = currentVal ? currentVal + ', ' + url : url;
+                btn.textContent = "✅ Uploaded!";
+                setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+            } else {
+                throw new Error("Upload failed");
+            }
+        };
+        reader.readAsDataURL(file);
+    } catch (err) {
+        console.error(err);
+        btn.textContent = "❌ Error";
+        setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+    }
+});
 
 providerSelect.addEventListener('change', updateModelOptions);
 apiKeyInput.addEventListener('input', (e) => localStorage.setItem('infip_api_key', e.target.value));
