@@ -346,16 +346,26 @@ class PollinationsProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
   async generate(prompt, options, logger) {
-    const { 
-      model = "zimage", width = 1024, height = 1024, seed = -1, negativePrompt = "", guidance = null, steps = null, 
-      enhance = false, nologo = true, privateMode = true, style = "none", autoOptimize = true, autoHD = true, 
+    const {
+      model = "zimage", width = 1024, height = 1024, seed = -1, negativePrompt = "", guidance = null, steps = null,
+      enhance = false, nologo = true, privateMode = true, style = "none", autoOptimize = true, autoHD = true,
       qualityMode = 'standard', referenceImages = []
     } = options;
+
+    console.log("🍌 [PollinationsProvider] 開始生成:", { model, prompt: prompt.substring(0, 30) + "..." });
 
     // 🔥 直連模式: 直接使用模型 ID，不進行映射
     let apiModel = model;
     
     const modelConfig = this.config.models.find(m => m.id === model);
+    console.log("🍌 [PollinationsProvider] 模型配置:", modelConfig ? "找到" : "未找到", modelConfig);
+    
+    if (!modelConfig) {
+        console.error("🍌 [PollinationsProvider] 模型未找到:", model);
+        console.log("🍌 [PollinationsProvider] 可用模型:", this.config.models.map(m => m.id));
+        throw new Error(`模型 "${model}" 未找到，請檢查配置`);
+    }
+    
     const supportsRefImages = modelConfig?.supports_reference_images || false;
     const maxRefImages = modelConfig?.max_reference_images || 0;
     
@@ -803,13 +813,25 @@ async function handleInternalGenerate(request, env, ctx) {
     const prompt = body.prompt;
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
+    console.log("🍌 [Server] 收到生成請求:", {
+      model: body.model,
+      prompt: prompt.substring(0, 50) + "...",
+      width: body.width,
+      height: body.height,
+      source: request.headers.get('X-Source')
+    });
+
     // ====== NanoBanana Pro 來源與限流檢查 ======
     // 直接檢查 nanobanana-pro
     if (body.model === 'nanobanana-pro') {
+        console.log("🍌 [Server] 檢測到 nanobanana-pro 模型請求");
         const source = request.headers.get('X-Source');
+        console.log("🍌 [Server] 請求來源:", source);
+        
         if (source !== 'nano-page') {
-             return new Response(JSON.stringify({ 
-                error: { message: "🍌 Nano Banana Pro 模型僅限於獨立頁面使用！", type: 'access_denied' } 
+             console.log("🍌 [Server] 拒絕未授權的 nanobanana-pro 請求");
+             return new Response(JSON.stringify({
+                error: { message: "🍌 Nano Banana Pro 模型僅限於獨立頁面使用！", type: 'access_denied' }
             }), { status: 403, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
         }
         
@@ -818,9 +840,12 @@ async function handleInternalGenerate(request, env, ctx) {
         const limiter = new RateLimiter(env);
         const check = await limiter.checkLimit(clientIP);
         
+        console.log("🍌 [Server] 限流檢查結果:", check);
+        
         if (!check.allowed) {
-            return new Response(JSON.stringify({ 
-                error: { message: check.reason, type: 'rate_limit_exceeded' } 
+            console.log("🍌 [Server] 限額已滿，拒絕請求");
+            return new Response(JSON.stringify({
+                error: { message: check.reason, type: 'rate_limit_exceeded' }
             }), { status: 429, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
         }
     }
@@ -1144,6 +1169,116 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     </div>
 </div>
 <script>
+    // ====== 性能優化模塊 ======
+    const PerformanceOptimizer = {
+        // 請求控制器 - 用於取消進行中的請求
+        abortController: null,
+        
+        // 請求去重 - 防止重複提交
+        isGenerating: false,
+        
+        // 圖片懶加載觀察器
+        lazyObserver: null,
+        
+        // 緩存管理
+        cache: {
+            images: new Map(),
+            settings: new Map(),
+            
+            set(key, value, ttl = 3600000) {
+                this.images.set(key, { value, expiry: Date.now() + ttl });
+            },
+            
+            get(key) {
+                const item = this.images.get(key);
+                if (!item) return null;
+                if (Date.now() > item.expiry) {
+                    this.images.delete(key);
+                    return null;
+                }
+                return item.value;
+            },
+            
+            clear() {
+                this.images.clear();
+            }
+        },
+        
+        // 初始化懶加載
+        initLazyLoad() {
+            if ('IntersectionObserver' in window) {
+                this.lazyObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.removeAttribute('data-src');
+                                this.lazyObserver.unobserve(img);
+                            }
+                        }
+                    });
+                }, { rootMargin: '50px' });
+            }
+        },
+        
+        // 懶加載圖片
+        lazyLoad(img) {
+            if (this.lazyObserver) {
+                this.lazyObserver.observe(img);
+            } else {
+                // 後備方案：直接加載
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                }
+            }
+        },
+        
+        // 取消當前請求
+        cancelRequest() {
+            if (this.abortController) {
+                this.abortController.abort();
+                this.abortController = null;
+            }
+            this.isGenerating = false;
+        },
+        
+        // 創建新的請求控制器
+        createRequestController() {
+            this.cancelRequest();
+            this.abortController = new AbortController();
+            return this.abortController;
+        },
+        
+        // 防抖函數
+        debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        },
+        
+        // 節流函數
+        throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+    };
+    
+    // 初始化懶加載
+    PerformanceOptimizer.initLazyLoad();
+    
     const els = {
         prompt: document.getElementById('prompt'),
         negative: document.getElementById('negative'),
@@ -1336,6 +1471,15 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         els.img.style.opacity = '0.5';
 
         try {
+            console.log("🍌 Nano Pro: 開始生成圖片...", {
+                prompt: p,
+                model: 'nanobanana-pro',
+                width: els.width.value,
+                height: els.height.value,
+                style: els.style.value,
+                seed: els.seed.value
+            });
+
             const res = await fetch('/_internal/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Source': 'nano-page' },
@@ -1352,8 +1496,11 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 })
             });
 
+            console.log("🍌 Nano Pro: API 響應狀態", res.status, res.statusText);
+
             if(res.status === 429) {
                 const err = await res.json();
+                console.error("🍌 Nano Pro: 限額錯誤", err);
                 currentQuota = 0;
                 const n = new Date();
                 const h = n.toDateString() + '-' + n.getHours();
@@ -1364,10 +1511,12 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
             if(!res.ok) {
                 const err = await res.json();
+                console.error("🍌 Nano Pro: 生成失敗", err);
                 throw new Error(err.error?.message || '生成失敗');
             }
 
             const blob = await res.blob();
+            console.log("🍌 Nano Pro: 圖片生成成功", blob.size, "bytes");
             const url = URL.createObjectURL(blob);
             
             els.img.src = url;
@@ -1386,6 +1535,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             startCooldownTimer(COOLDOWN_SEC);
 
         } catch(e) {
+            console.error("🍌 Nano Pro: 生成錯誤", e);
             toast("❌ " + e.message);
             // On error, re-enable button if quota exists (unless rate limited)
             if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
@@ -1818,6 +1968,9 @@ function updateModelOptions() {
     const models = config.models;
     const groups = {};
     models.forEach(m => {
+        // 🔥 過濾掉 nanobanana-pro 模型（僅限 Nano Pro 頁面使用）
+        if (m.id === 'nanobanana-pro') return;
+        
         const cat = m.category || 'other';
         if(!groups[cat]) groups[cat] = [];
         groups[cat].push(m);
