@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
 //  版本: 11.6.0 (Prompt Generator Enhancement)
-//  更新: Gemini 3 Flash 提示詞生成器、Prompt Generator 模型、混合調用模式
+//  更新: Pollinations 提示詞生成器、Prompt Generator 模型、混合調用模式
 // =================================================================================
 
 // 導入風格適配器（僅在服務器端使用）
@@ -730,17 +730,20 @@ export default {
     
     try {
       let response;
-      if (url.pathname === '/nano') { 
-        response = handleNanoPage(request); 
-      } 
-      else if (url.pathname === '/' || url.pathname === '') { 
-        response = handleUI(request, env); 
-      } 
-      else if (url.pathname === '/_internal/generate') { 
-        response = await handleInternalGenerate(request, env, ctx); 
-      } 
+      if (url.pathname === '/nano') {
+        response = handleNanoPage(request);
+      }
+      else if (url.pathname === '/' || url.pathname === '') {
+        response = handleUI(request, env);
+      }
+      else if (url.pathname === '/_internal/generate') {
+        response = await handleInternalGenerate(request, env, ctx);
+      }
       else if (url.pathname === '/api/upload') {
         response = await handleUpload(request);
+      }
+      else if (url.pathname === '/api/generate-prompt') {
+        response = await handlePromptGeneration(request, env);
       }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
@@ -814,7 +817,7 @@ async function handleUpload(request) {
   }
 }
 
-// ====== Gemini Prompt Generator Handler ======
+// ====== Pollinations Prompt Generator Handler ======
 async function handlePromptGeneration(request, env) {
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
@@ -822,7 +825,7 @@ async function handlePromptGeneration(request, env) {
   
   try {
     const body = await request.json();
-    const { input, apiKey, style, referenceImage } = body;
+    const { input, style, imageData } = body;
     
     if (!input || !input.trim()) {
       return new Response(JSON.stringify({ error: 'Input prompt is required' }), {
@@ -831,85 +834,57 @@ async function handlePromptGeneration(request, env) {
       });
     }
     
-    // 使用環境變量中的 API Key 或用戶提供的 Key
-    const geminiApiKey = env.GEMINI_API_KEY || apiKey;
-    
-    if (!geminiApiKey) {
-      return new Response(JSON.stringify({ error: 'Gemini API Key is required (Set GEMINI_API_KEY env var or provide via request)' }), {
-        status: 400,
-        headers: corsHeaders({ 'Content-Type': 'application/json' })
-      });
-    }
-    
-    // 構建 Gemini API 請求
-    const systemPrompt = `你是一個專業的 AI 圖像生成提示詞優化專家。你的任務是將用戶簡單的描述轉換為詳細、專業的圖像生成提示詞。
+    // 構建 Pollinations 文本生成請求
+    const systemPrompt = `You are a professional AI image generation prompt optimization expert. Your task is to convert simple user descriptions into detailed, professional image generation prompts.
 
-請遵循以下規則：
-1. 使用英文輸出
-2. 添加詳細的視覺描述（光線、色彩、構圖、質感）
-3. 包含藝術風格和技術參數
-4. 保持提示詞簡潔但豐富
-5. 如果提供了風格，請融入該風格的特點
-6. 如果提供了參考圖像描述，請考慮其影響
+Rules:
+1. Output in English
+2. Add detailed visual descriptions (lighting, colors, composition, texture)
+3. Include artistic style and technical parameters
+4. Keep prompts concise but rich
+5. If a style is provided, incorporate its characteristics
+6. If a reference image is provided, analyze the image content and reference its style and elements
 
-輸出格式：直接輸出優化後的提示詞，不要包含任何解釋或額外文字。`;
+Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
     
-    let userPrompt = `請優化以下圖像生成提示詞：${input}`;
+    let userPrompt = `Optimize the following image generation prompt: ${input}`;
     
     if (style && style !== 'none') {
-      userPrompt += `\n\n目標風格：${style}`;
+      userPrompt += `\n\nTarget style: ${style}`;
     }
     
-    if (referenceImage) {
-      userPrompt += `\n\n參考圖像描述：${referenceImage}`;
+    if (imageData) {
+      userPrompt += `\n\nReference image: User has uploaded a reference image, please generate corresponding prompt based on the image content.`;
     }
     
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`;
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+    const encodedPrompt = encodeURIComponent(fullPrompt);
     
-    const geminiResponse = await fetch(geminiUrl, {
-      method: 'POST',
+    // 使用 Pollinations 文本生成 API (免費，無需 API Key)
+    const pollinationsUrl = `https://text.pollinations.ai/${encodedPrompt}`;
+    
+    const pollinationsResponse = await fetch(pollinationsUrl, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: systemPrompt },
-            { text: userPrompt }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        }
-      })
+        'User-Agent': 'Flux-AI-Pro-Worker/1.0'
+      }
     });
     
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      throw new Error(`Gemini API Error (${geminiResponse.status}): ${errorText}`);
+    if (!pollinationsResponse.ok) {
+      throw new Error(`Pollinations API Error (${pollinationsResponse.status})`);
     }
     
-    const geminiData = await geminiResponse.json();
+    const generatedPrompt = await pollinationsResponse.text();
     
-    // 提取生成的提示詞
-    let generatedPrompt = '';
-    if (geminiData.candidates && geminiData.candidates[0] && geminiData.candidates[0].content) {
-      const parts = geminiData.candidates[0].content.parts;
-      generatedPrompt = parts.map(p => p.text).join('').trim();
-    }
-    
-    if (!generatedPrompt) {
-      throw new Error('Failed to generate prompt from Gemini API');
+    if (!generatedPrompt || !generatedPrompt.trim()) {
+      throw new Error('Failed to generate prompt from Pollinations API');
     }
     
     return new Response(JSON.stringify({
       success: true,
-      prompt: generatedPrompt,
+      prompt: generatedPrompt.trim(),
       original: input,
-      model: 'gemini-2.0-flash-exp'
+      model: 'pollinations-text'
     }), {
       status: 200,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -1170,7 +1145,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <div class="logo-icon">🍌</div>
                 <div class="logo-text">
                     <h1>Nano Pro <span class="badge">V11.6</span></h1>
-                    <p style="color:#666; font-size:12px">Flux Engine • Pro Model • Gemini AI</p>
+                    <p style="color:#666; font-size:12px">Flux Engine • Pro Model • Pollinations AI</p>
                     <div style="font-size:11px; color:#22c55e; margin-top:4px; display:flex; align-items:center; gap:4px">
                         <script id="_waudw4">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
                     </div>
@@ -1239,11 +1214,27 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--primary);">
                     <span style="font-size: 16px;">🤖</span>
                     <span style="font-weight: 700;">AI 提示詞生成器</span>
-                    <span style="font-size: 9px; background: rgba(250, 204, 21, 0.3); padding: 2px 6px; border-radius: 8px; margin-left: auto;">Gemini</span>
+                    <span style="font-size: 9px; background: rgba(250, 204, 21, 0.3); padding: 2px 6px; border-radius: 8px; margin-left: auto;">Pollinations</span>
                 </label>
                 
-                <input type="password" id="nanoGeminiApiKey" placeholder="Gemini API Key (可選)"
-                       style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 8px; padding: 10px; color: #fff; font-size: 12px; margin-bottom: 8px;">
+                <div style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; display: block;">上傳參考圖片 (可選)</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="file" id="nanoPromptImageUpload" accept="image/*" style="display:none">
+                        <button type="button" id="nanoPromptImageUploadBtn"
+                                style="flex: 1; background: rgba(250, 204, 21, 0.2); color: var(--primary); border: 1px solid rgba(250, 204, 21, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <span>📷</span>
+                            <span>選擇圖片</span>
+                        </button>
+                        <button type="button" id="nanoPromptImageClearBtn"
+                                style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none;">
+                            <span>✕</span>
+                        </button>
+                    </div>
+                    <div id="nanoPromptImagePreview" style="display: none; margin-top: 6px;">
+                        <img id="nanoPromptImagePreviewImg" src="" alt="預覽" style="max-width: 100%; max-height: 80px; border-radius: 6px; border: 1px solid rgba(250, 204, 21, 0.3);">
+                    </div>
+                </div>
                 
                 <textarea id="nanoPromptInput" placeholder="描述你想要的畫面..."
                           rows="2" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 8px; padding: 10px; color: #fff; font-size: 12px; resize: none; margin-bottom: 8px;"></textarea>
@@ -1590,14 +1581,14 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     // ====== Nano Pro 專業提示詞生成器 ======
     const NanoPromptGenerator = {
         generatedPrompt: null,
+        uploadedImage: null,
         
         async generate() {
             const input = document.getElementById('nanoPromptInput').value.trim();
-            const apiKey = document.getElementById('nanoGeminiApiKey').value.trim();
             const style = document.getElementById('style')?.value || 'none';
             
-            if (!input) {
-                this.showStatus('請輸入畫面描述', 'error');
+            if (!input && !this.uploadedImage) {
+                this.showStatus('請輸入畫面描述或上傳圖片', 'error');
                 return;
             }
             
@@ -1615,8 +1606,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     },
                     body: JSON.stringify({
                         input: input,
-                        apiKey: apiKey,
-                        style: style
+                        style: style,
+                        imageData: this.uploadedImage
                     })
                 });
                 
@@ -1651,6 +1642,50 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             }
         },
         
+        handleImageUpload(file) {
+            if (!file) return;
+            
+            // 驗證文件大小 (最大 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                this.showStatus('圖片太大！最大 5MB', 'error');
+                return;
+            }
+            
+            // 驗證文件類型
+            if (!file.type.startsWith('image/')) {
+                this.showStatus('請選擇圖片文件', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.uploadedImage = e.target.result;
+                
+                // 顯示預覽
+                const previewImg = document.getElementById('nanoPromptImagePreviewImg');
+                const previewDiv = document.getElementById('nanoPromptImagePreview');
+                const clearBtn = document.getElementById('nanoPromptImageClearBtn');
+                
+                previewImg.src = this.uploadedImage;
+                previewDiv.style.display = 'block';
+                clearBtn.style.display = 'block';
+                
+                this.showStatus('✓ 圖片已上傳', 'success');
+            };
+            reader.onerror = () => {
+                this.showStatus('圖片讀取失敗', 'error');
+            };
+            reader.readAsDataURL(file);
+        },
+        
+        clearImage() {
+            this.uploadedImage = null;
+            document.getElementById('nanoPromptImagePreview').style.display = 'none';
+            document.getElementById('nanoPromptImagePreviewImg').src = '';
+            document.getElementById('nanoPromptImageClearBtn').style.display = 'none';
+            document.getElementById('nanoPromptImageUpload').value = '';
+        },
+        
         showStatus(message, type) {
             const statusEl = document.getElementById('nanoPromptGeneratorStatus');
             statusEl.textContent = message;
@@ -1675,6 +1710,24 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     // 綁定 Nano Pro 提示詞生成器事件
     document.getElementById('nanoGeneratePromptBtn').addEventListener('click', () => NanoPromptGenerator.generate());
     document.getElementById('nanoApplyPromptBtn').addEventListener('click', () => NanoPromptGenerator.applyToPrompt());
+    
+    // 圖片上傳按鈕事件
+    document.getElementById('nanoPromptImageUploadBtn').addEventListener('click', () => {
+        document.getElementById('nanoPromptImageUpload').click();
+    });
+    
+    // 圖片選擇事件
+    document.getElementById('nanoPromptImageUpload').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            NanoPromptGenerator.handleImageUpload(file);
+        }
+    });
+    
+    // 清除圖片按鈕事件
+    document.getElementById('nanoPromptImageClearBtn').addEventListener('click', () => {
+        NanoPromptGenerator.clearImage();
+    });
     
     // Ctrl + Enter 快捷鍵
     document.getElementById('nanoPromptInput').addEventListener('keydown', (e) => {
@@ -2050,18 +2103,31 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein</div>
 </div>
 
-<!-- ====== 專業提示詞生成器 (Gemini 3 Flash) ====== -->
+<!-- ====== 專業提示詞生成器 (Pollinations) ====== -->
 <div class="form-group" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 16px; margin-top: 20px;">
     <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
         <span style="font-size: 18px;">🤖</span>
         <span style="font-weight: 700; color: #a78bfa;">專業提示詞生成器</span>
-        <span style="font-size: 10px; background: rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 10px; margin-left: auto;">Gemini 3 Flash</span>
+        <span style="font-size: 10px; background: rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 10px; margin-left: auto;">Pollinations</span>
     </label>
     
     <div style="margin-bottom: 12px;">
-        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;">Gemini API Key (可選 - 服務端代理)</label>
-        <input type="password" id="geminiApiKey" placeholder="輸入 Gemini API Key 或留空使用服務端代理"
-               style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 13px;">
+        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;">上傳參考圖片 (可選 - 用於圖片分析)</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="file" id="promptImageUpload" accept="image/*" style="display:none">
+            <button type="button" id="promptImageUploadBtn"
+                    style="flex: 1; background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                <span>📷</span>
+                <span>選擇圖片</span>
+            </button>
+            <button type="button" id="promptImageClearBtn"
+                    style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: none;">
+                <span>✕</span>
+            </button>
+        </div>
+        <div id="promptImagePreview" style="display: none; margin-top: 8px;">
+            <img id="promptImagePreviewImg" src="" alt="預覽" style="max-width: 100%; max-height: 120px; border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.3);">
+        </div>
     </div>
     
     <div style="margin-bottom: 12px;">
@@ -2784,18 +2850,18 @@ window.onload=()=>{
     updateModelOptions();
 };
 
-// ====== 專業提示詞生成器 (Gemini 3 Flash) ======
+// ====== 專業提示詞生成器 (Pollinations) ======
 const PromptGenerator = {
     generatedPrompt: null,
+    uploadedImage: null,
     
     async generate() {
         const input = document.getElementById('promptInput').value.trim();
-        const apiKey = document.getElementById('geminiApiKey').value.trim();
         const style = document.getElementById('style')?.value || 'none';
         const referenceImage = document.getElementById('referenceImages')?.value.trim() || '';
         
-        if (!input) {
-            this.showStatus('請輸入你想要的畫面描述', 'error');
+        if (!input && !referenceImage && !this.uploadedImage) {
+            this.showStatus('請輸入畫面描述或上傳圖片', 'error');
             return;
         }
         
@@ -2803,7 +2869,7 @@ const PromptGenerator = {
         const originalText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
-        this.showStatus('正在使用 Gemini 3 Flash 生成專業提示詞...', 'loading');
+        this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
         
         try {
             const response = await fetch('/api/generate-prompt', {
@@ -2813,9 +2879,9 @@ const PromptGenerator = {
                 },
                 body: JSON.stringify({
                     input: input,
-                    apiKey: apiKey,
                     style: style,
-                    referenceImage: referenceImage
+                    referenceImage: referenceImage,
+                    imageData: this.uploadedImage
                 })
             });
             
@@ -2852,6 +2918,50 @@ const PromptGenerator = {
         }
     },
     
+    handleImageUpload(file) {
+        if (!file) return;
+        
+        // 驗證文件大小 (最大 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showStatus('圖片太大！最大 5MB', 'error');
+            return;
+        }
+        
+        // 驗證文件類型
+        if (!file.type.startsWith('image/')) {
+            this.showStatus('請選擇圖片文件', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.uploadedImage = e.target.result;
+            
+            // 顯示預覽
+            const previewImg = document.getElementById('promptImagePreviewImg');
+            const previewDiv = document.getElementById('promptImagePreview');
+            const clearBtn = document.getElementById('promptImageClearBtn');
+            
+            previewImg.src = this.uploadedImage;
+            previewDiv.style.display = 'block';
+            clearBtn.style.display = 'block';
+            
+            this.showStatus('✓ 圖片已上傳', 'success');
+        };
+        reader.onerror = () => {
+            this.showStatus('圖片讀取失敗', 'error');
+        };
+        reader.readAsDataURL(file);
+    },
+    
+    clearImage() {
+        this.uploadedImage = null;
+        document.getElementById('promptImagePreview').style.display = 'none';
+        document.getElementById('promptImagePreviewImg').src = '';
+        document.getElementById('promptImageClearBtn').style.display = 'none';
+        document.getElementById('promptImageUpload').value = '';
+    },
+    
     showStatus(message, type) {
         const statusEl = document.getElementById('promptGeneratorStatus');
         statusEl.textContent = message;
@@ -2886,6 +2996,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (applyBtn) {
         applyBtn.addEventListener('click', () => PromptGenerator.applyToPrompt());
+    }
+    
+    // 圖片上傳按鈕事件
+    const imageUploadBtn = document.getElementById('promptImageUploadBtn');
+    if (imageUploadBtn) {
+        imageUploadBtn.addEventListener('click', () => {
+            document.getElementById('promptImageUpload').click();
+        });
+    }
+    
+    // 圖片選擇事件
+    const imageUpload = document.getElementById('promptImageUpload');
+    if (imageUpload) {
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                PromptGenerator.handleImageUpload(file);
+            }
+        });
+    }
+    
+    // 清除圖片按鈕事件
+    const imageClearBtn = document.getElementById('promptImageClearBtn');
+    if (imageClearBtn) {
+        imageClearBtn.addEventListener('click', () => {
+            PromptGenerator.clearImage();
+        });
     }
     
     // 支持按 Enter 生成（Ctrl + Enter）
