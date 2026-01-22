@@ -825,17 +825,18 @@ async function handlePromptGeneration(request, env) {
   
   try {
     const body = await request.json();
-    const { input, style, imageData } = body;
+    const { input, style, imageData, imageUrl } = body;
     
-    if (!input || !input.trim()) {
-      return new Response(JSON.stringify({ error: 'Input prompt is required' }), {
+    // 檢查是否有輸入（文字描述或圖片）
+    if ((!input || !input.trim()) && !imageUrl && !imageData) {
+      return new Response(JSON.stringify({ error: 'Input prompt or image is required' }), {
         status: 400,
         headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     }
     
     // 構建 Pollinations 文本生成請求
-    const systemPrompt = `You are a professional AI image generation prompt optimization expert. Your task is to convert simple user descriptions into detailed, professional image generation prompts.
+    const systemPrompt = `You are a professional AI image generation prompt optimization expert. Your task is to convert simple user descriptions or analyze images into detailed, professional image generation prompts.
 
 Rules:
 1. Output in English
@@ -843,18 +844,32 @@ Rules:
 3. Include artistic style and technical parameters
 4. Keep prompts concise but rich
 5. If a style is provided, incorporate its characteristics
-6. If a reference image is provided, analyze the image content and reference its style and elements
+6. If a reference image URL is provided, analyze the image content and generate a prompt that captures its style, subject, and visual elements
+7. If only an image is provided (no text description), generate a comprehensive prompt describing the image in detail
 
 Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
     
-    let userPrompt = `Optimize the following image generation prompt: ${input}`;
+    let userPrompt = '';
     
+    // 處理文字輸入
+    if (input && input.trim()) {
+      userPrompt = `Optimize the following image generation prompt: ${input}`;
+    } else {
+      userPrompt = `Generate a detailed image generation prompt based on the provided image.`;
+    }
+    
+    // 添加風格信息
     if (style && style !== 'none') {
       userPrompt += `\n\nTarget style: ${style}`;
     }
     
-    if (imageData) {
-      userPrompt += `\n\nReference image: User has uploaded a reference image, please generate corresponding prompt based on the image content.`;
+    // 添加圖片 URL（優先使用 URL，因為 Pollinations Text API 可以處理 URL）
+    if (imageUrl) {
+      userPrompt += `\n\nReference image URL: ${imageUrl}`;
+      userPrompt += `\n\nPlease analyze this image and generate a detailed prompt that captures its visual elements, style, composition, lighting, and mood.`;
+    } else if (imageData) {
+      // 如果有 Base64 圖片數據，提示用戶需要先上傳獲取 URL
+      userPrompt += `\n\nNote: User has uploaded a reference image. Please generate a prompt based on the visual description they would provide for this image.`;
     }
     
     const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
@@ -883,7 +898,8 @@ Output format: Output only the optimized prompt, do not include any explanation 
     return new Response(JSON.stringify({
       success: true,
       prompt: generatedPrompt.trim(),
-      original: input,
+      original: input || 'Image analysis',
+      imageUrl: imageUrl || null,
       model: 'pollinations-text'
     }), {
       status: 200,
@@ -1582,6 +1598,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     const NanoPromptGenerator = {
         generatedPrompt: null,
         uploadedImage: null,
+        uploadedImageUrl: null,
         
         async generate() {
             const input = document.getElementById('nanoPromptInput').value.trim();
@@ -1596,7 +1613,23 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const originalText = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
-            this.showStatus('正在生成...', 'loading');
+            
+            // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
+            if (this.uploadedImage && !this.uploadedImageUrl) {
+                this.showStatus('正在上傳圖片...', 'loading');
+                try {
+                    this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
+                    this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
+                } catch (error) {
+                    console.error('Image upload error:', error);
+                    this.showStatus('❌ 圖片上傳失敗: ' + error.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    return;
+                }
+            }
+            
+            this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
             
             try {
                 const response = await fetch('/api/generate-prompt', {
@@ -1607,7 +1640,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     body: JSON.stringify({
                         input: input,
                         style: style,
-                        imageData: this.uploadedImage
+                        imageUrl: this.uploadedImageUrl
                     })
                 });
                 
@@ -1629,6 +1662,35 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 btn.disabled = false;
                 btn.innerHTML = originalText;
             }
+        },
+        
+        // 上傳圖片並獲取 URL
+        async uploadImageAndGetUrl(base64Data) {
+            // 將 Base64 轉換為 Blob
+            const response = await fetch(base64Data);
+            const blob = await response.blob();
+            
+            // 創建 FormData
+            const formData = new FormData();
+            formData.append('fileToUpload', blob, 'uploaded-image.png');
+            
+            // 上傳到 /api/upload
+            const uploadResponse = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+                const errorData = await uploadResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || '上傳失敗');
+            }
+            
+            const data = await uploadResponse.json();
+            if (!data.url) {
+                throw new Error('未獲取到圖片 URL');
+            }
+            
+            return data.url;
         },
         
         applyToPrompt() {
@@ -1680,6 +1742,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         
         clearImage() {
             this.uploadedImage = null;
+            this.uploadedImageUrl = null;
             document.getElementById('nanoPromptImagePreview').style.display = 'none';
             document.getElementById('nanoPromptImagePreviewImg').src = '';
             document.getElementById('nanoPromptImageClearBtn').style.display = 'none';
@@ -2854,6 +2917,7 @@ window.onload=()=>{
 const PromptGenerator = {
     generatedPrompt: null,
     uploadedImage: null,
+    uploadedImageUrl: null,
     
     async generate() {
         const input = document.getElementById('promptInput').value.trim();
@@ -2869,6 +2933,22 @@ const PromptGenerator = {
         const originalText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
+        
+        // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
+        if (this.uploadedImage && !this.uploadedImageUrl) {
+            this.showStatus('正在上傳圖片...', 'loading');
+            try {
+                this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
+                this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
+            } catch (error) {
+                console.error('Image upload error:', error);
+                this.showStatus('❌ 圖片上傳失敗: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                return;
+            }
+        }
+        
         this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
         
         try {
@@ -2881,7 +2961,7 @@ const PromptGenerator = {
                     input: input,
                     style: style,
                     referenceImage: referenceImage,
-                    imageData: this.uploadedImage
+                    imageUrl: this.uploadedImageUrl
                 })
             });
             
@@ -2903,6 +2983,35 @@ const PromptGenerator = {
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
+    },
+    
+    // 上傳圖片並獲取 URL
+    async uploadImageAndGetUrl(base64Data) {
+        // 將 Base64 轉換為 Blob
+        const response = await fetch(base64Data);
+        const blob = await response.blob();
+        
+        // 創建 FormData
+        const formData = new FormData();
+        formData.append('fileToUpload', blob, 'uploaded-image.png');
+        
+        // 上傳到 /api/upload
+        const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || '上傳失敗');
+        }
+        
+        const data = await uploadResponse.json();
+        if (!data.url) {
+            throw new Error('未獲取到圖片 URL');
+        }
+        
+        return data.url;
     },
     
     applyToPrompt() {
@@ -2956,6 +3065,7 @@ const PromptGenerator = {
     
     clearImage() {
         this.uploadedImage = null;
+        this.uploadedImageUrl = null;
         document.getElementById('promptImagePreview').style.display = 'none';
         document.getElementById('promptImagePreviewImg').src = '';
         document.getElementById('promptImageClearBtn').style.display = 'none';
