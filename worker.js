@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.4.0 (Style System Enhancement)
-//  更新: 深空紫主題、FLUX.2 Klein 4B 模型、自動 Ultra 畫質、頁腳優化、風格系統擴展
+//  版本: 11.6.0 (Prompt Generator Enhancement)
+//  更新: Pollinations 提示詞生成器、Prompt Generator 模型、混合調用模式
 // =================================================================================
 
 // 導入風格適配器（僅在服務器端使用）
@@ -13,7 +13,7 @@ const mergedStyles = styleManager.merge();
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.4.0",
+  PROJECT_VERSION: "11.6.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -62,7 +62,10 @@ const CONFIG = {
         { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
         { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "seedream-pro", name: "SeeDream Pro 🌟", confirmed: true, category: "seedream", description: "高品質夢幻圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
+        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "klein-large", name: "FLUX.2 Klein 9B 🌟", confirmed: true, category: "flux", description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "nanobanana-pro", name: "NanoBanana Pro 🍌", confirmed: true, category: "flux", description: "Nano Pro 專用高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux-pro", name: "Flux Pro 🚀", confirmed: true, category: "flux", description: "Flux Pro 高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
@@ -96,14 +99,15 @@ const CONFIG = {
   STYLE_CATEGORIES: mergedStyles.categories,
   
   OPTIMIZATION_RULES: {
-    MODEL_STEPS: { 
+    MODEL_STEPS: {
       "nanobanana-pro": { min: 20, optimal: 25, max: 40 },
       "gptimage": { min: 15, optimal: 25, max: 35 },
       "gptimage-large": { min: 20, optimal: 30, max: 45 },
-      "zimage": { min: 10, optimal: 20, max: 30 }, 
-      "flux": { min: 20, optimal: 28, max: 40 }, 
-      "klein": { min: 25, optimal: 30, max: 50 }, 
-      "kontext": { min: 20, optimal: 28, max: 40 } 
+      "zimage": { min: 10, optimal: 20, max: 30 },
+      "flux": { min: 20, optimal: 28, max: 40 },
+      "klein": { min: 25, optimal: 30, max: 50 },
+      "klein-large": { min: 30, optimal: 35, max: 55 },
+      "kontext": { min: 20, optimal: 28, max: 40 }
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
     STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
@@ -129,6 +133,7 @@ const CONFIG = {
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
       "flux": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.0, recommended_quality: "standard" },
       "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
+      "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" },
       "turbo": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 0.9, guidance_boost: 0.95, recommended_quality: "economy" },
       "kontext": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" }
     }
@@ -345,16 +350,33 @@ class PollinationsProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
   async generate(prompt, options, logger) {
-    const { 
-      model = "zimage", width = 1024, height = 1024, seed = -1, negativePrompt = "", guidance = null, steps = null, 
-      enhance = false, nologo = true, privateMode = true, style = "none", autoOptimize = true, autoHD = true, 
+    const {
+      model = "zimage", width = 1024, height = 1024, seed = -1, negativePrompt = "", guidance = null, steps = null,
+      enhance = false, nologo = true, privateMode = true, style = "none", autoOptimize = true, autoHD = true,
       qualityMode = 'standard', referenceImages = []
     } = options;
 
-    // 🔥 修改確認: 直連模式，不進行模型 ID 轉換
-    let apiModel = model; 
+    console.log("🍌 [PollinationsProvider] 開始生成:", { model, prompt: prompt.substring(0, 30) + "..." });
+
+    // 🔥 模型映射: 將自定義模型名稱映射到實際的 Pollinations API 模型
+    const MODEL_MAPPING = {
+      'nanobanana-pro': 'flux',
+      'flux-pro': 'flux',
+      'klein-large': 'klein-large'
+    };
+    let apiModel = MODEL_MAPPING[model] || model;
+    
+    console.log("🍌 [PollinationsProvider] 模型映射:", { original: model, mapped: apiModel });
     
     const modelConfig = this.config.models.find(m => m.id === model);
+    console.log("🍌 [PollinationsProvider] 模型配置:", modelConfig ? "找到" : "未找到", modelConfig);
+    
+    if (!modelConfig) {
+        console.error("🍌 [PollinationsProvider] 模型未找到:", model);
+        console.log("🍌 [PollinationsProvider] 可用模型:", this.config.models.map(m => m.id));
+        throw new Error(`模型 "${model}" 未找到，請檢查配置`);
+    }
+    
     const supportsRefImages = modelConfig?.supports_reference_images || false;
     const maxRefImages = modelConfig?.max_reference_images || 0;
     
@@ -708,17 +730,20 @@ export default {
     
     try {
       let response;
-      if (url.pathname === '/nano') { 
-        response = handleNanoPage(request); 
-      } 
-      else if (url.pathname === '/' || url.pathname === '') { 
-        response = handleUI(request, env); 
-      } 
-      else if (url.pathname === '/_internal/generate') { 
-        response = await handleInternalGenerate(request, env, ctx); 
-      } 
+      if (url.pathname === '/nano') {
+        response = handleNanoPage(request);
+      }
+      else if (url.pathname === '/' || url.pathname === '') {
+        response = handleUI(request, env);
+      }
+      else if (url.pathname === '/_internal/generate') {
+        response = await handleInternalGenerate(request, env, ctx);
+      }
       else if (url.pathname === '/api/upload') {
         response = await handleUpload(request);
+      }
+      else if (url.pathname === '/api/generate-prompt') {
+        response = await handlePromptGeneration(request, env);
       }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
@@ -792,6 +817,104 @@ async function handleUpload(request) {
   }
 }
 
+// ====== Pollinations Prompt Generator Handler ======
+async function handlePromptGeneration(request, env) {
+  if (request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
+  }
+  
+  try {
+    const body = await request.json();
+    const { input, style, imageData, imageUrl } = body;
+    
+    // 檢查是否有輸入（文字描述或圖片）
+    if ((!input || !input.trim()) && !imageUrl && !imageData) {
+      return new Response(JSON.stringify({ error: 'Input prompt or image is required' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    // 構建 Pollinations 文本生成請求
+    const systemPrompt = `You are a professional AI image generation prompt optimization expert. Your task is to convert simple user descriptions or analyze images into detailed, professional image generation prompts.
+
+Rules:
+1. Output in English
+2. Add detailed visual descriptions (lighting, colors, composition, texture)
+3. Include artistic style and technical parameters
+4. Keep prompts concise but rich
+5. If a style is provided, incorporate its characteristics
+6. If a reference image URL is provided, analyze the image content and generate a prompt that captures its style, subject, and visual elements
+7. If only an image is provided (no text description), generate a comprehensive prompt describing the image in detail
+
+Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
+    
+    let userPrompt = '';
+    
+    // 處理文字輸入
+    if (input && input.trim()) {
+      userPrompt = `Optimize the following image generation prompt: ${input}`;
+    } else {
+      userPrompt = `Generate a detailed image generation prompt based on the provided image.`;
+    }
+    
+    // 添加風格信息
+    if (style && style !== 'none') {
+      userPrompt += `\n\nTarget style: ${style}`;
+    }
+    
+    // 添加圖片 URL（優先使用 URL，因為 Pollinations Text API 可以處理 URL）
+    if (imageUrl) {
+      userPrompt += `\n\nReference image URL: ${imageUrl}`;
+      userPrompt += `\n\nPlease analyze this image and generate a detailed prompt that captures its visual elements, style, composition, lighting, and mood.`;
+    } else if (imageData) {
+      // 如果有 Base64 圖片數據，提示用戶需要先上傳獲取 URL
+      userPrompt += `\n\nNote: User has uploaded a reference image. Please generate a prompt based on the visual description they would provide for this image.`;
+    }
+    
+    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+    const encodedPrompt = encodeURIComponent(fullPrompt);
+    
+    // 使用 Pollinations 文本生成 API (免費，無需 API Key)
+    const pollinationsUrl = `https://text.pollinations.ai/${encodedPrompt}`;
+    
+    const pollinationsResponse = await fetch(pollinationsUrl, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Flux-AI-Pro-Worker/1.0'
+      }
+    });
+    
+    if (!pollinationsResponse.ok) {
+      throw new Error(`Pollinations API Error (${pollinationsResponse.status})`);
+    }
+    
+    const generatedPrompt = await pollinationsResponse.text();
+    
+    if (!generatedPrompt || !generatedPrompt.trim()) {
+      throw new Error('Failed to generate prompt from Pollinations API');
+    }
+    
+    return new Response(JSON.stringify({
+      success: true,
+      prompt: generatedPrompt.trim(),
+      original: input || 'Image analysis',
+      imageUrl: imageUrl || null,
+      model: 'pollinations-text'
+    }), {
+      status: 200,
+      headers: corsHeaders({ 'Content-Type': 'application/json' })
+    });
+    
+  } catch (error) {
+    console.error('Prompt Generation Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: corsHeaders({ 'Content-Type': 'application/json' })
+    });
+  }
+}
+
 async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
   const startTime = Date.now();
@@ -802,24 +925,31 @@ async function handleInternalGenerate(request, env, ctx) {
     const prompt = body.prompt;
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
-    // ====== NanoBanana Pro 來源與限流檢查 ======
-    // 直接檢查 nanobanana-pro
-    if (body.model === 'nanobanana-pro') {
-        const source = request.headers.get('X-Source');
-        if (source !== 'nano-page') {
-             return new Response(JSON.stringify({ 
-                error: { message: "🍌 Nano Banana Pro 模型僅限於獨立頁面使用！", type: 'access_denied' } 
-            }), { status: 403, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
-        }
+    console.log("🍌 [Server] 收到生成請求:", {
+      model: body.model,
+      prompt: prompt.substring(0, 50) + "...",
+      width: body.width,
+      height: body.height,
+      source: request.headers.get('X-Source')
+    });
+
+    // ====== Nano Pro 頁面限流檢查 ======
+    // 檢查來自 Nano Pro 頁面的請求
+    const source = request.headers.get('X-Source');
+    if (source === 'nano-page') {
+        console.log("🍌 [Server] 檢測到 Nano Pro 頁面請求");
         
         if (body.n && body.n > 1) { body.n = 1; }
 
         const limiter = new RateLimiter(env);
         const check = await limiter.checkLimit(clientIP);
         
+        console.log("🍌 [Server] 限流檢查結果:", check);
+        
         if (!check.allowed) {
-            return new Response(JSON.stringify({ 
-                error: { message: check.reason, type: 'rate_limit_exceeded' } 
+            console.log("🍌 [Server] 限額已滿，拒絕請求");
+            return new Response(JSON.stringify({
+                error: { message: check.reason, type: 'rate_limit_exceeded' }
             }), { status: 429, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
         }
     }
@@ -1030,8 +1160,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             <div class="logo-area">
                 <div class="logo-icon">🍌</div>
                 <div class="logo-text">
-                    <h1>Nano Pro <span class="badge">V10.6</span></h1>
-                    <p style="color:#666; font-size:12px">Flux Engine • Pro Model</p>
+                    <h1>Nano Pro <span class="badge">V11.6</span></h1>
+                    <p style="color:#666; font-size:12px">Flux Engine • Pro Model • Pollinations AI</p>
                     <div style="font-size:11px; color:#22c55e; margin-top:4px; display:flex; align-items:center; gap:4px">
                         <script id="_waudw4">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
                     </div>
@@ -1095,6 +1225,57 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <input type="text" id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" style="font-size:12px; color:#aaa">
             </div>
 
+            <!-- ====== 專業提示詞生成器 (Nano Pro 版) ====== -->
+            <div class="control-group" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
+                <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--primary);">
+                    <span style="font-size: 16px;">🤖</span>
+                    <span style="font-weight: 700;">AI 提示詞生成器</span>
+                    <span style="font-size: 9px; background: rgba(250, 204, 21, 0.3); padding: 2px 6px; border-radius: 8px; margin-left: auto;">Pollinations</span>
+                </label>
+                
+                <div style="margin-bottom: 8px;">
+                    <label style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; display: block;">上傳參考圖片 (可選)</label>
+                    <div style="display: flex; gap: 6px;">
+                        <input type="file" id="nanoPromptImageUpload" accept="image/*" style="display:none">
+                        <button type="button" id="nanoPromptImageUploadBtn"
+                                style="flex: 1; background: rgba(250, 204, 21, 0.2); color: var(--primary); border: 1px solid rgba(250, 204, 21, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <span>📷</span>
+                            <span>選擇圖片</span>
+                        </button>
+                        <button type="button" id="nanoPromptImageClearBtn"
+                                style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none;">
+                            <span>✕</span>
+                        </button>
+                    </div>
+                    <div id="nanoPromptImagePreview" style="display: none; margin-top: 6px;">
+                        <img id="nanoPromptImagePreviewImg" src="" alt="預覽" style="max-width: 100%; max-height: 80px; border-radius: 6px; border: 1px solid rgba(250, 204, 21, 0.3);">
+                    </div>
+                </div>
+                
+                <textarea id="nanoPromptInput" placeholder="描述你想要的畫面..."
+                          rows="2" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 8px; padding: 10px; color: #fff; font-size: 12px; resize: none; margin-bottom: 8px;"></textarea>
+                
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" id="nanoGeneratePromptBtn"
+                            style="flex: 1; background: var(--primary); color: #000; border: none; padding: 10px 12px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                        <span>✨</span>
+                        <span>生成</span>
+                    </button>
+                    <button type="button" id="nanoApplyPromptBtn"
+                            style="flex: 1; background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); padding: 10px 12px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; display: none;">
+                        <span>✓</span>
+                        <span>應用</span>
+                    </button>
+                </div>
+                
+                <div id="nanoGeneratedPromptContainer" style="display: none; margin-top: 8px;">
+                    <div id="nanoGeneratedPrompt"
+                         style="background: rgba(250, 204, 21, 0.1); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 8px; padding: 10px; color: #fef3c7; font-size: 11px; line-height: 1.5; max-height: 100px; overflow-y: auto; white-space: pre-wrap;"></div>
+                </div>
+                
+                <div id="nanoPromptGeneratorStatus" style="font-size: 10px; color: #9ca3af; margin-top: 6px; display: none;"></div>
+            </div>
+
             <button id="genBtn" class="gen-btn">
                 <span>生成圖像</span>
                 <span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
@@ -1143,6 +1324,116 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     </div>
 </div>
 <script>
+    // ====== 性能優化模塊 ======
+    const PerformanceOptimizer = {
+        // 請求控制器 - 用於取消進行中的請求
+        abortController: null,
+        
+        // 請求去重 - 防止重複提交
+        isGenerating: false,
+        
+        // 圖片懶加載觀察器
+        lazyObserver: null,
+        
+        // 緩存管理
+        cache: {
+            images: new Map(),
+            settings: new Map(),
+            
+            set(key, value, ttl = 3600000) {
+                this.images.set(key, { value, expiry: Date.now() + ttl });
+            },
+            
+            get(key) {
+                const item = this.images.get(key);
+                if (!item) return null;
+                if (Date.now() > item.expiry) {
+                    this.images.delete(key);
+                    return null;
+                }
+                return item.value;
+            },
+            
+            clear() {
+                this.images.clear();
+            }
+        },
+        
+        // 初始化懶加載
+        initLazyLoad() {
+            if ('IntersectionObserver' in window) {
+                this.lazyObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.removeAttribute('data-src');
+                                this.lazyObserver.unobserve(img);
+                            }
+                        }
+                    });
+                }, { rootMargin: '50px' });
+            }
+        },
+        
+        // 懶加載圖片
+        lazyLoad(img) {
+            if (this.lazyObserver) {
+                this.lazyObserver.observe(img);
+            } else {
+                // 後備方案：直接加載
+                if (img.dataset.src) {
+                    img.src = img.dataset.src;
+                }
+            }
+        },
+        
+        // 取消當前請求
+        cancelRequest() {
+            if (this.abortController) {
+                this.abortController.abort();
+                this.abortController = null;
+            }
+            this.isGenerating = false;
+        },
+        
+        // 創建新的請求控制器
+        createRequestController() {
+            this.cancelRequest();
+            this.abortController = new AbortController();
+            return this.abortController;
+        },
+        
+        // 防抖函數
+        debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        },
+        
+        // 節流函數
+        throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+    };
+    
+    // 初始化懶加載
+    PerformanceOptimizer.initLazyLoad();
+    
     const els = {
         prompt: document.getElementById('prompt'),
         negative: document.getElementById('negative'),
@@ -1303,6 +1594,211 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     els.lbClose.onclick = () => els.lightbox.classList.remove('show');
     els.img.onclick = () => { if(els.img.src) openLightbox(els.img.src); };
 
+    // ====== Nano Pro 專業提示詞生成器 ======
+    const NanoPromptGenerator = {
+        generatedPrompt: null,
+        uploadedImage: null,
+        uploadedImageUrl: null,
+        
+        async generate() {
+            const input = document.getElementById('nanoPromptInput').value.trim();
+            const style = document.getElementById('style')?.value || 'none';
+            
+            if (!input && !this.uploadedImage) {
+                this.showStatus('請輸入畫面描述或上傳圖片', 'error');
+                return;
+            }
+            
+            const btn = document.getElementById('nanoGeneratePromptBtn');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
+            
+            // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
+            if (this.uploadedImage && !this.uploadedImageUrl) {
+                this.showStatus('正在上傳圖片...', 'loading');
+                try {
+                    this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
+                    this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
+                } catch (error) {
+                    console.error('Image upload error:', error);
+                    this.showStatus('❌ 圖片上傳失敗: ' + error.message, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    return;
+                }
+            }
+            
+            this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
+            
+            try {
+                const response = await fetch('/api/generate-prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        input: input,
+                        style: style,
+                        imageUrl: this.uploadedImageUrl
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.generatedPrompt = data.prompt;
+                    document.getElementById('nanoGeneratedPrompt').textContent = data.prompt;
+                    document.getElementById('nanoGeneratedPromptContainer').style.display = 'block';
+                    document.getElementById('nanoApplyPromptBtn').style.display = 'flex';
+                    this.showStatus('✅ 生成成功！', 'success');
+                } else {
+                    throw new Error(data.error || '生成失敗');
+                }
+            } catch (error) {
+                console.error('Nano Prompt Generation Error:', error);
+                this.showStatus('❌ 失敗: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        },
+        
+        // 上傳圖片並獲取 URL
+        async uploadImageAndGetUrl(base64Data) {
+            // 將 Base64 轉換為 Blob
+            const response = await fetch(base64Data);
+            const blob = await response.blob();
+            
+            // 創建 FormData
+            const formData = new FormData();
+            formData.append('fileToUpload', blob, 'uploaded-image.png');
+            
+            // 上傳到 /api/upload
+            const uploadResponse = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!uploadResponse.ok) {
+                const errorData = await uploadResponse.json().catch(() => ({}));
+                throw new Error(errorData.error || '上傳失敗');
+            }
+            
+            const data = await uploadResponse.json();
+            if (!data.url) {
+                throw new Error('未獲取到圖片 URL');
+            }
+            
+            return data.url;
+        },
+        
+        applyToPrompt() {
+            if (!this.generatedPrompt) return;
+            
+            const promptTextarea = document.getElementById('prompt');
+            if (promptTextarea) {
+                promptTextarea.value = this.generatedPrompt;
+                this.showStatus('✓ 已應用', 'success');
+                document.getElementById('nanoPromptInput').value = '';
+            }
+        },
+        
+        handleImageUpload(file) {
+            if (!file) return;
+            
+            // 驗證文件大小 (最大 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                this.showStatus('圖片太大！最大 5MB', 'error');
+                return;
+            }
+            
+            // 驗證文件類型
+            if (!file.type.startsWith('image/')) {
+                this.showStatus('請選擇圖片文件', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                this.uploadedImage = e.target.result;
+                
+                // 顯示預覽
+                const previewImg = document.getElementById('nanoPromptImagePreviewImg');
+                const previewDiv = document.getElementById('nanoPromptImagePreview');
+                const clearBtn = document.getElementById('nanoPromptImageClearBtn');
+                
+                previewImg.src = this.uploadedImage;
+                previewDiv.style.display = 'block';
+                clearBtn.style.display = 'block';
+                
+                this.showStatus('✓ 圖片已上傳', 'success');
+            };
+            reader.onerror = () => {
+                this.showStatus('圖片讀取失敗', 'error');
+            };
+            reader.readAsDataURL(file);
+        },
+        
+        clearImage() {
+            this.uploadedImage = null;
+            this.uploadedImageUrl = null;
+            document.getElementById('nanoPromptImagePreview').style.display = 'none';
+            document.getElementById('nanoPromptImagePreviewImg').src = '';
+            document.getElementById('nanoPromptImageClearBtn').style.display = 'none';
+            document.getElementById('nanoPromptImageUpload').value = '';
+        },
+        
+        showStatus(message, type) {
+            const statusEl = document.getElementById('nanoPromptGeneratorStatus');
+            statusEl.textContent = message;
+            statusEl.style.display = 'block';
+            
+            if (type === 'error') {
+                statusEl.style.color = '#ef4444';
+            } else if (type === 'success') {
+                statusEl.style.color = '#22c55e';
+            } else {
+                statusEl.style.color = '#9ca3af';
+            }
+            
+            setTimeout(() => {
+                if (statusEl.textContent === message) {
+                    statusEl.style.display = 'none';
+                }
+            }, 3000);
+        }
+    };
+    
+    // 綁定 Nano Pro 提示詞生成器事件
+    document.getElementById('nanoGeneratePromptBtn').addEventListener('click', () => NanoPromptGenerator.generate());
+    document.getElementById('nanoApplyPromptBtn').addEventListener('click', () => NanoPromptGenerator.applyToPrompt());
+    
+    // 圖片上傳按鈕事件
+    document.getElementById('nanoPromptImageUploadBtn').addEventListener('click', () => {
+        document.getElementById('nanoPromptImageUpload').click();
+    });
+    
+    // 圖片選擇事件
+    document.getElementById('nanoPromptImageUpload').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            NanoPromptGenerator.handleImageUpload(file);
+        }
+    });
+    
+    // 清除圖片按鈕事件
+    document.getElementById('nanoPromptImageClearBtn').addEventListener('click', () => {
+        NanoPromptGenerator.clearImage();
+    });
+    
+    // Ctrl + Enter 快捷鍵
+    document.getElementById('nanoPromptInput').addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+            NanoPromptGenerator.generate();
+        }
+    });
+
     function toast(msg) {
         const t = document.getElementById('toast');
         t.textContent = msg;
@@ -1335,24 +1831,44 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         els.img.style.opacity = '0.5';
 
         try {
+            console.log("🍌 Nano Pro: 開始生成圖片...", {
+                prompt: p,
+                model: 'nanobanana-pro',
+                width: els.width.value,
+                height: els.height.value,
+                style: els.style.value,
+                seed: els.seed.value
+            });
+
+            const requestBody = {
+                prompt: p,
+                negative_prompt: els.negative.value,
+                model: 'nanobanana-pro',
+                width: parseInt(els.width.value),
+                height: parseInt(els.height.value),
+                style: els.style.value,
+                seed: parseInt(els.seed.value),
+                n: 1,
+                nologo: true,
+                auto_optimize: true,
+                auto_hd: true,
+                quality_mode: 'standard'
+            };
+            
+            console.log("🍌 Nano Pro: 請求體", requestBody);
+
             const res = await fetch('/_internal/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-Source': 'nano-page' },
-                body: JSON.stringify({
-                    prompt: p,
-                    negative_prompt: els.negative.value,
-                    model: 'nanobanana-pro',
-                    width: parseInt(els.width.value),
-                    height: parseInt(els.height.value),
-                    style: els.style.value,
-                    seed: parseInt(els.seed.value),
-                    n: 1,
-                    nologo: true
-                })
+                body: JSON.stringify(requestBody)
             });
+
+            console.log("🍌 Nano Pro: API 響應狀態", res.status, res.statusText);
+            console.log("🍌 Nano Pro: 響應頭", Object.fromEntries(res.headers.entries()));
 
             if(res.status === 429) {
                 const err = await res.json();
+                console.error("🍌 Nano Pro: 限額錯誤", err);
                 currentQuota = 0;
                 const n = new Date();
                 const h = n.toDateString() + '-' + n.getHours();
@@ -1363,10 +1879,18 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
             if(!res.ok) {
                 const err = await res.json();
+                console.error("🍌 Nano Pro: 生成失敗", err);
                 throw new Error(err.error?.message || '生成失敗');
             }
 
             const blob = await res.blob();
+            console.log("🍌 Nano Pro: 圖片生成成功", blob.size, "bytes");
+            
+            // 檢查是否為有效的圖片數據
+            if (blob.size === 0) {
+                throw new Error("生成的圖片為空，請稍後再試");
+            }
+            
             const url = URL.createObjectURL(blob);
             
             els.img.src = url;
@@ -1375,7 +1899,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             document.querySelector('.placeholder-text').style.display = 'none';
             
             const realSeed = res.headers.get('X-Seed');
-            if(!isSeedRandom) els.seed.value = realSeed;
+            if(!isSeedRandom && realSeed) els.seed.value = realSeed;
 
             addHistory(url);
             consumeQuota();
@@ -1385,6 +1909,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             startCooldownTimer(COOLDOWN_SEC);
 
         } catch(e) {
+            console.error("🍌 Nano Pro: 生成錯誤", e);
             toast("❌ " + e.message);
             // On error, re-enable button if quota exists (unless rate limited)
             if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
@@ -1640,6 +2165,61 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3"></textarea>
     <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein</div>
 </div>
+
+<!-- ====== 專業提示詞生成器 (Pollinations) ====== -->
+<div class="form-group" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 16px; margin-top: 20px;">
+    <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <span style="font-size: 18px;">🤖</span>
+        <span style="font-weight: 700; color: #a78bfa;">專業提示詞生成器</span>
+        <span style="font-size: 10px; background: rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 10px; margin-left: auto;">Pollinations</span>
+    </label>
+    
+    <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;">上傳參考圖片 (可選 - 用於圖片分析)</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="file" id="promptImageUpload" accept="image/*" style="display:none">
+            <button type="button" id="promptImageUploadBtn"
+                    style="flex: 1; background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                <span>📷</span>
+                <span>選擇圖片</span>
+            </button>
+            <button type="button" id="promptImageClearBtn"
+                    style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: none;">
+                <span>✕</span>
+            </button>
+        </div>
+        <div id="promptImagePreview" style="display: none; margin-top: 8px;">
+            <img id="promptImagePreviewImg" src="" alt="預覽" style="max-width: 100%; max-height: 120px; border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.3);">
+        </div>
+    </div>
+    
+    <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;">簡單描述你想要的畫面</label>
+        <textarea id="promptInput" placeholder="例如：一隻可愛的貓咪在陽光下睡覺..."
+                  rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 13px; resize: none;"></textarea>
+    </div>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <button type="button" id="generatePromptBtn"
+                style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: #fff; border: none; padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <span>✨</span>
+            <span>生成專業提示詞</span>
+        </button>
+        <button type="button" id="applyPromptBtn"
+                style="flex: 1; background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: none;">
+            <span>✓</span>
+            <span>應用到提示詞</span>
+        </button>
+    </div>
+    
+    <div id="generatedPromptContainer" style="display: none;">
+        <label style="font-size: 11px; color: #a78bfa; margin-bottom: 6px; display: block;">生成的專業提示詞</label>
+        <div id="generatedPrompt"
+             style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; color: #e0e7ff; font-size: 13px; line-height: 1.6; max-height: 150px; overflow-y: auto; white-space: pre-wrap;"></div>
+    </div>
+    
+    <div id="promptGeneratorStatus" style="font-size: 11px; color: #9ca3af; margin-top: 8px; display: none;"></div>
+</div>
 </div></div></div>
 <div id="historyPage" class="page">
 <div class="main-content" style="flex-direction:column;padding:20px">
@@ -1664,6 +2244,176 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div class="modal-close" id="modalCloseBtn">×</div>
 </div>
 <script>
+// ====== 性能優化模塊 ======
+const PerformanceOptimizer = {
+    // 請求控制器 - 用於取消進行中的請求
+    abortController: null,
+    
+    // 請求隊列管理
+    requestQueue: [],
+    isProcessing: false,
+    maxConcurrent: 2,
+    
+    // 圖片懶加載觀察器
+    lazyObserver: null,
+    
+    // 緩存管理
+    cache: {
+        images: new Map(),
+        requests: new Map(),
+        
+        set(key, value, ttl = 3600000) {
+            this.images.set(key, { value, expiry: Date.now() + ttl });
+        },
+        
+        get(key) {
+            const item = this.images.get(key);
+            if (!item) return null;
+            if (Date.now() > item.expiry) {
+                this.images.delete(key);
+                return null;
+            }
+            return item.value;
+        },
+        
+        clear() {
+            this.images.clear();
+        },
+        
+        // 清理過期緩存
+        cleanup() {
+            const now = Date.now();
+            for (const [key, item] of this.images.entries()) {
+                if (now > item.expiry) {
+                    this.images.delete(key);
+                }
+            }
+        }
+    },
+    
+    // 初始化懶加載
+    initLazyLoad() {
+        if ('IntersectionObserver' in window) {
+            this.lazyObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                            img.removeAttribute('data-src');
+                            this.lazyObserver.unobserve(img);
+                        }
+                    }
+                });
+            }, { rootMargin: '100px' });
+        }
+    },
+    
+    // 懶加載圖片
+    lazyLoad(img) {
+        if (this.lazyObserver) {
+            this.lazyObserver.observe(img);
+        } else {
+            // 後備方案：直接加載
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+            }
+        }
+    },
+    
+    // 取消當前請求
+    cancelRequest() {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+    },
+    
+    // 創建新的請求控制器
+    createRequestController() {
+        this.cancelRequest();
+        this.abortController = new AbortController();
+        return this.abortController;
+    },
+    
+    // 添加請求到隊列
+    async addToQueue(requestFn) {
+        return new Promise((resolve, reject) => {
+            this.requestQueue.push({ fn: requestFn, resolve, reject });
+            this.processQueue();
+        });
+    },
+    
+    // 處理請求隊列
+    async processQueue() {
+        if (this.isProcessing || this.requestQueue.length === 0) return;
+        
+        this.isProcessing = true;
+        const concurrent = Math.min(this.maxConcurrent, this.requestQueue.length);
+        const promises = [];
+        
+        for (let i = 0; i < concurrent; i++) {
+            const item = this.requestQueue.shift();
+            if (item) {
+                promises.push(this.executeRequest(item));
+            }
+        }
+        
+        await Promise.allSettled(promises);
+        this.isProcessing = false;
+        
+        // 繼續處理隊列
+        if (this.requestQueue.length > 0) {
+            this.processQueue();
+        }
+    },
+    
+    // 執行單個請求
+    async executeRequest(item) {
+        try {
+            const result = await item.fn();
+            item.resolve(result);
+        } catch (error) {
+            item.reject(error);
+        }
+    },
+    
+    // 生成緩存鍵
+    generateCacheKey(prompt, model, width, height, style, seed) {
+        return prompt + '-' + model + '-' + width + 'x' + height + '-' + style + '-' + seed;
+    },
+    
+    // 防抖函數
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    },
+    
+    // 節流函數
+    throttle(func, limit) {
+        let inThrottle;
+        return function(...args) {
+            if (!inThrottle) {
+                func.apply(this, args);
+                inThrottle = true;
+                setTimeout(() => inThrottle = false, limit);
+            }
+        };
+    }
+};
+
+// 初始化性能優化
+PerformanceOptimizer.initLazyLoad();
+// 定期清理過期緩存
+setInterval(() => PerformanceOptimizer.cache.cleanup(), 300000); // 每5分鐘清理一次
+
 // ====== IndexedDB 管理核心 (解決死圖) ======
 const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=2;
 const dbPromise=new Promise((resolve,reject)=>{
@@ -1715,8 +2465,8 @@ const I18N={
         cooldown_msg: "⏳ 請等待冷卻時間..."
     },
     en:{
-        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", provider_label:"API Provider", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save",
-        cooldown_msg: "⏳ Cooldown..."
+        nav_gen:"🎨 Generate Image", nav_his:"📚 History", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
+        cooldown_msg: "⏳ Please wait for cooldown..."
     }
 };
 let curLang='zh';
@@ -1817,6 +2567,9 @@ function updateModelOptions() {
     const models = config.models;
     const groups = {};
     models.forEach(m => {
+        // 🔥 過濾掉 nanobanana-pro 模型（僅限 Nano Pro 頁面使用）
+        if (m.id === 'nanobanana-pro') return;
+        
         const cat = m.category || 'other';
         if(!groups[cat]) groups[cat] = [];
         groups[cat].push(m);
@@ -2159,6 +2912,239 @@ window.onload=()=>{
     updateHistoryDisplay();
     updateModelOptions();
 };
+
+// ====== 專業提示詞生成器 (Pollinations) ======
+const PromptGenerator = {
+    generatedPrompt: null,
+    uploadedImage: null,
+    uploadedImageUrl: null,
+    
+    async generate() {
+        const input = document.getElementById('promptInput').value.trim();
+        const style = document.getElementById('style')?.value || 'none';
+        const referenceImage = document.getElementById('referenceImages')?.value.trim() || '';
+        
+        if (!input && !referenceImage && !this.uploadedImage) {
+            this.showStatus('請輸入畫面描述或上傳圖片', 'error');
+            return;
+        }
+        
+        const btn = document.getElementById('generatePromptBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
+        
+        // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
+        if (this.uploadedImage && !this.uploadedImageUrl) {
+            this.showStatus('正在上傳圖片...', 'loading');
+            try {
+                this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
+                this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
+            } catch (error) {
+                console.error('Image upload error:', error);
+                this.showStatus('❌ 圖片上傳失敗: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                return;
+            }
+        }
+        
+        this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
+        
+        try {
+            const response = await fetch('/api/generate-prompt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    input: input,
+                    style: style,
+                    referenceImage: referenceImage,
+                    imageUrl: this.uploadedImageUrl
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.generatedPrompt = data.prompt;
+                document.getElementById('generatedPrompt').textContent = data.prompt;
+                document.getElementById('generatedPromptContainer').style.display = 'block';
+                document.getElementById('applyPromptBtn').style.display = 'flex';
+                this.showStatus('✅ 提示詞生成成功！', 'success');
+            } else {
+                throw new Error(data.error || '生成失敗');
+            }
+        } catch (error) {
+            console.error('Prompt Generation Error:', error);
+            this.showStatus('❌ 生成失敗: ' + error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    },
+    
+    // 上傳圖片並獲取 URL
+    async uploadImageAndGetUrl(base64Data) {
+        // 將 Base64 轉換為 Blob
+        const response = await fetch(base64Data);
+        const blob = await response.blob();
+        
+        // 創建 FormData
+        const formData = new FormData();
+        formData.append('fileToUpload', blob, 'uploaded-image.png');
+        
+        // 上傳到 /api/upload
+        const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!uploadResponse.ok) {
+            const errorData = await uploadResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || '上傳失敗');
+        }
+        
+        const data = await uploadResponse.json();
+        if (!data.url) {
+            throw new Error('未獲取到圖片 URL');
+        }
+        
+        return data.url;
+    },
+    
+    applyToPrompt() {
+        if (!this.generatedPrompt) return;
+        
+        const promptTextarea = document.getElementById('prompt');
+        if (promptTextarea) {
+            promptTextarea.value = this.generatedPrompt;
+            this.showStatus('✓ 已應用到提示詞框', 'success');
+            
+            // 可選：清空輸入框
+            document.getElementById('promptInput').value = '';
+        }
+    },
+    
+    handleImageUpload(file) {
+        if (!file) return;
+        
+        // 驗證文件大小 (最大 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            this.showStatus('圖片太大！最大 5MB', 'error');
+            return;
+        }
+        
+        // 驗證文件類型
+        if (!file.type.startsWith('image/')) {
+            this.showStatus('請選擇圖片文件', 'error');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this.uploadedImage = e.target.result;
+            
+            // 顯示預覽
+            const previewImg = document.getElementById('promptImagePreviewImg');
+            const previewDiv = document.getElementById('promptImagePreview');
+            const clearBtn = document.getElementById('promptImageClearBtn');
+            
+            previewImg.src = this.uploadedImage;
+            previewDiv.style.display = 'block';
+            clearBtn.style.display = 'block';
+            
+            this.showStatus('✓ 圖片已上傳', 'success');
+        };
+        reader.onerror = () => {
+            this.showStatus('圖片讀取失敗', 'error');
+        };
+        reader.readAsDataURL(file);
+    },
+    
+    clearImage() {
+        this.uploadedImage = null;
+        this.uploadedImageUrl = null;
+        document.getElementById('promptImagePreview').style.display = 'none';
+        document.getElementById('promptImagePreviewImg').src = '';
+        document.getElementById('promptImageClearBtn').style.display = 'none';
+        document.getElementById('promptImageUpload').value = '';
+    },
+    
+    showStatus(message, type) {
+        const statusEl = document.getElementById('promptGeneratorStatus');
+        statusEl.textContent = message;
+        statusEl.style.display = 'block';
+        
+        // 設置顏色
+        if (type === 'error') {
+            statusEl.style.color = '#ef4444';
+        } else if (type === 'success') {
+            statusEl.style.color = '#22c55e';
+        } else {
+            statusEl.style.color = '#9ca3af';
+        }
+        
+        // 3秒後隱藏
+        setTimeout(() => {
+            if (statusEl.textContent === message) {
+                statusEl.style.display = 'none';
+            }
+        }, 3000);
+    }
+};
+
+// 綁定事件監聽器
+document.addEventListener('DOMContentLoaded', () => {
+    const generateBtn = document.getElementById('generatePromptBtn');
+    const applyBtn = document.getElementById('applyPromptBtn');
+    
+    if (generateBtn) {
+        generateBtn.addEventListener('click', () => PromptGenerator.generate());
+    }
+    
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => PromptGenerator.applyToPrompt());
+    }
+    
+    // 圖片上傳按鈕事件
+    const imageUploadBtn = document.getElementById('promptImageUploadBtn');
+    if (imageUploadBtn) {
+        imageUploadBtn.addEventListener('click', () => {
+            document.getElementById('promptImageUpload').click();
+        });
+    }
+    
+    // 圖片選擇事件
+    const imageUpload = document.getElementById('promptImageUpload');
+    if (imageUpload) {
+        imageUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                PromptGenerator.handleImageUpload(file);
+            }
+        });
+    }
+    
+    // 清除圖片按鈕事件
+    const imageClearBtn = document.getElementById('promptImageClearBtn');
+    if (imageClearBtn) {
+        imageClearBtn.addEventListener('click', () => {
+            PromptGenerator.clearImage();
+        });
+    }
+    
+    // 支持按 Enter 生成（Ctrl + Enter）
+    const promptInput = document.getElementById('promptInput');
+    if (promptInput) {
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                PromptGenerator.generate();
+            }
+        });
+    }
+});
 </script>
 <div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap;">
     <span>Powered by Flux AI Pro • <a href="https://github.com/pollinations/pollinations" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
