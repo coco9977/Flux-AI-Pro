@@ -825,10 +825,11 @@ async function handlePromptGeneration(request, env) {
   
   try {
     const body = await request.json();
-    const { input, style, imageData, imageUrl } = body;
+    const { input, style, imageUrl, referenceImage } = body;
+    const finalImageUrl = imageUrl || referenceImage;
     
-    // 檢查是否有輸入（文字描述或圖片）
-    if ((!input || !input.trim()) && !imageUrl && !imageData) {
+    // Check inputs
+    if ((!input || !input.trim()) && !finalImageUrl) {
       return new Response(JSON.stringify({ error: 'Input prompt or image is required' }), {
         status: 400,
         headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -849,58 +850,56 @@ Rules:
 
 Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
     
-    let userPrompt = '';
+    const userContent = [];
     
-    // 處理文字輸入
-    if (input && input.trim()) {
-      userPrompt = `Optimize the following image generation prompt: ${input}`;
-    } else {
-      userPrompt = `Generate a detailed image generation prompt based on the provided image.`;
-    }
-    
-    // 添加風格信息
+    let textPrompt = input ? `Optimize this prompt: ${input}` : `Generate a prompt based on the image.`;
     if (style && style !== 'none') {
-      userPrompt += `\n\nTarget style: ${style}`;
+        textPrompt += `\n\nCRITICAL INSTRUCTION: The generated prompt MUST strictly adhere to the "${style}" art style. You must include specific artistic keywords, lighting techniques, color palettes, and composition styles associated with ${style}. Make the style the dominant visual characteristic of the image.`;
     }
     
-    // 添加圖片 URL（優先使用 URL，因為 Pollinations Text API 可以處理 URL）
-    if (imageUrl) {
-      userPrompt += `\n\nReference image URL: ${imageUrl}`;
-      userPrompt += `\n\nPlease analyze this image and generate a detailed prompt that captures its visual elements, style, composition, lighting, and mood.`;
-    } else if (imageData) {
-      // 如果有 Base64 圖片數據，提示用戶需要先上傳獲取 URL
-      userPrompt += `\n\nNote: User has uploaded a reference image. Please generate a prompt based on the visual description they would provide for this image.`;
+    userContent.push({ type: "text", text: textPrompt });
+    
+    if (finalImageUrl) {
+        userContent.push({ type: "image_url", image_url: { url: finalImageUrl } });
     }
     
-    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-    const encodedPrompt = encodeURIComponent(fullPrompt);
+    const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent }
+    ];
     
-    // 使用 Pollinations 文本生成 API (免費，無需 API Key)
-    const pollinationsUrl = `https://text.pollinations.ai/${encodedPrompt}`;
+    // Select model: Always use 'gemini' as requested
+    const aiModel = 'gemini';
     
-    const pollinationsResponse = await fetch(pollinationsUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Flux-AI-Pro-Worker/1.0'
-      }
+    // Call Pollinations API
+    const response = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            messages: messages,
+            model: aiModel,
+            seed: Math.floor(Math.random() * 1000000),
+            jsonMode: false
+        })
     });
-    
-    if (!pollinationsResponse.ok) {
-      throw new Error(`Pollinations API Error (${pollinationsResponse.status})`);
+
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Pollinations API Error (${response.status}): ${errText}`);
     }
     
-    const generatedPrompt = await pollinationsResponse.text();
+    const generatedPrompt = await response.text();
     
     if (!generatedPrompt || !generatedPrompt.trim()) {
-      throw new Error('Failed to generate prompt from Pollinations API');
+      throw new Error('Empty response from AI');
     }
     
     return new Response(JSON.stringify({
       success: true,
       prompt: generatedPrompt.trim(),
-      original: input || 'Image analysis',
-      imageUrl: imageUrl || null,
-      model: 'pollinations-text'
+      model: aiModel
     }), {
       status: 200,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -2199,6 +2198,10 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
                   rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 13px; resize: none;"></textarea>
     </div>
     
+    <div style="font-size: 11px; color: #f59e0b; margin-bottom: 12px; background: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);" data-t="prompt_magic_tip">
+        💡 <strong>小提示：</strong> 選擇左側的「藝術風格」後，生成器會自動融合該風格（如：賽博龐克、水墨畫等）到提示詞中，讓畫面更具藝術感！
+    </div>
+
     <div style="display: flex; gap: 10px; margin-bottom: 12px;">
         <button type="button" id="generatePromptBtn"
                 style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: #fff; border: none; padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px;">
@@ -2949,7 +2952,8 @@ const PromptGenerator = {
             }
         }
         
-        this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
+        const statusText = style !== 'none' ? '正在使用 Pollinations (Gemini) 生成專業提示詞... [風格: ' + style + ']' : '正在使用 Pollinations (Gemini) 生成專業提示詞...';
+        this.showStatus(statusText, 'loading');
         
         try {
             const response = await fetch('/api/generate-prompt', {
@@ -3147,7 +3151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap;">
-    <span>Powered by Flux AI Pro • <a href="https://github.com/pollinations/pollinations" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
+    <span>Powered by Flux AI Pro • <a href="https://github.com/kinai9661/Flux-AI-Pro" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
     <span style="opacity:0.5">|</span>
     <span style="opacity:0.9">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
     <span style="opacity:0.5">|</span>
