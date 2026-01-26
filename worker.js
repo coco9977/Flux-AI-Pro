@@ -1051,6 +1051,61 @@ body {
     overflow: hidden;
     display: flex;
 }
+/* 語言切換按鈕樣式 */
+.nano-lang-btn {
+    padding: 6px 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.2s;
+    position: relative;
+}
+.nano-lang-btn:hover {
+    background: rgba(250, 204, 21, 0.1);
+    color: #FACC15;
+    border-color: rgba(250, 204, 21, 0.3);
+}
+.nano-lang-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: rgba(20, 20, 23, 0.95);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 120px;
+    display: none;
+    z-index: 1000;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.nano-lang-dropdown.show {
+    display: block;
+}
+.nano-lang-option {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.2s;
+    color: #e5e7eb;
+    font-size: 12px;
+}
+.nano-lang-option:hover {
+    background: rgba(250, 204, 21, 0.1);
+    color: #FACC15;
+}
+.nano-lang-option.active {
+    background: rgba(250, 204, 21, 0.2);
+    color: #FACC15;
+}
 .app-container { display: flex; width: 100%; height: 100%; }
 .sidebar {
     width: 380px;
@@ -1148,6 +1203,15 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 .toast { position: fixed; top: 20px; right: 20px; background: #333; border-left: 4px solid var(--primary); color: #fff; padding: 15px 25px; border-radius: 8px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 14px; animation: slideIn 0.3s forwards; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+/* RTL Support for Nano */
+[dir="rtl"]{direction:rtl;text-align:right}
+[dir="rtl"] .sidebar{border-right:none;border-left:1px solid var(--border)}
+[dir="rtl"] .logo-area{flex-direction:row-reverse}
+[dir="rtl"] .label-row{flex-direction:row-reverse}
+[dir="rtl"] .ratio-grid{direction:rtl}
+[dir="rtl"] .quota-info{flex-direction:row-reverse}
+[dir="rtl"] .history-dock{direction:rtl}
+[dir="rtl"] .lightbox-actions{flex-direction:row-reverse}
 </style>
 </head>
 <body>
@@ -1165,6 +1229,35 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                         <script id="_waudw4">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
                     </div>
                 </div>
+                <div style="position:relative">
+                    <button class="nano-lang-btn" id="nanoLangSwitch">
+                        <span id="nanoCurrentLangFlag">🇹🇼</span>
+                        <span id="nanoCurrentLangName">繁體中文</span>
+                        <span style="margin-left:2px">▼</span>
+                    </button>
+                    <div class="nano-lang-dropdown" id="nanoLangDropdown">
+                        <div class="nano-lang-option" data-lang="zh">
+                            <span>🇹🇼</span>
+                            <span>繁體中文</span>
+                        </div>
+                        <div class="nano-lang-option" data-lang="en">
+                            <span>🇺🇸</span>
+                            <span>English</span>
+                        </div>
+                        <div class="nano-lang-option" data-lang="ja">
+                            <span>🇯🇵</span>
+                            <span>日本語</span>
+                        </div>
+                        <div class="nano-lang-option" data-lang="ko">
+                            <span>🇰🇷</span>
+                            <span>한국어</span>
+                        </div>
+                        <div class="nano-lang-option" data-lang="ar">
+                            <span>🇸🇦</span>
+                            <span>العربية</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="control-group">
@@ -1176,7 +1269,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             </div>
 
             <div class="control-group">
-                <label style="margin-bottom:10px; display:block">畫布比例</label>
+                <label id="ratioLabel" style="margin-bottom:10px; display:block">畫布比例</label>
                 <div class="ratio-grid">
                     <div class="ratio-item active" data-w="1024" data-h="1024" title="1:1 方形">
                         <div class="ratio-shape" style="width:14px; height:14px;"></div>
@@ -1200,7 +1293,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
             <div class="control-group">
                 <div class="label-row">
-                    <label>風格 & 設定</label>
+                    <label id="styleLabel">風格 & 設定</label>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <select id="style">
@@ -1220,7 +1313,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             </div>
 
             <div class="control-group">
-                <label>排除 (Negative)</label>
+                <label id="negativeLabel">排除 (Negative)</label>
                 <input type="text" id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" style="font-size:12px; color:#aaa">
             </div>
 
@@ -1228,18 +1321,18 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             <div class="control-group" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--primary);">
                     <span style="font-size: 16px;">🤖</span>
-                    <span style="font-weight: 700;">AI 提示詞生成器</span>
+                    <span id="promptGeneratorTitle" style="font-weight: 700;">AI 提示詞生成器</span>
                     <span style="font-size: 9px; background: rgba(250, 204, 21, 0.3); padding: 2px 6px; border-radius: 8px; margin-left: auto;">Pollinations</span>
                 </label>
                 
                 <div style="margin-bottom: 8px;">
-                    <label style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; display: block;">上傳參考圖片 (可選)</label>
+                    <label id="promptGeneratorUploadLabel" style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; display: block;">上傳參考圖片 (可選)</label>
                     <div style="display: flex; gap: 6px;">
                         <input type="file" id="nanoPromptImageUpload" accept="image/*" style="display:none">
                         <button type="button" id="nanoPromptImageUploadBtn"
                                 style="flex: 1; background: rgba(250, 204, 21, 0.2); color: var(--primary); border: 1px solid rgba(250, 204, 21, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
                             <span>📷</span>
-                            <span>選擇圖片</span>
+                            <span id="promptGeneratorSelectText">選擇圖片</span>
                         </button>
                         <button type="button" id="nanoPromptImageClearBtn"
                                 style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none;">
@@ -1258,12 +1351,12 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <button type="button" id="nanoGeneratePromptBtn"
                             style="flex: 1; background: var(--primary); color: #000; border: none; padding: 10px 12px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
                         <span>✨</span>
-                        <span>生成</span>
+                        <span id="promptGeneratorGenerateText">生成</span>
                     </button>
                     <button type="button" id="nanoApplyPromptBtn"
                             style="flex: 1; background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); padding: 10px 12px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer; display: none;">
                         <span>✓</span>
-                        <span>應用</span>
+                        <span id="promptGeneratorApplyText">應用</span>
                     </button>
                 </div>
                 
@@ -1276,13 +1369,13 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             </div>
 
             <button id="genBtn" class="gen-btn">
-                <span>生成圖像</span>
-                <span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
+                <span id="genBtnText">生成圖像</span>
+                <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
             </button>
             
             <div class="quota-box">
                 <div class="quota-info">
-                    <span>每小時能量</span>
+                    <span id="quotaLabel">每小時能量</span>
                     <span id="quotaText" class="quota-text">5 / 5</span>
                 </div>
                 <div class="quota-bar">
@@ -1292,12 +1385,12 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         </div>
 
         <div class="main-stage">
-            <div class="placeholder-text">NANOPRO</div>
+            <div id="placeholderText" class="placeholder-text">NANOPRO</div>
             <img id="resultImg" alt="Generated Image" title="點擊放大">
             
             <div class="loading-overlay">
                 <div class="banana-loader">🍌</div>
-                <div class="loading-text">正在注入 AI 能量...</div>
+                <div id="loadingText" class="loading-text">正在注入 AI 能量...</div>
             </div>
 
             <div class="history-dock" id="historyStrip">
@@ -1311,10 +1404,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         <img id="lbImg" src="">
         <div class="lightbox-actions">
             <a id="lbDownload" class="action-btn" download="nano-banana-art.png" href="#">
-                📥 保存圖片
+                <span id="lightboxSaveText">📥 保存圖片</span>
             </a>
             <button class="action-btn" onclick="document.getElementById('lbClose').click()">
-                ❌ 關閉
+                <span id="lightboxCloseText">❌ 關閉</span>
             </button>
         </div>
     </div>
@@ -1323,6 +1416,439 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     </div>
 </div>
 <script>
+    // ====== Nano I18N 多語言支援 ======
+    const NANO_I18N = {
+        zh: {
+            prompt_label: "Prompt",
+            random_btn: "🎲 靈感骰子",
+            prompt_placeholder: "描述你想像中的畫面... (支援中文)",
+            ratio_label: "畫布比例",
+            style_label: "風格 & 設定",
+            style_none: "✨ 智能無風格",
+            style_photorealistic: "📷 寫實照片",
+            style_anime: "🌸 日系動漫",
+            style_3d_render: "🧊 3D 渲染",
+            style_cyberpunk: "🌃 賽博龐克",
+            style_manga: "📖 黑白漫畫",
+            style_oil_painting: "🎨 古典油畫",
+            seed_placeholder: "Seed",
+            negative_label: "排除 (Negative)",
+            negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
+            prompt_generator_title: "AI 提示詞生成器",
+            prompt_generator_upload: "上傳參考圖片 (可選)",
+            prompt_generator_select: "選擇圖片",
+            prompt_generator_placeholder: "描述你想要的畫面...",
+            prompt_generator_generate: "生成",
+            prompt_generator_apply: "應用",
+            prompt_generator_generating: "生成中...",
+            prompt_generator_uploading: "正在上傳圖片...",
+            prompt_generator_success: "✅ 生成成功！",
+            prompt_generator_applied: "✓ 已應用",
+            prompt_generator_error_input: "請輸入畫面描述或上傳圖片",
+            prompt_generator_error_upload: "❌ 圖片上傳失敗: ",
+            prompt_generator_error_generate: "❌ 失敗: ",
+            prompt_generator_generating_text: "正在使用 Pollinations 生成專業提示詞...",
+            prompt_generator_image_uploaded: "✓ 圖片已上傳",
+            prompt_generator_image_error: "圖片讀取失敗",
+            prompt_generator_error_size: "圖片太大！最大 5MB",
+            prompt_generator_error_type: "請選擇圖片文件",
+            gen_btn: "生成圖像",
+            gen_btn_cost: "消耗 1 香蕉能量 🍌",
+            gen_btn_charging: "⚡ 能量回充中... ({s}s)",
+            gen_btn_depleted: "本小時能量已耗盡",
+            gen_btn_depleted_sub: "請稍後再來",
+            quota_label: "每小時能量",
+            placeholder_text: "NANOPRO",
+            loading_text: "正在注入 AI 能量...",
+            toast_no_prompt: "⚠️ 請輸入提示詞",
+            toast_energy_depleted: "🚫 本小時能量已耗盡，請稍後再來！",
+            toast_error: "❌ ",
+            lightbox_save: "📥 保存圖片",
+            lightbox_close: "❌ 關閉"
+        },
+        en: {
+            prompt_label: "Prompt",
+            random_btn: "🎲 Random Idea",
+            prompt_placeholder: "Describe the image you want... (Chinese supported)",
+            ratio_label: "Canvas Ratio",
+            style_label: "Style & Settings",
+            style_none: "✨ Smart No Style",
+            style_photorealistic: "📷 Photorealistic",
+            style_anime: "🌸 Anime",
+            style_3d_render: "🧊 3D Render",
+            style_cyberpunk: "🌃 Cyberpunk",
+            style_manga: "📖 Manga",
+            style_oil_painting: "🎨 Oil Painting",
+            seed_placeholder: "Seed",
+            negative_label: "Negative",
+            negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
+            prompt_generator_title: "AI Prompt Generator",
+            prompt_generator_upload: "Upload Reference Image (Optional)",
+            prompt_generator_select: "Select Image",
+            prompt_generator_placeholder: "Describe the image you want...",
+            prompt_generator_generate: "Generate",
+            prompt_generator_apply: "Apply",
+            prompt_generator_generating: "Generating...",
+            prompt_generator_uploading: "Uploading image...",
+            prompt_generator_success: "✅ Generated successfully!",
+            prompt_generator_applied: "✓ Applied",
+            prompt_generator_error_input: "Please enter a description or upload an image",
+            prompt_generator_error_upload: "❌ Upload failed: ",
+            prompt_generator_error_generate: "❌ Failed: ",
+            prompt_generator_generating_text: "Generating professional prompt with Pollinations...",
+            prompt_generator_image_uploaded: "✓ Image uploaded",
+            prompt_generator_image_error: "Image read failed",
+            prompt_generator_error_size: "Image too large! Max 5MB",
+            prompt_generator_error_type: "Please select an image file",
+            gen_btn: "Generate Image",
+            gen_btn_cost: "Consume 1 Banana Energy 🍌",
+            gen_btn_charging: "⚡ Energy Charging... ({s}s)",
+            gen_btn_depleted: "Energy Depleted This Hour",
+            gen_btn_depleted_sub: "Please come back later",
+            quota_label: "Hourly Energy",
+            placeholder_text: "NANOPRO",
+            loading_text: "Injecting AI Energy...",
+            toast_no_prompt: "⚠️ Please enter a prompt",
+            toast_energy_depleted: "🚫 Energy depleted this hour, please come back later!",
+            toast_error: "❌ ",
+            lightbox_save: "📥 Save Image",
+            lightbox_close: "❌ Close"
+        },
+        ja: {
+            prompt_label: "Prompt",
+            random_btn: "🎲 ランダムアイデア",
+            prompt_placeholder: "想像する画像を説明してください... (中国語対応)",
+            ratio_label: "キャンバス比率",
+            style_label: "スタイル & 設定",
+            style_none: "✨ スマートスタイルなし",
+            style_photorealistic: "📷 写実的",
+            style_anime: "🌸 アニメ",
+            style_3d_render: "🧊 3Dレンダリング",
+            style_cyberpunk: "🌃 サイバーパンク",
+            style_manga: "📖 漫画",
+            style_oil_painting: "🎨 油絵",
+            seed_placeholder: "Seed",
+            negative_label: "ネガティブ",
+            negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
+            prompt_generator_title: "AI プロンプトジェネレーター",
+            prompt_generator_upload: "参照画像をアップロード（任意）",
+            prompt_generator_select: "画像を選択",
+            prompt_generator_placeholder: "作成したい画像を説明してください...",
+            prompt_generator_generate: "生成",
+            prompt_generator_apply: "適用",
+            prompt_generator_generating: "生成中...",
+            prompt_generator_uploading: "画像をアップロード中...",
+            prompt_generator_success: "✅ 生成成功！",
+            prompt_generator_applied: "✓ 適用済み",
+            prompt_generator_error_input: "説明を入力するか画像をアップロードしてください",
+            prompt_generator_error_upload: "❌ アップロード失敗: ",
+            prompt_generator_error_generate: "❌ 失敗: ",
+            prompt_generator_generating_text: "Pollinationsでプロンプトを生成中...",
+            prompt_generator_image_uploaded: "✓ 画像アップロード済み",
+            prompt_generator_image_error: "画像の読み取りに失敗しました",
+            prompt_generator_error_size: "画像が大きすぎます！最大5MB",
+            prompt_generator_error_type: "画像ファイルを選択してください",
+            gen_btn: "画像を生成",
+            gen_btn_cost: "バナナエネルギー1消費 🍌",
+            gen_btn_charging: "⚡ エネルギー充電中... ({s}s)",
+            gen_btn_depleted: "今時間のエネルギーが枯渇しました",
+            gen_btn_depleted_sub: "後でもう一度お越しください",
+            quota_label: "1時間あたりのエネルギー",
+            placeholder_text: "NANOPRO",
+            loading_text: "AIエネルギーを注入中...",
+            toast_no_prompt: "⚠️ プロンプトを入力してください",
+            toast_energy_depleted: "🚫 今時間のエネルギーが枯渇しました。後でもう一度お越しください！",
+            toast_error: "❌ ",
+            lightbox_save: "📥 画像を保存",
+            lightbox_close: "❌ 閉じる"
+        },
+        ko: {
+            prompt_label: "Prompt",
+            random_btn: "🎲 랜덤 아이디어",
+            prompt_placeholder: "원하는 이미지를 설명하세요... (중국어 지원)",
+            ratio_label: "캔버스 비율",
+            style_label: "스타일 & 설정",
+            style_none: "✨ 스마트 스타일 없음",
+            style_photorealistic: "📷 사실적",
+            style_anime: "🌸 애니메이션",
+            style_3d_render: "🧊 3D 렌더링",
+            style_cyberpunk: "🌃 사이버펑크",
+            style_manga: "📖 만화",
+            style_oil_painting: "🎨 유화",
+            seed_placeholder: "Seed",
+            negative_label: "네거티브",
+            negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
+            prompt_generator_title: "AI 프롬프트 생성기",
+            prompt_generator_upload: "참조 이미지 업로드 (선택 사항)",
+            prompt_generator_select: "이미지 선택",
+            prompt_generator_placeholder: "원하는 이미지를 설명하세요...",
+            prompt_generator_generate: "생성",
+            prompt_generator_apply: "적용",
+            prompt_generator_generating: "생성 중...",
+            prompt_generator_uploading: "이미지 업로드 중...",
+            prompt_generator_success: "✅ 생성 성공!",
+            prompt_generator_applied: "✓ 적용됨",
+            prompt_generator_error_input: "설명을 입력하거나 이미지를 업로드하세요",
+            prompt_generator_error_upload: "❌ 업로드 실패: ",
+            prompt_generator_error_generate: "❌ 실패: ",
+            prompt_generator_generating_text: "Pollinations로 프롬프트 생성 중...",
+            prompt_generator_image_uploaded: "✓ 이미지 업로드됨",
+            prompt_generator_image_error: "이미지 읽기 실패",
+            prompt_generator_error_size: "이미지가 너무 큽니다! 최대 5MB",
+            prompt_generator_error_type: "이미지 파일을 선택하세요",
+            gen_btn: "이미지 생성",
+            gen_btn_cost: "바나나 에너지 1 소비 🍌",
+            gen_btn_charging: "⚡ 에너지 충전 중... ({s}s)",
+            gen_btn_depleted: "이번 시간 에너지 소진됨",
+            gen_btn_depleted_sub: "나중에 다시 방문해주세요",
+            quota_label: "시간당 에너지",
+            placeholder_text: "NANOPRO",
+            loading_text: "AI 에너지 주입 중...",
+            toast_no_prompt: "⚠️ 프롬프트를 입력하세요",
+            toast_energy_depleted: "🚫 이번 시간 에너지가 소진되었습니다. 나중에 다시 방문해주세요！",
+            toast_error: "❌ ",
+            lightbox_save: "📥 이미지 저장",
+            lightbox_close: "❌ 닫기"
+        },
+        ar: {
+            prompt_label: "Prompt",
+            random_btn: "🎲 نرد الإلهام",
+            prompt_placeholder: "صف الصورة التي تريدها... (يدعم العربية)",
+            ratio_label: "نسبة اللوحة",
+            style_label: "النمط والإعدادات",
+            style_none: "✨ بدون نمط ذكي",
+            style_photorealistic: "📷 واقعي",
+            style_anime: "🌸 أنمي",
+            style_3d_render: "🧊 عرض ثلاثي الأبعاد",
+            style_cyberpunk: "🌃 سايبربانك",
+            style_manga: "📖 مانغا",
+            style_oil_painting: "🎨 رسم زيتي",
+            seed_placeholder: "Seed",
+            negative_label: "سلبي",
+            negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
+            prompt_generator_title: "مولد المطالبات AI",
+            prompt_generator_upload: "رفع صورة مرجعية (اختياري)",
+            prompt_generator_select: "اختر صورة",
+            prompt_generator_placeholder: "صف الصورة التي تريدها...",
+            prompt_generator_generate: "إنشاء",
+            prompt_generator_apply: "تطبيق",
+            prompt_generator_generating: "جاري الإنشاء...",
+            prompt_generator_uploading: "جاري رفع الصورة...",
+            prompt_generator_success: "✅ تم الإنشاء بنجاح!",
+            prompt_generator_applied: "✓ تم التطبيق",
+            prompt_generator_error_input: "يرجى إدخال وصف أو رفع صورة",
+            prompt_generator_error_upload: "❌ فشل الرفع: ",
+            prompt_generator_error_generate: "❌ فشل: ",
+            prompt_generator_generating_text: "جاري إنشاء موجه احترافي باستخدام Pollinations...",
+            prompt_generator_image_uploaded: "✓ تم رفع الصورة",
+            prompt_generator_image_error: "فشل قراءة الصورة",
+            prompt_generator_error_size: "الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت",
+            prompt_generator_error_type: "يرجى اختيار ملف صورة",
+            gen_btn: "إنشاء صورة",
+            gen_btn_cost: "استهلاك 1 طاقة موز 🍌",
+            gen_btn_charging: "⚡ إعادة شحن الطاقة... ({s}s)",
+            gen_btn_depleted: "نفدت الطاقة لهذه الساعة",
+            gen_btn_depleted_sub: "يرجى العودة لاحقًا",
+            quota_label: "الطاقة لكل ساعة",
+            placeholder_text: "NANOPRO",
+            loading_text: "حقن طاقة AI...",
+            toast_no_prompt: "⚠️ يرجى إدخال موجه",
+            toast_energy_depleted: "🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!",
+            toast_error: "❌ ",
+            lightbox_save: "📥 حفظ الصورة",
+            lightbox_close: "❌ إغلاق"
+        }
+    };
+
+    const NANO_LANGUAGE_CONFIG = {
+        zh: { name: "繁體中文", flag: "🇹🇼", direction: "ltr" },
+        en: { name: "English", flag: "🇺🇸", direction: "ltr" },
+        ja: { name: "日本語", flag: "🇯🇵", direction: "ltr" },
+        ko: { name: "한국어", flag: "🇰🇷", direction: "ltr" },
+        ar: { name: "العربية", flag: "🇸🇦", direction: "rtl" }
+    };
+
+    let nanoCurLang = 'zh';
+
+    // 偵測並載入保存的語言
+    function nanoDetectLanguage() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+        if (langParam && NANO_I18N[langParam]) return langParam;
+        
+        const savedLang = localStorage.getItem('nano-flux-language');
+        if (savedLang && NANO_I18N[savedLang]) return savedLang;
+        
+        const browserLang = navigator.language || navigator.userLanguage;
+        const langCode = browserLang.split('-')[0];
+        if (NANO_I18N[langCode]) return langCode;
+        
+        return 'zh';
+    }
+
+    // 初始化語言
+    nanoCurLang = nanoDetectLanguage();
+    localStorage.setItem('nano-flux-language', nanoCurLang);
+
+    // 更新語言切換按鈕
+    function nanoUpdateLangButton() {
+        const config = NANO_LANGUAGE_CONFIG[nanoCurLang];
+        document.getElementById('nanoCurrentLangFlag').textContent = config.flag;
+        document.getElementById('nanoCurrentLangName').textContent = config.name;
+        
+        document.querySelectorAll('.nano-lang-option').forEach(opt => {
+            opt.classList.toggle('active', opt.dataset.lang === nanoCurLang);
+        });
+    }
+
+    // 切換語言
+    function nanoSetLanguage(lang) {
+        if (!NANO_I18N[lang]) return;
+        nanoCurLang = lang;
+        localStorage.setItem('nano-flux-language', lang);
+        
+        // 更新 RTL 方向
+        const langConfig = NANO_LANGUAGE_CONFIG[lang];
+        if (langConfig && langConfig.direction === 'rtl') {
+            document.documentElement.setAttribute('dir', 'rtl');
+        } else {
+            document.documentElement.removeAttribute('dir');
+        }
+        
+        nanoUpdateLang();
+        nanoUpdateLangButton();
+    }
+
+    // 獲取翻譯
+    function nanoT(key) {
+        return NANO_I18N[nanoCurLang][key] || key;
+    }
+
+    // 更新所有翻譯
+    function nanoUpdateLang() {
+        // 更新標籤
+        const promptLabel = document.querySelector('.control-group label');
+        if (promptLabel && promptLabel.textContent.includes('Prompt')) {
+            promptLabel.textContent = nanoT('prompt_label');
+        }
+        
+        // 更新隨機按鈕
+        const randomBtn = document.getElementById('randomBtn');
+        if (randomBtn) randomBtn.textContent = nanoT('random_btn');
+        
+        // 更新提示詞輸入框
+        const promptInput = document.getElementById('prompt');
+        if (promptInput) promptInput.placeholder = nanoT('prompt_placeholder');
+        
+        // 更新比例標籤
+        const ratioLabel = document.getElementById('ratioLabel');
+        if (ratioLabel) ratioLabel.textContent = nanoT('ratio_label');
+        
+        // 更新風格標籤
+        const styleLabel = document.getElementById('styleLabel');
+        if (styleLabel) styleLabel.textContent = nanoT('style_label');
+        
+        // 更新風格選項
+        const styleSelect = document.getElementById('style');
+        if (styleSelect) {
+            const options = styleSelect.options;
+            if (options[0]) options[0].textContent = nanoT('style_none');
+            if (options[1]) options[1].textContent = nanoT('style_photorealistic');
+            if (options[2]) options[2].textContent = nanoT('style_anime');
+            if (options[3]) options[3].textContent = nanoT('style_3d_render');
+            if (options[4]) options[4].textContent = nanoT('style_cyberpunk');
+            if (options[5]) options[5].textContent = nanoT('style_manga');
+            if (options[6]) options[6].textContent = nanoT('style_oil_painting');
+        }
+        
+        // 更新 Seed 輸入框
+        const seedInput = document.getElementById('seed');
+        if (seedInput) seedInput.placeholder = nanoT('seed_placeholder');
+        
+        // 更新負面提示詞標籤
+        const negativeLabel = document.getElementById('negativeLabel');
+        if (negativeLabel) negativeLabel.textContent = nanoT('negative_label');
+        
+        // 更新負面提示詞輸入框
+        const negativeInput = document.getElementById('negative');
+        if (negativeInput) negativeInput.placeholder = nanoT('negative_default');
+        
+        // 更新提示詞生成器標題
+        const pgTitle = document.getElementById('promptGeneratorTitle');
+        if (pgTitle) pgTitle.textContent = nanoT('prompt_generator_title');
+        
+        // 更新提示詞生成器上傳標籤
+        const pgUploadLabel = document.getElementById('promptGeneratorUploadLabel');
+        if (pgUploadLabel) pgUploadLabel.textContent = nanoT('prompt_generator_upload');
+        
+        // 更新提示詞生成器選擇按鈕
+        const pgSelectText = document.getElementById('promptGeneratorSelectText');
+        if (pgSelectText) pgSelectText.textContent = nanoT('prompt_generator_select');
+        
+        // 更新提示詞生成器輸入框
+        const pgInput = document.getElementById('nanoPromptInput');
+        if (pgInput) pgInput.placeholder = nanoT('prompt_generator_placeholder');
+        
+        // 更新提示詞生成器按鈕
+        const pgGenText = document.getElementById('promptGeneratorGenerateText');
+        if (pgGenText) pgGenText.textContent = nanoT('prompt_generator_generate');
+        
+        const pgApplyText = document.getElementById('promptGeneratorApplyText');
+        if (pgApplyText) pgApplyText.textContent = nanoT('prompt_generator_apply');
+        
+        // 更新生成按鈕
+        const genBtnText = document.getElementById('genBtnText');
+        if (genBtnText) genBtnText.textContent = nanoT('gen_btn');
+        
+        const genBtnCost = document.getElementById('genBtnCost');
+        if (genBtnCost) genBtnCost.textContent = nanoT('gen_btn_cost');
+        
+        // 更新能量標籤
+        const quotaLabel = document.getElementById('quotaLabel');
+        if (quotaLabel) quotaLabel.textContent = nanoT('quota_label');
+        
+        // 更新佔位符文字
+        const placeholder = document.getElementById('placeholderText');
+        if (placeholder) placeholder.textContent = nanoT('placeholder_text');
+        
+        // 更新載入文字
+        const loadingText = document.getElementById('loadingText');
+        if (loadingText) loadingText.textContent = nanoT('loading_text');
+        
+        // 更新燈箱按鈕
+        const lbDownload = document.getElementById('lbDownload');
+        if (lbDownload) lbDownload.textContent = nanoT('lightbox_save');
+        
+        const lbClose = document.getElementById('lbClose');
+        if (lbClose) lbClose.textContent = nanoT('lightbox_close');
+    }
+
+    // 語言下拉選單控制
+    const nanoLangSwitch = document.getElementById('nanoLangSwitch');
+    const nanoLangDropdown = document.getElementById('nanoLangDropdown');
+
+    nanoLangSwitch.addEventListener('click', (e) => {
+        e.stopPropagation();
+        nanoLangDropdown.classList.toggle('show');
+    });
+
+    document.addEventListener('click', () => {
+        nanoLangDropdown.classList.remove('show');
+    });
+
+    document.querySelectorAll('.nano-lang-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const lang = option.dataset.lang;
+            nanoSetLanguage(lang);
+            nanoLangDropdown.classList.remove('show');
+        });
+    });
+
+    // 初始化語言按鈕
+    nanoUpdateLangButton();
+    nanoUpdateLang();
+
     // ====== 性能優化模塊 ======
     const PerformanceOptimizer = {
         // 請求控制器 - 用於取消進行中的請求
@@ -1492,7 +2018,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 localStorage.removeItem(COOLDOWN_KEY);
                 if(currentQuota > 0) {
                     els.genBtn.disabled = false;
-                    els.genBtn.innerHTML = '<span>生成圖像</span><span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>';
+                    els.genBtn.innerHTML = '<span>' + nanoT('gen_btn') + '</span><span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">' + nanoT('gen_btn_cost') + '</span>';
                 } else {
                     updateQuotaUI();
                 }
@@ -1503,7 +2029,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     }
 
     function updateCooldownText(sec) {
-        els.genBtn.innerHTML = \`<span>⚡ 能量回充中... (\${sec}s)</span>\`;
+        els.genBtn.innerHTML = \`<span>\${nanoT('gen_btn_charging').replace('{s}', sec)}</span>\`;
     }
     
     const now = new Date();
@@ -1533,7 +2059,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         if(currentQuota <= 0) {
             els.quotaFill.style.background = '#ef4444';
             els.genBtn.disabled = true;
-            els.genBtn.innerHTML = '<span>本小時能量已耗盡</span><span style="display:block;font-size:12px;font-weight:400;margin-top:4px">請稍後再來</span>';
+            els.genBtn.innerHTML = '<span>' + nanoT('gen_btn_depleted') + '</span><span style="display:block;font-size:12px;font-weight:400;margin-top:4px">' + nanoT('gen_btn_depleted_sub') + '</span>';
         }
     }
     
@@ -1585,6 +2111,11 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         els.prompt.focus();
     };
     
+    // 更新隨機按鈕文本
+    if (els.randomBtn) {
+        els.randomBtn.textContent = nanoT('random_btn');
+    }
+    
     function openLightbox(url) {
         els.lbImg.src = url;
         els.lbDownload.href = url;
@@ -1604,7 +2135,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const style = document.getElementById('style')?.value || 'none';
             
             if (!input && !this.uploadedImage) {
-                this.showStatus('請輸入畫面描述或上傳圖片', 'error');
+                this.showStatus(nanoT('prompt_generator_error_input'), 'error');
                 return;
             }
             
@@ -1615,20 +2146,20 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             
             // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
             if (this.uploadedImage && !this.uploadedImageUrl) {
-                this.showStatus('正在上傳圖片...', 'loading');
+                this.showStatus(nanoT('prompt_generator_uploading'), 'loading');
                 try {
                     this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
-                    this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
+                    this.showStatus(nanoT('prompt_generator_image_uploaded') + ', ' + nanoT('prompt_generator_generating_text'), 'loading');
                 } catch (error) {
                     console.error('Image upload error:', error);
-                    this.showStatus('❌ 圖片上傳失敗: ' + error.message, 'error');
+                    this.showStatus(nanoT('prompt_generator_error_upload') + error.message, 'error');
                     btn.disabled = false;
                     btn.innerHTML = originalText;
                     return;
                 }
             }
             
-            this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
+            this.showStatus(nanoT('prompt_generator_generating_text'), 'loading');
             
             try {
                 const response = await fetch('/api/generate-prompt', {
@@ -1650,13 +2181,13 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     document.getElementById('nanoGeneratedPrompt').textContent = data.prompt;
                     document.getElementById('nanoGeneratedPromptContainer').style.display = 'block';
                     document.getElementById('nanoApplyPromptBtn').style.display = 'flex';
-                    this.showStatus('✅ 生成成功！', 'success');
+                    this.showStatus(nanoT('prompt_generator_success'), 'success');
                 } else {
                     throw new Error(data.error || '生成失敗');
                 }
             } catch (error) {
                 console.error('Nano Prompt Generation Error:', error);
-                this.showStatus('❌ 失敗: ' + error.message, 'error');
+                this.showStatus(nanoT('prompt_generator_error_generate') + error.message, 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -1698,7 +2229,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const promptTextarea = document.getElementById('prompt');
             if (promptTextarea) {
                 promptTextarea.value = this.generatedPrompt;
-                this.showStatus('✓ 已應用', 'success');
+                this.showStatus(nanoT('prompt_generator_applied'), 'success');
                 document.getElementById('nanoPromptInput').value = '';
             }
         },
@@ -1708,13 +2239,13 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             
             // 驗證文件大小 (最大 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                this.showStatus('圖片太大！最大 5MB', 'error');
+                this.showStatus(nanoT('prompt_generator_error_size'), 'error');
                 return;
             }
             
             // 驗證文件類型
             if (!file.type.startsWith('image/')) {
-                this.showStatus('請選擇圖片文件', 'error');
+                this.showStatus(nanoT('prompt_generator_error_type'), 'error');
                 return;
             }
             
@@ -1731,10 +2262,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 previewDiv.style.display = 'block';
                 clearBtn.style.display = 'block';
                 
-                this.showStatus('✓ 圖片已上傳', 'success');
+                this.showStatus(nanoT('prompt_generator_image_uploaded'), 'success');
             };
             reader.onerror = () => {
-                this.showStatus('圖片讀取失敗', 'error');
+                this.showStatus(nanoT('prompt_generator_image_error'), 'error');
             };
             reader.readAsDataURL(file);
         },
@@ -1804,6 +2335,14 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         t.style.display = 'block';
         setTimeout(() => t.style.display = 'none', 3000);
     }
+    
+    // 多語言 toast 函數
+    function nanoToast(key, fallbackMsg) {
+        const t = document.getElementById('toast');
+        t.textContent = nanoT(key) || fallbackMsg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
 
     function addHistory(url) {
         const div = document.createElement('div');
@@ -1822,8 +2361,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
     els.genBtn.onclick = async () => {
         const p = els.prompt.value.trim();
-        if(!p) return toast("⚠️ 請輸入提示詞");
-        if(currentQuota <= 0) return toast("🚫 本小時能量已耗盡，請稍後再來！");
+        if(!p) return nanoToast('toast_no_prompt', "⚠️ 請輸入提示詞");
+        if(currentQuota <= 0) return nanoToast('toast_energy_depleted', "🚫 本小時能量已耗盡，請稍後再來！");
 
         els.genBtn.disabled = true;
         els.loader.style.display = 'flex';
@@ -1909,7 +2448,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
         } catch(e) {
             console.error("🍌 Nano Pro: 生成錯誤", e);
-            toast("❌ " + e.message);
+            nanoToast('toast_error', "❌ " + e.message);
             // On error, re-enable button if quota exists (unless rate limited)
             if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
         } finally {
@@ -2005,7 +2544,23 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
 .nav-btn.nano-btn:hover {border-color: #FACC15; background: rgba(250, 204, 21, 0.1); color: #FACC15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);}
-.lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
+.lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px;position:relative}
+.lang-dropdown{position:absolute;top:100%;right:0;background:rgba(20,20,25,0.95);backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 0;min-width:140px;display:none;z-index:1000;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
+.lang-dropdown.show{display:block}
+.lang-option{padding:10px 16px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:0.2s;color:#e5e7eb}
+.lang-option:hover{background:rgba(245,158,11,0.1);color:#f59e0b}
+.lang-option.active{background:rgba(245,158,11,0.2);color:#f59e0b}
+.lang-flag{font-size:16px}
+.lang-name{font-size:13px;font-weight:500}
+/* RTL Support */
+[dir="rtl"]{direction:rtl;text-align:right}
+[dir="rtl"] .nav-left{flex-direction:row-reverse}
+[dir="rtl"] .nav-menu{flex-direction:row-reverse}
+[dir="rtl"] .logo{flex-direction:row-reverse}
+[dir="rtl"] .left-panel{border-right:none;border-left:1px solid rgba(255,255,255,0.1)}
+[dir="rtl"] .right-panel{border-left:none;border-right:1px solid rgba(255,255,255,0.1)}
+[dir="rtl"] .gallery-actions{flex-direction:row-reverse}
+[dir="rtl"] .gallery-meta{flex-direction:row-reverse}
 .main-content{flex:1;display:flex;overflow:hidden}
 .left-panel{width:320px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
 .center-panel{flex:1;padding:20px;overflow-y:auto}
@@ -2057,11 +2612,39 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     </div>
     <div class="nav-menu">
         <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">
-            🍌 Nano版
+            🍌 <span data-t="nav_nano">Nano版</span>
         </a>
         <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
         <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
-        <button class="lang-btn" id="langSwitch">EN / 繁中</button>
+        <div style="position:relative">
+            <button class="lang-btn" id="langSwitch">
+                <span id="currentLangFlag">🇹🇼</span>
+                <span id="currentLangName">繁體中文</span>
+                <span style="margin-left:4px">▼</span>
+            </button>
+            <div class="lang-dropdown" id="langDropdown">
+                <div class="lang-option" data-lang="zh">
+                    <span class="lang-flag">🇹🇼</span>
+                    <span class="lang-name">繁體中文</span>
+                </div>
+                <div class="lang-option" data-lang="en">
+                    <span class="lang-flag">🇺🇸</span>
+                    <span class="lang-name">English</span>
+                </div>
+                <div class="lang-option" data-lang="ja">
+                    <span class="lang-flag">🇯🇵</span>
+                    <span class="lang-name">日本語</span>
+                </div>
+                <div class="lang-option" data-lang="ko">
+                    <span class="lang-flag">🇰🇷</span>
+                    <span class="lang-name">한국어</span>
+                </div>
+                <div class="lang-option" data-lang="ar">
+                    <span class="lang-flag">🇸🇦</span>
+                    <span class="lang-name">العربية</span>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <div id="generatePage" class="page active">
@@ -2462,18 +3045,142 @@ async function clearDB(){
 }
 
 // ====== I18N 與 UI 邏輯 ======
+// 多語言支援（繁體中文、英文、日文、韓文）
 const I18N={
     zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
-        cooldown_msg: "⏳ 請等待冷卻時間..."
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", nav_nano:"Nano版", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
+        cooldown_msg: "⏳ 請等待冷卻時間...",
+        quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
+        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
+        api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
+        nsfw_label: "🔞 解除成人內容限制 (NSFW)", nsfw_desc: "啟用此選項將允許生成成人內容 (僅 Infip)",
+        batch_label: "🖼️ 批量生成", batch_size_label: "生成數量 (Batch Size)",
+        prompt_generator_title: "專業提示詞生成器", prompt_generator_upload_ref: "上傳參考圖片 (可選)",
+        prompt_generator_select_image: "選擇圖片", prompt_generator_simple_desc: "簡單描述你想要的畫面",
+        prompt_generator_generate: "生成專業提示詞", prompt_generator_apply: "應用到提示詞",
+        prompt_generator_generated: "生成的專業提示詞",
+        prompt_generator_tip: "💡 小提示：選擇左側的「藝術風格」後，生成器會自動融合該風格（如：賽博龐克、水墨畫等）到提示詞中，讓畫面更具藝術感！",
+        error_no_prompt: "⚠️ 請輸入提示詞", error_energy_depleted: "🚫 本小時能量已耗盡，請稍後再來！",
+        error_image_too_large: "圖片太大！最大 5MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
     },
     en:{
-        nav_gen:"🎨 Generate Image", nav_his:"📚 History", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
-        cooldown_msg: "⏳ Please wait for cooldown..."
+        nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
+        cooldown_msg: "⏳ Please wait for cooldown...",
+        quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
+        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
+        api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
+        nsfw_label: "🔞 Disable NSFW Filter", nsfw_desc: "Enable this option to allow adult content generation (Infip only)",
+        batch_label: "🖼️ Batch Generation", batch_size_label: "Batch Size",
+        prompt_generator_title: "Professional Prompt Generator", prompt_generator_upload_ref: "Upload Reference Image (Optional)",
+        prompt_generator_select_image: "Select Image", prompt_generator_simple_desc: "Simply describe the image you want",
+        prompt_generator_generate: "Generate Professional Prompt", prompt_generator_apply: "Apply to Prompt",
+        prompt_generator_generated: "Generated Professional Prompt",
+        prompt_generator_tip: "💡 Tip: After selecting an 'Art Style' on the left, the generator will automatically blend that style (e.g., Cyberpunk, Ink Wash) into your prompt for more artistic results!",
+        error_no_prompt: "⚠️ Please enter a prompt", error_energy_depleted: "🚫 Energy depleted this hour, please come back later!",
+        error_image_too_large: "Image too large! Max size is 5MB", error_invalid_file: "Please select an image file", error_upload_failed: "Upload failed"
+    },
+    ja:{
+        nav_gen:"🎨 画像生成", nav_his:"📚 履歴", nav_nano:"Nano版", settings_title:"⚙️ 生成設定", provider_label:"API プロバイダー", model_label:"モデル選択", size_label:"画像サイズ", style_label:"アートスタイル 🎨", quality_label:"品質モード", seed_label:"シード値", seed_random:"🎲 ランダム", seed_lock:"🔒 固定", auto_opt_label:"✨ 自動最適化", auto_opt_desc:"ステップ数とガイダンスを自動調整", adv_settings:"🛠️ 詳細設定", steps_label:"生成ステップ数", guidance_label:"ガイダンススケール", gen_btn:"🎨 生成開始", empty_title:"まだ画像が生成されていません", pos_prompt:"ポジティブプロンプト", neg_prompt:"ネガティブプロンプト（任意）", ref_img:"参照画像 (Img2Img) 📸", stat_total:"📊 総記録数", stat_storage:"💾 ストレージ（永続）", btn_export:"📥 エクスポート", btn_clear:"🗑️ 全削除", no_history:"履歴がありません", btn_reuse:"🔄 再利用", btn_dl:"💾 ダウンロード",
+        cooldown_msg: "⏳ クールダウンをお待ちください...",
+        quality_economy: "エコノミー", quality_standard: "スタンダード", quality_ultra: "ウルトラHD",
+        provider_pollinations: "Pollinations.ai (無料)", provider_infip: "Ghostbot (Infip) 🌟",
+        api_key_label: "APIキー", api_key_desc: "ローカルに保存", api_key_placeholder: "ここにAPIキーを貼り付け",
+        nsfw_label: "🔞 NSFWフィルターを無効化", nsfw_desc: "このオプションを有効にすると、成人向けコンテンツの生成が可能になります（Infipのみ）",
+        batch_label: "🖼️ バッチ生成", batch_size_label: "バッチサイズ",
+        prompt_generator_title: "プロフェッショナルプロンプトジェネレーター", prompt_generator_upload_ref: "参照画像をアップロード（任意）",
+        prompt_generator_select_image: "画像を選択", prompt_generator_simple_desc: "作成したい画像を簡単に説明",
+        prompt_generator_generate: "プロフェッショナルプロンプトを生成", prompt_generator_apply: "プロンプトに適用",
+        prompt_generator_generated: "生成されたプロフェッショナルプロンプト",
+        prompt_generator_tip: "💡 ヒント：左側の「アートスタイル」を選択すると、ジェネレーターがそのスタイル（サイバーパンク、水墨画など）を自動的にプロンプトにブレンドし、より芸術的な結果が得られます！",
+        error_no_prompt: "⚠️ プロンプトを入力してください", error_energy_depleted: "🚫 今時間のエネルギーが枯渇しました。後でもう一度お越しください！",
+        error_image_too_large: "画像が大きすぎます！最大サイズは5MBです", error_invalid_file: "画像ファイルを選択してください", error_upload_failed: "アップロードに失敗しました"
+    },
+    ko:{
+        nav_gen:"🎨 이미지 생성", nav_his:"📚 기록", nav_nano:"Nano", settings_title:"⚙️ 생성 설정", provider_label:"API 공급자", model_label:"모델 선택", size_label:"이미지 크기", style_label:"아트 스타일 🎨", quality_label:"품질 모드", seed_label:"시드 값", seed_random:"🎲 랜덤", seed_lock:"🔒 잠금", auto_opt_label:"✨ 자동 최적화", auto_opt_desc:"스텝 및 가이던스 자동 조정", adv_settings:"🛠️ 고급 설정", steps_label:"생성 스텝", guidance_label:"가이던스 스케일", gen_btn:"🎨 생성 시작", empty_title:"아직 생성된 이미지가 없습니다", pos_prompt:"긍정적 프롬프트", neg_prompt:"부정적 프롬프트 (선택 사항)", ref_img:"참조 이미지 (Img2Img) 📸", stat_total:"📊 총 기록 수", stat_storage:"💾 저장 공간 (영구)", btn_export:"📥 내보내기", btn_clear:"🗑️ 전체 삭제", no_history:"기록이 없습니다", btn_reuse:"🔄 설정 재사용", btn_dl:"💾 다운로드",
+        cooldown_msg: "⏳ 쿨다운을 기다려주세요...",
+        quality_economy: "이코노미", quality_standard: "스탠다드", quality_ultra: "울트라 HD",
+        provider_pollinations: "Pollinations.ai (무료)", provider_infip: "Ghostbot (Infip) 🌟",
+        api_key_label: "API 키", api_key_desc: "로컬에 저장", api_key_placeholder: "여기에 API 키를 붙여넣으세요",
+        nsfw_label: "🔞 NSFW 필터 비활성화", nsfw_desc: "이 옵션을 활성화하면 성인 콘텐츠 생성이 허용됩니다 (Infip만 해당)",
+        batch_label: "🖼️ 배치 생성", batch_size_label: "배치 크기",
+        prompt_generator_title: "전문 프롬프트 생성기", prompt_generator_upload_ref: "참조 이미지 업로드 (선택 사항)",
+        prompt_generator_select_image: "이미지 선택", prompt_generator_simple_desc: "원하는 이미지를 간단히 설명",
+        prompt_generator_generate: "전문 프롬프트 생성", prompt_generator_apply: "프롬프트에 적용",
+        prompt_generator_generated: "생성된 전문 프롬프트",
+        prompt_generator_tip: "💡 팁: 왼쪽의 '아트 스타일'을 선택하면 생성기가 해당 스타일(사이버펑크, 수묵화 등)을 자동으로 프롬프트에 혼합하여 더 예술적인 결과를 얻을 수 있습니다!",
+        error_no_prompt: "⚠️ 프롬프트를 입력하세요", error_energy_depleted: "🚫 이번 시간 에너지가 소진되었습니다. 나중에 다시 방문해주세요！",
+        error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 5MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
+    },
+    ar:{
+        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip فقط)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
     }
 };
+
+// 語言配置
+const LANGUAGE_CONFIG = {
+    zh: { name: "繁體中文", flag: "🇹🇼", direction: "ltr" },
+    en: { name: "English", flag: "🇺🇸", direction: "ltr" },
+    ja: { name: "日本語", flag: "🇯🇵", direction: "ltr" },
+    ko: { name: "한국어", flag: "🇰🇷", direction: "ltr" },
+    ar: { name: "العربية", flag: "🇸🇦", direction: "rtl" }
+};
+
 let curLang='zh';
-function toggleLang(){curLang=curLang==='zh'?'en':'zh';updateLang();}
+
+// 偵測並載入保存的語言
+function detectLanguage() {
+    // 1. 檢查 URL 參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const langParam = urlParams.get('lang');
+    if (langParam && I18N[langParam]) return langParam;
+    
+    // 2. 檢查 localStorage
+    const savedLang = localStorage.getItem('flux-ai-language');
+    if (savedLang && I18N[savedLang]) return savedLang;
+    
+    // 3. 檢查瀏覽器語言
+    const browserLang = navigator.language || navigator.userLanguage;
+    const langCode = browserLang.split('-')[0];
+    if (I18N[langCode]) return langCode;
+    
+    return 'zh';
+}
+
+// 初始化語言
+curLang = detectLanguage();
+localStorage.setItem('flux-ai-language', curLang);
+
+// 更新語言切換按鈕
+function updateLangButton() {
+    const config = LANGUAGE_CONFIG[curLang];
+    document.getElementById('currentLangFlag').textContent = config.flag;
+    document.getElementById('currentLangName').textContent = config.name;
+    
+    // 更新下拉選單的 active 狀態
+    document.querySelectorAll('.lang-option').forEach(opt => {
+        opt.classList.toggle('active', opt.dataset.lang === curLang);
+    });
+}
+
+// 切換語言
+function setLanguage(lang) {
+    if (!I18N[lang]) return;
+    curLang = lang;
+    localStorage.setItem('flux-ai-language', lang);
+    
+    // 更新 RTL 方向
+    const langConfig = LANGUAGE_CONFIG[lang];
+    if (langConfig && langConfig.direction === 'rtl') {
+        document.documentElement.setAttribute('dir', 'rtl');
+    } else {
+        document.documentElement.removeAttribute('dir');
+    }
+    
+    updateLang();
+    updateLangButton();
+}
+
+// 更新所有翻譯
 function updateLang(){
     document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(I18N[curLang][k])el.textContent=I18N[curLang][k];});
     const seedToggleBtn = document.getElementById('seedToggleBtn');
@@ -2481,7 +3188,33 @@ function updateLang(){
         seedToggleBtn.innerHTML = isSeedRandom ? I18N[curLang].seed_random : I18N[curLang].seed_lock;
     }
 }
-document.getElementById('langSwitch').onclick=toggleLang;
+
+// 語言下拉選單控制
+const langSwitch = document.getElementById('langSwitch');
+const langDropdown = document.getElementById('langDropdown');
+
+langSwitch.addEventListener('click', (e) => {
+    e.stopPropagation();
+    langDropdown.classList.toggle('show');
+});
+
+// 點擊外部關閉下拉選單
+document.addEventListener('click', () => {
+    langDropdown.classList.remove('show');
+});
+
+// 語言選項點擊事件
+document.querySelectorAll('.lang-option').forEach(option => {
+    option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lang = option.dataset.lang;
+        setLanguage(lang);
+        langDropdown.classList.remove('show');
+    });
+});
+
+// 初始化語言按鈕
+updateLangButton();
 
 document.querySelectorAll('.nav-btn:not(.nano-btn)').forEach(btn=>{
     btn.addEventListener('click',function(){
