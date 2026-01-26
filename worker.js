@@ -1236,6 +1236,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                         <span style="margin-left:2px">▼</span>
                     </button>
                     <div class="nano-lang-dropdown" id="nanoLangDropdown">
+                        <div class="nano-lang-option" data-lang="auto">
+                            <span>🌐</span>
+                            <span>自動偵測</span>
+                        </div>
                         <div class="nano-lang-option" data-lang="zh">
                             <span>🇹🇼</span>
                             <span>繁體中文</span>
@@ -1661,6 +1665,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     };
 
     const NANO_LANGUAGE_CONFIG = {
+        auto: { name: "自動偵測", flag: "🌐", direction: "ltr" },
         zh: { name: "繁體中文", flag: "🇹🇼", direction: "ltr" },
         en: { name: "English", flag: "🇺🇸", direction: "ltr" },
         ja: { name: "日本語", flag: "🇯🇵", direction: "ltr" },
@@ -1669,12 +1674,32 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     };
 
     let nanoCurLang = 'zh';
+    let nanoAutoDetect = false;
+    const NANO_AUTO_DETECT_KEY = 'nano-flux-auto-detect';
+
+    // 偵測系統語言
+    function nanoDetectSystemLanguage() {
+        const browserLang = navigator.language || navigator.userLanguage;
+        const langCode = browserLang.split('-')[0];
+        if (NANO_I18N[langCode]) return langCode;
+        return 'zh';
+    }
 
     // 偵測並載入保存的語言
     function nanoDetectLanguage() {
         const urlParams = new URLSearchParams(window.location.search);
         const langParam = urlParams.get('lang');
-        if (langParam && NANO_I18N[langParam]) return langParam;
+        if (langParam && NANO_I18N[langParam]) {
+            nanoAutoDetect = false;
+            localStorage.setItem(NANO_AUTO_DETECT_KEY, 'false');
+            return langParam;
+        }
+        
+        const savedAutoDetect = localStorage.getItem(NANO_AUTO_DETECT_KEY);
+        if (savedAutoDetect === 'true') {
+            nanoAutoDetect = true;
+            return nanoDetectSystemLanguage();
+        }
         
         const savedLang = localStorage.getItem('nano-flux-language');
         if (savedLang && NANO_I18N[savedLang]) return savedLang;
@@ -1692,23 +1717,44 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
     // 更新語言切換按鈕
     function nanoUpdateLangButton() {
-        const config = NANO_LANGUAGE_CONFIG[nanoCurLang];
-        document.getElementById('nanoCurrentLangFlag').textContent = config.flag;
-        document.getElementById('nanoCurrentLangName').textContent = config.name;
+        let config;
+        if (nanoAutoDetect) {
+            config = NANO_LANGUAGE_CONFIG['auto'];
+            document.getElementById('nanoCurrentLangFlag').textContent = config.flag;
+            document.getElementById('nanoCurrentLangName').textContent = config.name;
+        } else {
+            config = NANO_LANGUAGE_CONFIG[nanoCurLang];
+            document.getElementById('nanoCurrentLangFlag').textContent = config.flag;
+            document.getElementById('nanoCurrentLangName').textContent = config.name;
+        }
         
         document.querySelectorAll('.nano-lang-option').forEach(opt => {
-            opt.classList.toggle('active', opt.dataset.lang === nanoCurLang);
+            if (nanoAutoDetect) {
+                opt.classList.toggle('active', opt.dataset.lang === 'auto');
+            } else {
+                opt.classList.toggle('active', opt.dataset.lang === nanoCurLang);
+            }
         });
     }
 
     // 切換語言
     function nanoSetLanguage(lang) {
-        if (!NANO_I18N[lang]) return;
-        nanoCurLang = lang;
-        localStorage.setItem('nano-flux-language', lang);
+        // 處理自動偵測選項
+        if (lang === 'auto') {
+            nanoAutoDetect = true;
+            localStorage.setItem(NANO_AUTO_DETECT_KEY, 'true');
+            nanoCurLang = nanoDetectSystemLanguage();
+            localStorage.setItem('nano-flux-language', nanoCurLang);
+        } else {
+            nanoAutoDetect = false;
+            localStorage.setItem(NANO_AUTO_DETECT_KEY, 'false');
+            if (!NANO_I18N[lang]) return;
+            nanoCurLang = lang;
+            localStorage.setItem('nano-flux-language', lang);
+        }
         
         // 更新 RTL 方向
-        const langConfig = NANO_LANGUAGE_CONFIG[lang];
+        const langConfig = NANO_LANGUAGE_CONFIG[nanoCurLang];
         if (langConfig && langConfig.direction === 'rtl') {
             document.documentElement.setAttribute('dir', 'rtl');
         } else {
@@ -2623,6 +2669,10 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
                 <span style="margin-left:4px">▼</span>
             </button>
             <div class="lang-dropdown" id="langDropdown">
+                <div class="lang-option" data-lang="auto">
+                    <span class="lang-flag">🌐</span>
+                    <span class="lang-name">自動偵測</span>
+                </div>
                 <div class="lang-option" data-lang="zh">
                     <span class="lang-flag">🇹🇼</span>
                     <span class="lang-name">繁體中文</span>
@@ -2752,18 +2802,18 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="form-group" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 16px; margin-top: 20px;">
     <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
         <span style="font-size: 18px;">🤖</span>
-        <span style="font-weight: 700; color: #a78bfa;">專業提示詞生成器</span>
+        <span style="font-weight: 700; color: #a78bfa;" data-t="prompt_generator_title">專業提示詞生成器</span>
         <span style="font-size: 10px; background: rgba(139, 92, 246, 0.3); padding: 2px 8px; border-radius: 10px; margin-left: auto;">Pollinations</span>
     </label>
     
     <div style="margin-bottom: 12px;">
-        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;">上傳參考圖片 (可選 - 用於圖片分析)</label>
+        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;" data-t="prompt_generator_upload_ref">上傳參考圖片 (可選 - 用於圖片分析)</label>
         <div style="display: flex; gap: 8px;">
             <input type="file" id="promptImageUpload" accept="image/*" style="display:none">
             <button type="button" id="promptImageUploadBtn"
                     style="flex: 1; background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
                 <span>📷</span>
-                <span>選擇圖片</span>
+                <span data-t="prompt_generator_select_image">選擇圖片</span>
             </button>
             <button type="button" id="promptImageClearBtn"
                     style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: none;">
@@ -2776,12 +2826,12 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     </div>
     
     <div style="margin-bottom: 12px;">
-        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;">簡單描述你想要的畫面</label>
+        <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;" data-t="prompt_generator_simple_desc">簡單描述你想要的畫面</label>
         <textarea id="promptInput" placeholder="例如：一隻可愛的貓咪在陽光下睡覺..."
                   rows="3" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 13px; resize: none;"></textarea>
     </div>
     
-    <div style="font-size: 11px; color: #f59e0b; margin-bottom: 12px; background: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);" data-t="prompt_magic_tip">
+    <div style="font-size: 11px; color: #f59e0b; margin-bottom: 12px; background: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2);" data-t="prompt_generator_tip">
         💡 <strong>小提示：</strong> 選擇左側的「藝術風格」後，生成器會自動融合該風格（如：賽博龐克、水墨畫等）到提示詞中，讓畫面更具藝術感！
     </div>
 
@@ -2789,17 +2839,17 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <button type="button" id="generatePromptBtn"
                 style="flex: 1; background: linear-gradient(135deg, #8b5cf6, #3b82f6); color: #fff; border: none; padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 6px;">
             <span>✨</span>
-            <span>生成專業提示詞</span>
+            <span data-t="prompt_generator_generate">生成專業提示詞</span>
         </button>
         <button type="button" id="applyPromptBtn"
                 style="flex: 1; background: rgba(34, 197, 94, 0.2); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.4); padding: 12px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.3s; display: none;">
             <span>✓</span>
-            <span>應用到提示詞</span>
+            <span data-t="prompt_generator_apply">應用到提示詞</span>
         </button>
     </div>
     
     <div id="generatedPromptContainer" style="display: none;">
-        <label style="font-size: 11px; color: #a78bfa; margin-bottom: 6px; display: block;">生成的專業提示詞</label>
+        <label style="font-size: 11px; color: #a78bfa; margin-bottom: 6px; display: block;" data-t="prompt_generator_generated">生成的專業提示詞</label>
         <div id="generatedPrompt"
              style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; color: #e0e7ff; font-size: 13px; line-height: 1.6; max-height: 150px; overflow-y: auto; white-space: pre-wrap;"></div>
     </div>
@@ -3118,6 +3168,7 @@ const I18N={
 
 // 語言配置
 const LANGUAGE_CONFIG = {
+    auto: { name: "自動偵測", flag: "🌐", direction: "ltr" },
     zh: { name: "繁體中文", flag: "🇹🇼", direction: "ltr" },
     en: { name: "English", flag: "🇺🇸", direction: "ltr" },
     ja: { name: "日本語", flag: "🇯🇵", direction: "ltr" },
@@ -3126,19 +3177,40 @@ const LANGUAGE_CONFIG = {
 };
 
 let curLang='zh';
+let autoDetect = false;
+const AUTO_DETECT_KEY = 'flux-ai-auto-detect';
+
+// 偵測系統語言
+function detectSystemLanguage() {
+    const browserLang = navigator.language || navigator.userLanguage;
+    const langCode = browserLang.split('-')[0];
+    if (I18N[langCode]) return langCode;
+    return 'zh';
+}
 
 // 偵測並載入保存的語言
 function detectLanguage() {
     // 1. 檢查 URL 參數
     const urlParams = new URLSearchParams(window.location.search);
     const langParam = urlParams.get('lang');
-    if (langParam && I18N[langParam]) return langParam;
+    if (langParam && I18N[langParam]) {
+        autoDetect = false;
+        localStorage.setItem(AUTO_DETECT_KEY, 'false');
+        return langParam;
+    }
     
-    // 2. 檢查 localStorage
+    // 2. 檢查自動偵測設定
+    const savedAutoDetect = localStorage.getItem(AUTO_DETECT_KEY);
+    if (savedAutoDetect === 'true') {
+        autoDetect = true;
+        return detectSystemLanguage();
+    }
+    
+    // 3. 檢查 localStorage
     const savedLang = localStorage.getItem('flux-ai-language');
     if (savedLang && I18N[savedLang]) return savedLang;
     
-    // 3. 檢查瀏覽器語言
+    // 4. 檢查瀏覽器語言
     const browserLang = navigator.language || navigator.userLanguage;
     const langCode = browserLang.split('-')[0];
     if (I18N[langCode]) return langCode;
@@ -3152,24 +3224,45 @@ localStorage.setItem('flux-ai-language', curLang);
 
 // 更新語言切換按鈕
 function updateLangButton() {
-    const config = LANGUAGE_CONFIG[curLang];
-    document.getElementById('currentLangFlag').textContent = config.flag;
-    document.getElementById('currentLangName').textContent = config.name;
+    let config;
+    if (autoDetect) {
+        config = LANGUAGE_CONFIG['auto'];
+        document.getElementById('currentLangFlag').textContent = config.flag;
+        document.getElementById('currentLangName').textContent = config.name;
+    } else {
+        config = LANGUAGE_CONFIG[curLang];
+        document.getElementById('currentLangFlag').textContent = config.flag;
+        document.getElementById('currentLangName').textContent = config.name;
+    }
     
     // 更新下拉選單的 active 狀態
     document.querySelectorAll('.lang-option').forEach(opt => {
-        opt.classList.toggle('active', opt.dataset.lang === curLang);
+        if (autoDetect) {
+            opt.classList.toggle('active', opt.dataset.lang === 'auto');
+        } else {
+            opt.classList.toggle('active', opt.dataset.lang === curLang);
+        }
     });
 }
 
 // 切換語言
 function setLanguage(lang) {
-    if (!I18N[lang]) return;
-    curLang = lang;
-    localStorage.setItem('flux-ai-language', lang);
+    // 處理自動偵測選項
+    if (lang === 'auto') {
+        autoDetect = true;
+        localStorage.setItem(AUTO_DETECT_KEY, 'true');
+        curLang = detectSystemLanguage();
+        localStorage.setItem('flux-ai-language', curLang);
+    } else {
+        autoDetect = false;
+        localStorage.setItem(AUTO_DETECT_KEY, 'false');
+        if (!I18N[lang]) return;
+        curLang = lang;
+        localStorage.setItem('flux-ai-language', lang);
+    }
     
     // 更新 RTL 方向
-    const langConfig = LANGUAGE_CONFIG[lang];
+    const langConfig = LANGUAGE_CONFIG[curLang];
     if (langConfig && langConfig.direction === 'rtl') {
         document.documentElement.setAttribute('dir', 'rtl');
     } else {
@@ -3182,7 +3275,17 @@ function setLanguage(lang) {
 
 // 更新所有翻譯
 function updateLang(){
-    document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(I18N[curLang][k])el.textContent=I18N[curLang][k];});
+    document.querySelectorAll('[data-t]').forEach(el=>{
+        const k=el.getAttribute('data-t');
+        if(I18N[curLang][k]){
+            // 檢查元素是否包含 HTML 標籤，如果是則使用 innerHTML
+            if(el.innerHTML.includes('<strong>') || el.innerHTML.includes('<em>') || el.innerHTML.includes('<b>')){
+                el.innerHTML = I18N[curLang][k];
+            } else {
+                el.textContent = I18N[curLang][k];
+            }
+        }
+    });
     const seedToggleBtn = document.getElementById('seedToggleBtn');
     if(seedToggleBtn && isSeedRandom !== undefined) {
         seedToggleBtn.innerHTML = isSeedRandom ? I18N[curLang].seed_random : I18N[curLang].seed_lock;

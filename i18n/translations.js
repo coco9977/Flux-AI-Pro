@@ -113,7 +113,10 @@ export const TRANSLATIONS = {
     lang_zh: "繁體中文",
     lang_en: "English",
     lang_ja: "日本語",
-    lang_ko: "한국어"
+    lang_ko: "한국어",
+    lang_ar: "العربية",
+    lang_auto_detect: "🌐 自動偵測系統語言",
+    lang_auto_detect_desc: "根據瀏覽器語言自動切換介面語言"
   },
   
   // ====== 英文 (en) ======
@@ -225,7 +228,10 @@ export const TRANSLATIONS = {
     lang_zh: "繁體中文",
     lang_en: "English",
     lang_ja: "日本語",
-    lang_ko: "한국어"
+    lang_ko: "한국어",
+    lang_ar: "العربية",
+    lang_auto_detect: "🌐 Auto-detect System Language",
+    lang_auto_detect_desc: "Automatically switch interface language based on browser language"
   },
   
   // ====== 日文 (ja) ======
@@ -337,7 +343,10 @@ export const TRANSLATIONS = {
     lang_zh: "繁體中文",
     lang_en: "English",
     lang_ja: "日本語",
-    lang_ko: "한국어"
+    lang_ko: "한국어",
+    lang_ar: "العربية",
+    lang_auto_detect: "🌐 システム言語を自動検出",
+    lang_auto_detect_desc: "ブラウザの言語設定に基づいてインターフェース言語を自動的に切り替えます"
   },
   
   // ====== 韓文 (ko) ======
@@ -449,7 +458,10 @@ export const TRANSLATIONS = {
     lang_zh: "繁體中文",
     lang_en: "English",
     lang_ja: "日本語",
-    lang_ko: "한국어"
+    lang_ko: "한국어",
+    lang_ar: "العربية",
+    lang_auto_detect: "🌐 시스템 언어 자동 감지",
+    lang_auto_detect_desc: "브라우저 언어 설정에 따라 인터페이스 언어를 자동으로 전환합니다"
   },
   
   // ====== 阿拉伯語 (ar) - RTL ======
@@ -562,7 +574,9 @@ export const TRANSLATIONS = {
     lang_en: "English",
     lang_ja: "日本語",
     lang_ko: "한국어",
-    lang_ar: "العربية"
+    lang_ar: "العربية",
+    lang_auto_detect: "🌐 الكشف التلقائي عن لغة النظام",
+    lang_auto_detect_desc: "التبديل التلقائي للغة الواجهة بناءً على لغة المتصفح"
   }
 };
 

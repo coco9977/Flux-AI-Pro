@@ -22,6 +22,8 @@ export class I18nManager {
     this.currentLanguage = this.detectLanguage();
     this.listeners = [];
     this.storageKey = 'flux-ai-language';
+    this.autoDetectKey = 'flux-ai-auto-detect';
+    this.autoDetect = this.loadAutoDetect();
     
     // 從 localStorage 讀取保存的語言
     this.loadSavedLanguage();
@@ -42,10 +44,12 @@ export class I18nManager {
       return langParam;
     }
     
-    // 2. 檢查 localStorage
-    const savedLang = localStorage.getItem(this.storageKey);
-    if (savedLang && isLanguageSupported(savedLang)) {
-      return savedLang;
+    // 2. 檢查 localStorage（如果未啟用自動偵測）
+    if (!this.autoDetect) {
+      const savedLang = localStorage.getItem(this.storageKey);
+      if (savedLang && isLanguageSupported(savedLang)) {
+        return savedLang;
+      }
     }
     
     // 3. 檢查瀏覽器語言
@@ -83,6 +87,73 @@ export class I18nManager {
     } catch (error) {
       console.warn('Failed to save language:', error);
     }
+  }
+  
+  /**
+   * 載入自動偵測設定
+   */
+  loadAutoDetect() {
+    try {
+      const saved = localStorage.getItem(this.autoDetectKey);
+      return saved === 'true';
+    } catch (error) {
+      console.warn('Failed to load auto-detect setting:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * 保存自動偵測設定
+   */
+  saveAutoDetect(enabled) {
+    try {
+      localStorage.setItem(this.autoDetectKey, String(enabled));
+    } catch (error) {
+      console.warn('Failed to save auto-detect setting:', error);
+    }
+  }
+  
+  /**
+   * 切換自動偵測模式
+   */
+  toggleAutoDetect() {
+    this.autoDetect = !this.autoDetect;
+    this.saveAutoDetect(this.autoDetect);
+    
+    if (this.autoDetect) {
+      // 啟用自動偵測時，重新偵測語言
+      const detectedLang = this.detectSystemLanguage();
+      if (detectedLang !== this.currentLanguage) {
+        this.setLanguage(detectedLang);
+      }
+    }
+    
+    return this.autoDetect;
+  }
+  
+  /**
+   * 偵測系統語言（不考慮 localStorage）
+   */
+  detectSystemLanguage() {
+    if (typeof window === 'undefined') {
+      return DEFAULT_LANGUAGE;
+    }
+    
+    const browserLang = navigator.language || navigator.userLanguage;
+    const langCode = browserLang.split('-')[0];
+    
+    if (isLanguageSupported(langCode)) {
+      return langCode;
+    }
+    
+    return DEFAULT_LANGUAGE;
+  }
+  
+  /**
+   * 檢查是否啟用自動偵測
+   */
+  isAutoDetectEnabled() {
+    return this.autoDetect;
   }
   
   /**
@@ -295,4 +366,16 @@ export function formatFileSize(bytes) {
 
 export function formatTime(seconds) {
   return i18n.formatTime(seconds);
+}
+
+export function toggleAutoDetect() {
+  return i18n.toggleAutoDetect();
+}
+
+export function isAutoDetectEnabled() {
+  return i18n.isAutoDetectEnabled();
+}
+
+export function detectSystemLanguage() {
+  return i18n.detectSystemLanguage();
 }
