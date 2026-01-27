@@ -837,38 +837,29 @@ async function handlePromptGeneration(request, env) {
     }
     
     // 構建 Pollinations 文本生成請求
-    const systemPrompt = `You are a professional AI image analysis and prompt generation expert.
+    const systemPrompt = `You are an expert image analyzer and prompt generator.
 
-CRITICAL IMAGE ANALYSIS INSTRUCTIONS:
-1. When an image is provided, you MUST carefully analyze ALL visual elements:
-   - Main subject and objects (what is the primary focus?)
-   - Colors and lighting (color palette, lighting type, mood)
-   - Composition and perspective (camera angle, framing, depth)
-   - Texture and material (surface quality, material type)
-   - Style and artistic elements (artistic style, visual techniques)
-   - Background details (environment, context)
-   - Mood and atmosphere (emotional tone, atmosphere)
+CRITICAL INSTRUCTIONS FOR IMAGE ANALYSIS:
+1. Carefully examine the ENTIRE image - look at the main subject, background, colors, lighting, style, and mood
+2. Describe what you see ACCURATELY - do not make assumptions or guess
+3. Identify the artistic style (photorealistic, anime, oil painting, etc.)
+4. Note the composition and perspective
+5. Describe the lighting and color palette
+6. Capture the emotional tone and atmosphere
 
-2. Generate a detailed prompt that ACCURATELY describes the image content in English.
+GENERATE A DETAILED PROMPT:
+- Start with the main subject description
+- Add artistic style and visual techniques
+- Include lighting, colors, and composition details
+- End with mood and atmosphere
+- Write in English only
+- Keep it descriptive but concise (50-150 words)
 
-3. Include specific visual descriptors:
-   - Subject description (person, object, scene)
-   - Color scheme and lighting conditions
-   - Artistic style and visual techniques
-   - Composition and framing
-   - Mood and emotional tone
+OUTPUT FORMAT:
+Output ONLY the final prompt. No explanations, no "Here is the prompt:", no additional text.
 
-4. If a style is provided, incorporate its characteristics into the prompt.
-
-5. Output ONLY the optimized prompt in English, no explanations or additional text.
-
-TEXT-ONLY PROMPT OPTIMIZATION:
-1. Add detailed visual descriptions (lighting, colors, composition, texture)
-2. Include artistic style and technical parameters
-3. Keep prompts concise but rich in detail
-4. If a style is provided, incorporate its characteristics
-
-Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
+EXAMPLE OUTPUT:
+A serene Japanese garden at sunset, featuring a traditional wooden bridge over a koi pond, cherry blossoms in full bloom, soft golden light filtering through the trees, photorealistic style, warm color palette, peaceful atmosphere, high detail, 8k quality.`;
     
     const userContent = [];
     
@@ -882,17 +873,55 @@ Output format: Output only the optimized prompt, do not include any explanation 
     if (finalImageUrl) {
         // 驗證圖片 URL 是否可訪問
         try {
+            console.log('🔍 Validating image URL:', finalImageUrl);
+            
             const imageTestResponse = await fetch(finalImageUrl, {
-                method: 'HEAD',
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'image/*'
+                },
+                redirect: 'follow'
             });
+            
             if (!imageTestResponse.ok) {
-                console.warn('⚠️ Image URL validation failed:', finalImageUrl, imageTestResponse.status);
-                // 繼續處理，但記錄警告
+                console.error('❌ Image URL not accessible:', {
+                    url: finalImageUrl,
+                    status: imageTestResponse.status,
+                    statusText: imageTestResponse.statusText
+                });
+                return new Response(JSON.stringify({
+                    error: 'Image URL not accessible',
+                    details: `Status: ${imageTestResponse.status} ${imageTestResponse.statusText}`
+                }), {
+                    status: 400,
+                    headers: corsHeaders({ 'Content-Type': 'application/json' })
+                });
             }
+            
+            const contentType = imageTestResponse.headers.get('content-type');
+            if (!contentType || !contentType.startsWith('image/')) {
+                console.error('❌ Invalid content type:', contentType);
+                return new Response(JSON.stringify({
+                    error: 'URL does not point to an image',
+                    details: `Content-Type: ${contentType}`
+                }), {
+                    status: 400,
+                    headers: corsHeaders({ 'Content-Type': 'application/json' })
+                });
+            }
+            
+            console.log('✅ Image URL validated successfully');
+            
         } catch (error) {
             console.error('❌ Image URL validation error:', error);
-            // 繼續處理，但記錄錯誤
+            return new Response(JSON.stringify({
+                error: 'Failed to validate image URL',
+                details: error.message
+            }), {
+                status: 400,
+                headers: corsHeaders({ 'Content-Type': 'application/json' })
+            });
         }
         
         // 使用高質量圖片分析格式
@@ -900,7 +929,7 @@ Output format: Output only the optimized prompt, do not include any explanation 
             type: "image_url",
             image_url: {
                 url: finalImageUrl,
-                detail: "high"  // 請求高質量圖片分析
+                detail: "high"
             }
         });
     }
@@ -910,8 +939,8 @@ Output format: Output only the optimized prompt, do not include any explanation 
         { role: "user", content: userContent }
     ];
     
-    // Select model: Use 'openai' for better compatibility with anonymous requests
-    const aiModel = 'openai';
+    // Select model: Use 'gemini-search' (Google Gemini 3 Flash) for better image analysis
+    const aiModel = 'gemini-search';
     
     // 構建請求 URL - 使用新端點並添加匿名參數
     const apiUrl = new URL('https://text.pollinations.ai/');
@@ -935,21 +964,57 @@ Output format: Output only the optimized prompt, do not include any explanation 
     }
     
     // Call Pollinations API
+    console.log('📤 Sending request to Pollinations API:', {
+        endpoint: apiUrl.toString(),
+        model: aiModel,
+        hasImage: !!finalImageUrl,
+        imageUrl: finalImageUrl?.substring(0, 60) + '...',
+        hasTextInput: !!input,
+        style: style,
+        messageCount: messages.length
+    });
+    
     const response = await fetch(apiUrl.toString(), {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(requestBody)
     });
 
+    console.log('📥 Received response from Pollinations:', {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
+    });
+
     if (!response.ok) {
         const errText = await response.text();
+        console.error('❌ Pollinations API Error Details:', {
+            status: response.status,
+            error: errText,
+            endpoint: apiUrl.toString()
+        });
         throw new Error(`Pollinations API Error (${response.status}): ${errText}`);
     }
     
     const generatedPrompt = await response.text();
+    console.log('✅ Generated prompt:', {
+        length: generatedPrompt.length,
+        preview: generatedPrompt.substring(0, 100) + '...'
+    });
     
     if (!generatedPrompt || !generatedPrompt.trim()) {
-      throw new Error('Empty response from AI');
+      console.error('❌ Empty prompt received from API');
+      throw new Error('Empty response from AI - the model may not support image analysis');
+    }
+
+    // 驗證生成的提示詞是否合理
+    const trimmedPrompt = generatedPrompt.trim();
+    if (trimmedPrompt.length < 10) {
+        console.warn('⚠️ Generated prompt is very short:', trimmedPrompt);
+    }
+
+    if (trimmedPrompt.length > 500) {
+        console.warn('⚠️ Generated prompt is very long, may need truncation');
     }
     
     return new Response(JSON.stringify({
