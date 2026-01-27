@@ -104,7 +104,7 @@ export const TRANSLATIONS = {
     // 錯誤訊息
     error_no_prompt: "⚠️ 請輸入提示詞",
     error_energy_depleted: "🚫 本小時能量已耗盡，請稍後再來！",
-    error_image_too_large: "圖片太大！最大 5MB",
+    error_image_too_large: "圖片太大！最大 32MB",
     error_invalid_file: "請選擇圖片文件",
     error_upload_failed: "上傳失敗",
     
@@ -274,7 +274,7 @@ export const TRANSLATIONS = {
     // Error Messages
     error_no_prompt: "⚠️ Please enter a prompt",
     error_energy_depleted: "🚫 Energy depleted this hour, please come back later!",
-    error_image_too_large: "Image too large! Max size is 5MB",
+    error_image_too_large: "Image too large! Max size is 32MB",
     error_invalid_file: "Please select an image file",
     error_upload_failed: "Upload failed",
     
@@ -444,7 +444,7 @@ export const TRANSLATIONS = {
     // エラーメッセージ
     error_no_prompt: "⚠️ プロンプトを入力してください",
     error_energy_depleted: "🚫 今時間のエネルギーが枯渇しました。後でもう一度お越しください！",
-    error_image_too_large: "画像が大きすぎます！最大サイズは5MBです",
+    error_image_too_large: "画像が大きすぎます！最大サイズは32MBです",
     error_invalid_file: "画像ファイルを選択してください",
     error_upload_failed: "アップロードに失敗しました",
     
@@ -614,7 +614,7 @@ export const TRANSLATIONS = {
     // 오류 메시지
     error_no_prompt: "⚠️ 프롬프트를 입력하세요",
     error_energy_depleted: "🚫 이번 시간 에너지가 소진되었습니다. 나중에 다시 방문해주세요!",
-    error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 5MB입니다",
+    error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다",
     error_invalid_file: "이미지 파일을 선택하세요",
     error_upload_failed: "업로드 실패",
     
@@ -784,7 +784,7 @@ export const TRANSLATIONS = {
     // رسائل الخطأ
     error_no_prompt: "⚠️ يرجى إدخال موجه",
     error_energy_depleted: "🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!",
-    error_image_too_large: "الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت",
+    error_image_too_large: "الصورة كبيرة جدًا! الحد الأقصى 32 ميجابايت",
     error_invalid_file: "يرجى اختيار ملف صورة",
     error_upload_failed: "فشل الرفع",
     

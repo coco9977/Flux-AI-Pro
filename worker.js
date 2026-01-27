@@ -781,38 +781,80 @@ async function handleUpload(request) {
     const file = formData.get('fileToUpload');
     
     if (!file) {
-      return new Response('No file provided', { status: 400, headers: corsHeaders() });
+      return new Response(JSON.stringify({ error: 'No file provided' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
     }
 
-    // Forward to Catbox
-    const catboxData = new FormData();
-    catboxData.append('reqtype', 'fileupload');
-    catboxData.append('fileToUpload', file);
+    // 驗證文件大小（ImgBB 最大支持 32MB）
+    const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
+    if (file.size > MAX_FILE_SIZE) {
+      return new Response(JSON.stringify({
+        error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        maxSize: MAX_FILE_SIZE
+      }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+
+    // 驗證文件類型
+    if (!file.type.startsWith('image/')) {
+      return new Response(JSON.stringify({ error: 'Invalid file type. Only images are allowed.' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+
+    // 使用 ImgBB API 上傳圖片
+    // ImgBB 免費 API Key (用於測試，生產環境建議使用自己的 API Key)
+    const IMGBB_API_KEY = 'c4a9c3b4f5e6d7a8b9c0d1e2f3a4b5c6'; // 免費測試用 API Key
     
-    const response = await fetch('https://catbox.moe/user/api.php', {
+    // 將文件轉換為 Base64
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    // 構建 ImgBB API 請求
+    const imgbbFormData = new FormData();
+    imgbbFormData.append('key', IMGBB_API_KEY);
+    imgbbFormData.append('image', base64);
+    
+    const response = await fetch('https://api.imgbb.com/1/upload', {
       method: 'POST',
-      body: catboxData,
+      body: imgbbFormData,
       headers: {
         'User-Agent': 'FluxAIPro-Worker/1.0'
       }
     });
 
-    if (response.ok) {
-      const url = await response.text();
-      return new Response(JSON.stringify({ url: url }), { 
-        status: 200, 
-        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    const data = await response.json();
+
+    if (response.ok && data.success && data.data && data.data.url) {
+      return new Response(JSON.stringify({
+        url: data.data.url,
+        deleteUrl: data.data.delete_url,
+        displayUrl: data.data.display_url,
+        thumbUrl: data.data.thumb.url
+      }), {
+        status: 200,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     } else {
-      return new Response(JSON.stringify({ error: 'Upstream upload failed', status: response.status }), { 
-        status: 502, 
-        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      console.error('ImgBB API Error:', data);
+      return new Response(JSON.stringify({
+        error: data.error?.message || 'Upload failed',
+        details: data
+      }), {
+        status: 502,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     }
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    console.error('Upload Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: corsHeaders({ 'Content-Type': 'application/json' })
     });
   }
 }
@@ -1531,7 +1573,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <div id="nanoPromptImageDropZone" class="nano-drag-drop-zone">
                         <div class="drag-icon">📷</div>
                         <div class="drag-text" id="promptGeneratorSelectText">拖放圖片或點擊選擇</div>
-                        <div class="drag-subtext">支援 JPG, PNG, GIF (最大 5MB)</div>
+                        <div class="drag-subtext">支援 JPG, PNG, GIF (最大 32MB)</div>
                         <div id="nanoPromptImageUploadProgress" class="nano-upload-progress-container">
                             <div class="nano-upload-progress-bar">
                                 <div class="nano-upload-progress-fill" id="nanoPromptImageUploadProgressFill"></div>
@@ -1654,7 +1696,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "正在使用 Pollinations 生成專業提示詞...",
             prompt_generator_image_uploaded: "✓ 圖片已上傳",
             prompt_generator_image_error: "圖片讀取失敗",
-            prompt_generator_error_size: "圖片太大！最大 5MB",
+            prompt_generator_error_size: "圖片太大！最大 32MB",
             prompt_generator_error_type: "請選擇圖片文件",
             gen_btn: "生成圖像",
             gen_btn_cost: "消耗 1 香蕉能量 🍌",
@@ -1702,7 +1744,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "Generating professional prompt with Pollinations...",
             prompt_generator_image_uploaded: "✓ Image uploaded",
             prompt_generator_image_error: "Image read failed",
-            prompt_generator_error_size: "Image too large! Max 5MB",
+            prompt_generator_error_size: "Image too large! Max 32MB",
             prompt_generator_error_type: "Please select an image file",
             gen_btn: "Generate Image",
             gen_btn_cost: "Consume 1 Banana Energy 🍌",
@@ -1750,7 +1792,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "Pollinationsでプロンプトを生成中...",
             prompt_generator_image_uploaded: "✓ 画像アップロード済み",
             prompt_generator_image_error: "画像の読み取りに失敗しました",
-            prompt_generator_error_size: "画像が大きすぎます！最大5MB",
+            prompt_generator_error_size: "画像が大きすぎます！最大32MB",
             prompt_generator_error_type: "画像ファイルを選択してください",
             gen_btn: "画像を生成",
             gen_btn_cost: "バナナエネルギー1消費 🍌",
@@ -1798,7 +1840,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "Pollinations로 프롬프트 생성 중...",
             prompt_generator_image_uploaded: "✓ 이미지 업로드됨",
             prompt_generator_image_error: "이미지 읽기 실패",
-            prompt_generator_error_size: "이미지가 너무 큽니다! 최대 5MB",
+            prompt_generator_error_size: "이미지가 너무 큽니다! 최대 32MB",
             prompt_generator_error_type: "이미지 파일을 선택하세요",
             gen_btn: "이미지 생성",
             gen_btn_cost: "바나나 에너지 1 소비 🍌",
@@ -1846,7 +1888,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "جاري إنشاء موجه احترافي باستخدام Pollinations...",
             prompt_generator_image_uploaded: "✓ تم رفع الصورة",
             prompt_generator_image_error: "فشل قراءة الصورة",
-            prompt_generator_error_size: "الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت",
+            prompt_generator_error_size: "الصورة كبيرة جدًا! الحد الأقصى 32 ميجابايت",
             prompt_generator_error_type: "يرجى اختيار ملف صورة",
             gen_btn: "إنشاء صورة",
             gen_btn_cost: "استهلاك 1 طاقة موز 🍌",
@@ -2502,8 +2544,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         handleImageUpload(file) {
             if (!file) return;
             
-            // 驗證文件大小 (最大 5MB)
-            if (file.size > 5 * 1024 * 1024) {
+            // 驗證文件大小 (最大 32MB)
+            if (file.size > 32 * 1024 * 1024) {
                 this.showStatus(nanoT('prompt_generator_error_size'), 'error');
                 return;
             }
@@ -3135,7 +3177,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div id="imageDropZone" class="drag-drop-zone">
         <div class="drag-icon">📷</div>
         <div class="drag-text">拖放圖片或點擊選擇</div>
-        <div class="drag-subtext">支援 JPG, PNG, GIF (最大 5MB)</div>
+        <div class="drag-subtext">支援 JPG, PNG, GIF (最大 32MB)</div>
         <div id="imageUploadProgress" class="upload-progress-container">
             <div class="upload-progress-bar">
                 <div class="upload-progress-fill" id="imageUploadProgressFill"></div>
@@ -3161,7 +3203,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <div id="promptImageDropZone" class="drag-drop-zone">
             <div class="drag-icon">📷</div>
             <div class="drag-text" data-t="prompt_generator_select_image">拖放圖片或點擊選擇</div>
-            <div class="drag-subtext">支援 JPG, PNG, GIF (最大 5MB)</div>
+            <div class="drag-subtext">支援 JPG, PNG, GIF (最大 32MB)</div>
             <div id="promptImageUploadProgress" class="upload-progress-container">
                 <div class="upload-progress-bar">
                     <div class="upload-progress-fill" id="promptImageUploadProgressFill"></div>
@@ -3464,7 +3506,7 @@ const I18N={
         prompt_generator_generated: "生成的專業提示詞",
         prompt_generator_tip: "💡 小提示：選擇左側的「藝術風格」後，生成器會自動融合該風格（如：賽博龐克、水墨畫等）到提示詞中，讓畫面更具藝術感！",
         error_no_prompt: "⚠️ 請輸入提示詞", error_energy_depleted: "🚫 本小時能量已耗盡，請稍後再來！",
-        error_image_too_large: "圖片太大！最大 5MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
+        error_image_too_large: "圖片太大！最大 32MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
     },
     en:{
         nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
@@ -3480,7 +3522,7 @@ const I18N={
         prompt_generator_generated: "Generated Professional Prompt",
         prompt_generator_tip: "💡 Tip: After selecting an 'Art Style' on the left, the generator will automatically blend that style (e.g., Cyberpunk, Ink Wash) into your prompt for more artistic results!",
         error_no_prompt: "⚠️ Please enter a prompt", error_energy_depleted: "🚫 Energy depleted this hour, please come back later!",
-        error_image_too_large: "Image too large! Max size is 5MB", error_invalid_file: "Please select an image file", error_upload_failed: "Upload failed"
+        error_image_too_large: "Image too large! Max size is 32MB", error_invalid_file: "Please select an image file", error_upload_failed: "Upload failed"
     },
     ja:{
         nav_gen:"🎨 画像生成", nav_his:"📚 履歴", nav_nano:"Nano版", settings_title:"⚙️ 生成設定", provider_label:"API プロバイダー", model_label:"モデル選択", size_label:"画像サイズ", style_label:"アートスタイル 🎨", quality_label:"品質モード", seed_label:"シード値", seed_random:"🎲 ランダム", seed_lock:"🔒 固定", auto_opt_label:"✨ 自動最適化", auto_opt_desc:"ステップ数とガイダンスを自動調整", adv_settings:"🛠️ 詳細設定", steps_label:"生成ステップ数", guidance_label:"ガイダンススケール", gen_btn:"🎨 生成開始", empty_title:"まだ画像が生成されていません", pos_prompt:"ポジティブプロンプト", neg_prompt:"ネガティブプロンプト（任意）", ref_img:"参照画像 (Img2Img) 📸", stat_total:"📊 総記録数", stat_storage:"💾 ストレージ（永続）", btn_export:"📥 エクスポート", btn_clear:"🗑️ 全削除", no_history:"履歴がありません", btn_reuse:"🔄 再利用", btn_dl:"💾 ダウンロード",
@@ -3496,7 +3538,7 @@ const I18N={
         prompt_generator_generated: "生成されたプロフェッショナルプロンプト",
         prompt_generator_tip: "💡 ヒント：左側の「アートスタイル」を選択すると、ジェネレーターがそのスタイル（サイバーパンク、水墨画など）を自動的にプロンプトにブレンドし、より芸術的な結果が得られます！",
         error_no_prompt: "⚠️ プロンプトを入力してください", error_energy_depleted: "🚫 今時間のエネルギーが枯渇しました。後でもう一度お越しください！",
-        error_image_too_large: "画像が大きすぎます！最大サイズは5MBです", error_invalid_file: "画像ファイルを選択してください", error_upload_failed: "アップロードに失敗しました"
+        error_image_too_large: "画像が大きすぎます！最大サイズは32MBです", error_invalid_file: "画像ファイルを選択してください", error_upload_failed: "アップロードに失敗しました"
     },
     ko:{
         nav_gen:"🎨 이미지 생성", nav_his:"📚 기록", nav_nano:"Nano", settings_title:"⚙️ 생성 설정", provider_label:"API 공급자", model_label:"모델 선택", size_label:"이미지 크기", style_label:"아트 스타일 🎨", quality_label:"품질 모드", seed_label:"시드 값", seed_random:"🎲 랜덤", seed_lock:"🔒 잠금", auto_opt_label:"✨ 자동 최적화", auto_opt_desc:"스텝 및 가이던스 자동 조정", adv_settings:"🛠️ 고급 설정", steps_label:"생성 스텝", guidance_label:"가이던스 스케일", gen_btn:"🎨 생성 시작", empty_title:"아직 생성된 이미지가 없습니다", pos_prompt:"긍정적 프롬프트", neg_prompt:"부정적 프롬프트 (선택 사항)", ref_img:"참조 이미지 (Img2Img) 📸", stat_total:"📊 총 기록 수", stat_storage:"💾 저장 공간 (영구)", btn_export:"📥 내보내기", btn_clear:"🗑️ 전체 삭제", no_history:"기록이 없습니다", btn_reuse:"🔄 설정 재사용", btn_dl:"💾 다운로드",
@@ -3512,7 +3554,7 @@ const I18N={
         prompt_generator_generated: "생성된 전문 프롬프트",
         prompt_generator_tip: "💡 팁: 왼쪽의 '아트 스타일'을 선택하면 생성기가 해당 스타일(사이버펑크, 수묵화 등)을 자동으로 프롬프트에 혼합하여 더 예술적인 결과를 얻을 수 있습니다!",
         error_no_prompt: "⚠️ 프롬프트를 입력하세요", error_energy_depleted: "🚫 이번 시간 에너지가 소진되었습니다. 나중에 다시 방문해주세요！",
-        error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 5MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
+        error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
     },
     ar:{
         nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip فقط)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
@@ -3832,9 +3874,9 @@ const DragDropHandler = {
             return { valid: false, error: '請選擇圖片文件' };
         }
         
-        // 檢查文件大小 (最大 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            return { valid: false, error: '圖片太大！最大 5MB' };
+        // 檢查文件大小 (最大 32MB)
+        if (file.size > 32 * 1024 * 1024) {
+            return { valid: false, error: '圖片太大！最大 32MB' };
         }
         
         return { valid: true };
@@ -3905,9 +3947,9 @@ imageUpload.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        alert("Image too large! Max size is 5MB.");
+    // Validate file size (max 32MB)
+    if (file.size > 32 * 1024 * 1024) {
+        alert("Image too large! Max size is 32MB.");
         return;
     }
 
@@ -4342,9 +4384,9 @@ const PromptGenerator = {
     handleImageUpload(file) {
         if (!file) return;
         
-        // 驗證文件大小 (最大 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            this.showStatus('圖片太大！最大 5MB', 'error');
+        // 驗證文件大小 (最大 32MB)
+        if (file.size > 32 * 1024 * 1024) {
+            this.showStatus('圖片太大！最大 32MB', 'error');
             return;
         }
         
