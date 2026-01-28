@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.6.0 (Prompt Generator Enhancement)
-//  更新: Pollinations 提示詞生成器、Prompt Generator 模型、混合調用模式
+//  版本: 11.7.0 (多語言擴展 & 自動偵測)
+//  更新: 多語言支援 (zh, en, ja, ko, ar)、自動語言偵測、RTL 支援、UI 翻譯修復
 // =================================================================================
 
 // 導入風格適配器（僅在服務器端使用）
@@ -13,7 +13,7 @@ const mergedStyles = styleManager.merge();
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.6.0",
+  PROJECT_VERSION: "11.7.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -781,38 +781,87 @@ async function handleUpload(request) {
     const file = formData.get('fileToUpload');
     
     if (!file) {
-      return new Response('No file provided', { status: 400, headers: corsHeaders() });
+      return new Response(JSON.stringify({ error: 'No file provided' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
     }
 
-    // Forward to Catbox
-    const catboxData = new FormData();
-    catboxData.append('reqtype', 'fileupload');
-    catboxData.append('fileToUpload', file);
+    // 驗證文件大小（ImgBB 最大支持 32MB）
+    const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
+    if (file.size > MAX_FILE_SIZE) {
+      return new Response(JSON.stringify({
+        error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        maxSize: MAX_FILE_SIZE
+      }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+
+    // 驗證文件類型
+    if (!file.type.startsWith('image/')) {
+      return new Response(JSON.stringify({ error: 'Invalid file type. Only images are allowed.' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+
+    // 使用 ImgBB API 上傳圖片
+    // ImgBB 免費 API Key (用於測試，生產環境建議使用自己的 API Key)
+    const IMGBB_API_KEY = '8245f772dd33870730fab74e7e236df2'; // 免費測試用 API Key
     
-    const response = await fetch('https://catbox.moe/user/api.php', {
+    // 將文件轉換為 Base64（使用分塊處理避免堆疊溢出）
+    const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 65536; // 每次處理 64KB
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    const base64 = btoa(binary);
+    
+    // 構建 ImgBB API 請求
+    const imgbbFormData = new FormData();
+    imgbbFormData.append('key', IMGBB_API_KEY);
+    imgbbFormData.append('image', base64);
+    
+    const response = await fetch('https://api.imgbb.com/1/upload', {
       method: 'POST',
-      body: catboxData,
+      body: imgbbFormData,
       headers: {
         'User-Agent': 'FluxAIPro-Worker/1.0'
       }
     });
 
-    if (response.ok) {
-      const url = await response.text();
-      return new Response(JSON.stringify({ url: url }), { 
-        status: 200, 
-        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    const data = await response.json();
+
+    if (response.ok && data.success && data.data && data.data.url) {
+      return new Response(JSON.stringify({
+        url: data.data.url,
+        deleteUrl: data.data.delete_url,
+        displayUrl: data.data.display_url,
+        thumbUrl: data.data.thumb.url
+      }), {
+        status: 200,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     } else {
-      return new Response(JSON.stringify({ error: 'Upstream upload failed', status: response.status }), { 
-        status: 502, 
-        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      console.error('ImgBB API Error:', data);
+      return new Response(JSON.stringify({
+        error: data.error?.message || 'Upload failed',
+        details: data
+      }), {
+        status: 502,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     }
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { 
-      status: 500, 
-      headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    console.error('Upload Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: corsHeaders({ 'Content-Type': 'application/json' })
     });
   }
 }
@@ -837,69 +886,205 @@ async function handlePromptGeneration(request, env) {
     }
     
     // 構建 Pollinations 文本生成請求
-    const systemPrompt = `You are a professional AI image generation prompt optimization expert. Your task is to convert simple user descriptions or analyze images into detailed, professional image generation prompts.
+    const systemPrompt = `You are an expert image analyzer and prompt generator.
 
-Rules:
-1. Output in English
-2. Add detailed visual descriptions (lighting, colors, composition, texture)
-3. Include artistic style and technical parameters
-4. Keep prompts concise but rich
-5. If a style is provided, incorporate its characteristics
-6. If a reference image URL is provided, analyze the image content and generate a prompt that captures its style, subject, and visual elements
-7. If only an image is provided (no text description), generate a comprehensive prompt describing the image in detail
+CRITICAL INSTRUCTIONS FOR IMAGE ANALYSIS:
+1. Carefully examine the ENTIRE image - look at the main subject, background, colors, lighting, style, and mood
+2. Describe what you see ACCURATELY - do not make assumptions or guess
+3. Identify the artistic style (photorealistic, anime, oil painting, etc.)
+4. Note the composition and perspective
+5. Describe the lighting and color palette
+6. Capture the emotional tone and atmosphere
 
-Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
+GENERATE A DETAILED PROMPT:
+- Start with the main subject description
+- Add artistic style and visual techniques
+- Include lighting, colors, and composition details
+- End with mood and atmosphere
+- Write in English only
+- Keep it descriptive but concise (50-150 words)
+
+OUTPUT FORMAT:
+Output ONLY the final prompt. No explanations, no "Here is the prompt:", no additional text.
+
+EXAMPLE OUTPUT:
+A serene Japanese garden at sunset, featuring a traditional wooden bridge over a koi pond, cherry blossoms in full bloom, soft golden light filtering through the trees, photorealistic style, warm color palette, peaceful atmosphere, high detail, 8k quality.`;
     
+    // 構建用戶內容數組
     const userContent = [];
     
+    // 添加文本內容
     let textPrompt = input ? `Optimize this prompt: ${input}` : `Generate a prompt based on the image.`;
     if (style && style !== 'none') {
         textPrompt += `\n\nCRITICAL INSTRUCTION: The generated prompt MUST strictly adhere to the "${style}" art style. You must include specific artistic keywords, lighting techniques, color palettes, and composition styles associated with ${style}. Make the style the dominant visual characteristic of the image.`;
     }
     
-    userContent.push({ type: "text", text: textPrompt });
+    userContent.push({
+        type: "text",
+        text: textPrompt
+    });
     
+    // 如果有圖片，添加圖片內容
     if (finalImageUrl) {
-        userContent.push({ type: "image_url", image_url: { url: finalImageUrl } });
+        // 驗證圖片 URL 是否可訪問
+        try {
+            console.log('🔍 Validating image URL:', finalImageUrl);
+            
+            const imageTestResponse = await fetch(finalImageUrl, {
+                method: 'GET',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'image/*'
+                },
+                redirect: 'follow'
+            });
+            
+            if (!imageTestResponse.ok) {
+                console.error('❌ Image URL not accessible:', {
+                    url: finalImageUrl,
+                    status: imageTestResponse.status,
+                    statusText: imageTestResponse.statusText
+                });
+                return new Response(JSON.stringify({
+                    error: 'Image URL not accessible',
+                    details: `Status: ${imageTestResponse.status} ${imageTestResponse.statusText}`
+                }), {
+                    status: 400,
+                    headers: corsHeaders({ 'Content-Type': 'application/json' })
+                });
+            }
+            
+            const contentType = imageTestResponse.headers.get('content-type');
+            if (!contentType || !contentType.startsWith('image/')) {
+                console.error('❌ Invalid content type:', contentType);
+                return new Response(JSON.stringify({
+                    error: 'URL does not point to an image',
+                    details: `Content-Type: ${contentType}`
+                }), {
+                    status: 400,
+                    headers: corsHeaders({ 'Content-Type': 'application/json' })
+                });
+            }
+            
+            console.log('✅ Image URL validated successfully');
+            
+            // 添加圖片到用戶內容
+            userContent.push({
+                type: "image_url",
+                image_url: {
+                    url: finalImageUrl,
+                    detail: "high"
+                }
+            });
+            
+        } catch (error) {
+            console.error('❌ Image URL validation error:', error);
+            return new Response(JSON.stringify({
+                error: 'Failed to validate image URL',
+                details: error.message
+            }), {
+                status: 400,
+                headers: corsHeaders({ 'Content-Type': 'application/json' })
+            });
+        }
     }
     
-    const messages = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userContent }
-    ];
+    // 使用 Pollinations Vision API (v1/chat/completions)
+    const apiUrl = 'https://gen.pollinations.ai/v1/chat/completions';
     
-    // Select model: Always use 'gemini' as requested
-    const aiModel = 'gemini';
+    // 構建請求體
+    const requestBody = {
+        model: "openai",
+        messages: [
+            {
+                role: "system",
+                content: systemPrompt
+            },
+            {
+                role: "user",
+                content: userContent
+            }
+        ],
+        seed: Math.floor(Math.random() * 1000000)
+    };
     
-    // Call Pollinations API
-    const response = await fetch('https://text.pollinations.ai/', {
+    // 構建請求頭
+    const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    };
+    
+    // 如果有 API Key，添加認證
+    if (env.POLLINATIONS_API_KEY) {
+        headers['Authorization'] = `Bearer ${env.POLLINATIONS_API_KEY}`;
+    }
+    
+    // Call Pollinations Vision API
+    console.log('📤 Sending request to Pollinations Vision API:', {
+        endpoint: apiUrl,
+        model: requestBody.model,
+        hasImage: !!finalImageUrl,
+        imageUrl: finalImageUrl?.substring(0, 60) + '...',
+        hasTextInput: !!input,
+        style: style,
+        contentItems: userContent.length
+    });
+    
+    const response = await fetch(apiUrl, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            messages: messages,
-            model: aiModel,
-            seed: Math.floor(Math.random() * 1000000),
-            jsonMode: false
-        })
+        headers: headers,
+        body: JSON.stringify(requestBody)
+    });
+
+    console.log('📥 Received response from Pollinations:', {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
     });
 
     if (!response.ok) {
         const errText = await response.text();
+        console.error('❌ Pollinations API Error Details:', {
+            status: response.status,
+            error: errText,
+            endpoint: apiUrl
+        });
         throw new Error(`Pollinations API Error (${response.status}): ${errText}`);
     }
     
-    const generatedPrompt = await response.text();
+    const data = await response.json();
+    
+    // 解析回應
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+        console.error('❌ Invalid response format:', data);
+        throw new Error('Invalid response format from API');
+    }
+    
+    const generatedPrompt = data.choices[0].message.content;
+    console.log('✅ Generated prompt:', {
+        length: generatedPrompt.length,
+        preview: generatedPrompt.substring(0, 100) + '...'
+    });
     
     if (!generatedPrompt || !generatedPrompt.trim()) {
+      console.error('❌ Empty prompt received from API');
       throw new Error('Empty response from AI');
+    }
+
+    // 驗證生成的提示詞是否合理
+    const trimmedPrompt = generatedPrompt.trim();
+    if (trimmedPrompt.length < 10) {
+        console.warn('⚠️ Generated prompt is very short:', trimmedPrompt);
+    }
+
+    if (trimmedPrompt.length > 500) {
+        console.warn('⚠️ Generated prompt is very long, may need truncation');
     }
     
     return new Response(JSON.stringify({
       success: true,
-      prompt: generatedPrompt.trim(),
-      model: aiModel
+      prompt: trimmedPrompt,
+      model: requestBody.model
     }), {
       status: 200,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -1212,6 +1397,72 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 [dir="rtl"] .quota-info{flex-direction:row-reverse}
 [dir="rtl"] .history-dock{direction:rtl}
 [dir="rtl"] .lightbox-actions{flex-direction:row-reverse}
+/* 拖放區域樣式 - Nano Pro 版本 */
+.nano-drag-drop-zone {
+    border: 2px dashed rgba(250, 204, 21, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.2);
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.nano-drag-drop-zone:hover {
+    border-color: rgba(250, 204, 21, 0.6);
+    background: rgba(250, 204, 21, 0.08);
+}
+.nano-drag-drop-zone.drag-over {
+    border-color: #FACC15;
+    background: rgba(250, 204, 21, 0.2);
+    transform: scale(1.02);
+}
+.nano-drag-drop-zone .drag-icon {
+    font-size: 28px;
+    opacity: 0.7;
+}
+.nano-drag-drop-zone .drag-text {
+    font-size: 12px;
+    color: #9ca3af;
+}
+.nano-drag-drop-zone .drag-subtext {
+    font-size: 10px;
+    color: #6b7280;
+}
+/* Nano Pro 上傳進度條樣式 */
+.nano-upload-progress-container {
+    width: 100%;
+    margin-top: 8px;
+    display: none;
+}
+.nano-upload-progress-container.show {
+    display: block;
+}
+.nano-upload-progress-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.nano-upload-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #FACC15, #fde047);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 2px;
+}
+.nano-upload-progress-text {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-top: 3px;
+    text-align: center;
+}
 </style>
 </head>
 <body>
@@ -1223,7 +1474,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             <div class="logo-area">
                 <div class="logo-icon">🍌</div>
                 <div class="logo-text">
-                    <h1>Nano Pro <span class="badge">V11.6</span></h1>
+                    <h1>Nano Pro <span class="badge">V11.7</span></h1>
                     <p style="color:#666; font-size:12px">Flux Engine • Pro Model • Pollinations AI</p>
                     <div style="font-size:11px; color:#22c55e; margin-top:4px; display:flex; align-items:center; gap:4px">
                         <script id="_waudw4">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
@@ -1300,14 +1551,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <label id="styleLabel">風格 & 設定</label>
                 </div>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <select id="style">
-                        <option value="none">✨ 智能無風格</option>
-                        <option value="photorealistic">📷 寫實照片</option>
-                        <option value="anime">🌸 日系動漫</option>
-                        <option value="3d-render">🧊 3D 渲染</option>
-                        <option value="cyberpunk">🌃 賽博龐克</option>
-                        <option value="manga">📖 黑白漫畫</option>
-                        <option value="oil-painting">🎨 古典油畫</option>
+                    <select id="style" id="nanoStyleSelect">
+                        <!-- 風格選項將由 JavaScript 動態生成 -->
                     </select>
                     <div style="position:relative">
                          <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="padding-right:30px">
@@ -1331,18 +1576,22 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 
                 <div style="margin-bottom: 8px;">
                     <label id="promptGeneratorUploadLabel" style="font-size: 10px; color: #9ca3af; margin-bottom: 4px; display: block;">上傳參考圖片 (可選)</label>
-                    <div style="display: flex; gap: 6px;">
-                        <input type="file" id="nanoPromptImageUpload" accept="image/*" style="display:none">
-                        <button type="button" id="nanoPromptImageUploadBtn"
-                                style="flex: 1; background: rgba(250, 204, 21, 0.2); color: var(--primary); border: 1px solid rgba(250, 204, 21, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                            <span>📷</span>
-                            <span id="promptGeneratorSelectText">選擇圖片</span>
-                        </button>
-                        <button type="button" id="nanoPromptImageClearBtn"
-                                style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none;">
-                            <span>✕</span>
-                        </button>
+                    <input type="file" id="nanoPromptImageUpload" accept="image/*" style="display:none">
+                    <div id="nanoPromptImageDropZone" class="nano-drag-drop-zone">
+                        <div class="drag-icon">📷</div>
+                        <div class="drag-text" id="promptGeneratorSelectText">拖放圖片或點擊選擇</div>
+                        <div class="drag-subtext">支援 JPG, PNG, GIF (最大 32MB)</div>
+                        <div id="nanoPromptImageUploadProgress" class="nano-upload-progress-container">
+                            <div class="nano-upload-progress-bar">
+                                <div class="nano-upload-progress-fill" id="nanoPromptImageUploadProgressFill"></div>
+                            </div>
+                            <div class="nano-upload-progress-text" id="nanoPromptImageUploadProgressText">上傳中... 0%</div>
+                        </div>
                     </div>
+                    <button type="button" id="nanoPromptImageClearBtn"
+                            style="width: 100%; margin-top: 6px; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none;">
+                        <span>✕ 清除圖片</span>
+                    </button>
                     <div id="nanoPromptImagePreview" style="display: none; margin-top: 6px;">
                         <img id="nanoPromptImagePreviewImg" src="" alt="預覽" style="max-width: 100%; max-height: 80px; border-radius: 6px; border: 1px solid rgba(250, 204, 21, 0.3);">
                     </div>
@@ -1454,7 +1703,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "正在使用 Pollinations 生成專業提示詞...",
             prompt_generator_image_uploaded: "✓ 圖片已上傳",
             prompt_generator_image_error: "圖片讀取失敗",
-            prompt_generator_error_size: "圖片太大！最大 5MB",
+            prompt_generator_error_size: "圖片太大！最大 32MB",
             prompt_generator_error_type: "請選擇圖片文件",
             gen_btn: "生成圖像",
             gen_btn_cost: "消耗 1 香蕉能量 🍌",
@@ -1502,7 +1751,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "Generating professional prompt with Pollinations...",
             prompt_generator_image_uploaded: "✓ Image uploaded",
             prompt_generator_image_error: "Image read failed",
-            prompt_generator_error_size: "Image too large! Max 5MB",
+            prompt_generator_error_size: "Image too large! Max 32MB",
             prompt_generator_error_type: "Please select an image file",
             gen_btn: "Generate Image",
             gen_btn_cost: "Consume 1 Banana Energy 🍌",
@@ -1550,7 +1799,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "Pollinationsでプロンプトを生成中...",
             prompt_generator_image_uploaded: "✓ 画像アップロード済み",
             prompt_generator_image_error: "画像の読み取りに失敗しました",
-            prompt_generator_error_size: "画像が大きすぎます！最大5MB",
+            prompt_generator_error_size: "画像が大きすぎます！最大32MB",
             prompt_generator_error_type: "画像ファイルを選択してください",
             gen_btn: "画像を生成",
             gen_btn_cost: "バナナエネルギー1消費 🍌",
@@ -1598,7 +1847,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "Pollinations로 프롬프트 생성 중...",
             prompt_generator_image_uploaded: "✓ 이미지 업로드됨",
             prompt_generator_image_error: "이미지 읽기 실패",
-            prompt_generator_error_size: "이미지가 너무 큽니다! 최대 5MB",
+            prompt_generator_error_size: "이미지가 너무 큽니다! 최대 32MB",
             prompt_generator_error_type: "이미지 파일을 선택하세요",
             gen_btn: "이미지 생성",
             gen_btn_cost: "바나나 에너지 1 소비 🍌",
@@ -1646,7 +1895,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             prompt_generator_generating_text: "جاري إنشاء موجه احترافي باستخدام Pollinations...",
             prompt_generator_image_uploaded: "✓ تم رفع الصورة",
             prompt_generator_image_error: "فشل قراءة الصورة",
-            prompt_generator_error_size: "الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت",
+            prompt_generator_error_size: "الصورة كبيرة جدًا! الحد الأقصى 32 ميجابايت",
             prompt_generator_error_type: "يرجى اختيار ملف صورة",
             gen_btn: "إنشاء صورة",
             gen_btn_cost: "استهلاك 1 طاقة موز 🍌",
@@ -1770,6 +2019,34 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         return NANO_I18N[nanoCurLang][key] || key;
     }
 
+    // 動態生成風格選單
+    function nanoPopulateStyleOptions() {
+        const styleSelect = document.getElementById('style');
+        if (!styleSelect) return;
+        
+        // 清空現有選項
+        styleSelect.innerHTML = '';
+        
+        // 定義風格列表（與主頁面保持一致）
+        const styles = [
+            { key: 'none', icon: '✨', nameKey: 'style_none' },
+            { key: 'photorealistic', icon: '📷', nameKey: 'style_photorealistic' },
+            { key: 'anime', icon: '🌸', nameKey: 'style_anime' },
+            { key: '3d-render', icon: '🧊', nameKey: 'style_3d_render' },
+            { key: 'cyberpunk', icon: '🌃', nameKey: 'style_cyberpunk' },
+            { key: 'manga', icon: '📖', nameKey: 'style_manga' },
+            { key: 'oil-painting', icon: '🎨', nameKey: 'style_oil_painting' }
+        ];
+        
+        // 生成選項
+        styles.forEach(style => {
+            const option = document.createElement('option');
+            option.value = style.key;
+            option.textContent = nanoT(style.nameKey);
+            styleSelect.appendChild(option);
+        });
+    }
+
     // 更新所有翻譯
     function nanoUpdateLang() {
         // 更新標籤
@@ -1794,18 +2071,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         const styleLabel = document.getElementById('styleLabel');
         if (styleLabel) styleLabel.textContent = nanoT('style_label');
         
-        // 更新風格選項
-        const styleSelect = document.getElementById('style');
-        if (styleSelect) {
-            const options = styleSelect.options;
-            if (options[0]) options[0].textContent = nanoT('style_none');
-            if (options[1]) options[1].textContent = nanoT('style_photorealistic');
-            if (options[2]) options[2].textContent = nanoT('style_anime');
-            if (options[3]) options[3].textContent = nanoT('style_3d_render');
-            if (options[4]) options[4].textContent = nanoT('style_cyberpunk');
-            if (options[5]) options[5].textContent = nanoT('style_manga');
-            if (options[6]) options[6].textContent = nanoT('style_oil_painting');
-        }
+        // 更新風格選項（動態重新生成）
+        nanoPopulateStyleOptions();
         
         // 更新 Seed 輸入框
         const seedInput = document.getElementById('seed');
@@ -1893,6 +2160,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
     // 初始化語言按鈕
     nanoUpdateLangButton();
+    nanoPopulateStyleOptions();  // 初始化風格選單
     nanoUpdateLang();
 
     // ====== 性能優化模塊 ======
@@ -2283,8 +2551,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         handleImageUpload(file) {
             if (!file) return;
             
-            // 驗證文件大小 (最大 5MB)
-            if (file.size > 5 * 1024 * 1024) {
+            // 驗證文件大小 (最大 32MB)
+            if (file.size > 32 * 1024 * 1024) {
                 this.showStatus(nanoT('prompt_generator_error_size'), 'error');
                 return;
             }
@@ -2346,11 +2614,61 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         }
     };
     
+    // ====== Nano Pro 拖放功能模塊 ======
+    const NanoDragDropHandler = {
+        initDropZone(dropZoneId, fileInputId, onFileDrop) {
+            const dropZone = document.getElementById(dropZoneId);
+            const fileInput = document.getElementById(fileInputId);
+            
+            if (!dropZone || !fileInput) return;
+
+            // 點擊區域觸發文件選擇
+            dropZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            // 阻止默認拖放行為
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+
+            // 拖入效果
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.add('drag-over');
+                }, false);
+            });
+
+            // 拖離效果
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, () => {
+                    dropZone.classList.remove('drag-over');
+                }, false);
+            });
+
+            // 處理文件放置
+            dropZone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    onFileDrop(files[0]);
+                }
+            }, false);
+        }
+    };
+
+    // 初始化 Nano Pro 提示詞生成器拖放區域
+    NanoDragDropHandler.initDropZone('nanoPromptImageDropZone', 'nanoPromptImageUpload', (file) => {
+        NanoPromptGenerator.handleImageUpload(file);
+    });
+
     // 綁定 Nano Pro 提示詞生成器事件
     document.getElementById('nanoGeneratePromptBtn').addEventListener('click', () => NanoPromptGenerator.generate());
     document.getElementById('nanoApplyPromptBtn').addEventListener('click', () => NanoPromptGenerator.applyToPrompt());
     
-    // 圖片上傳按鈕事件
+    // 圖片上傳按鈕事件（保留原有功能作為後備）
     document.getElementById('nanoPromptImageUploadBtn').addEventListener('click', () => {
         document.getElementById('nanoPromptImageUpload').click();
     });
@@ -2543,6 +2861,8 @@ function handleUI(request, env) {
     const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
     
     // 生成樣式選單 HTML
+  const url = new URL(request.url);
+  const currentLang = url.searchParams.get('lang') || 'zh';
   const styleCategories = CONFIG.STYLE_CATEGORIES;
   const stylePresets = CONFIG.STYLE_PRESETS;
   let styleOptionsHTML = '';
@@ -2550,10 +2870,14 @@ function handleUI(request, env) {
   for (const [categoryKey, categoryInfo] of sortedCategories) {
     const stylesInCategory = Object.entries(stylePresets).filter(([key, style]) => style.category === categoryKey);
     if (stylesInCategory.length > 0) {
-      styleOptionsHTML += `<optgroup label="${categoryInfo.icon} ${categoryInfo.name}">`;
+      // Get translated category name
+      const categoryName = typeof categoryInfo.name === 'object' ? (categoryInfo.name[currentLang] || categoryInfo.name.zh || categoryInfo.name) : categoryInfo.name;
+      styleOptionsHTML += `<optgroup label="${categoryInfo.icon} ${categoryName}">`;
       for (const [styleKey, styleConfig] of stylesInCategory) {
         const selected = styleKey === 'none' ? ' selected' : '';
-        styleOptionsHTML += `<option value="${styleKey}"${selected}>${styleConfig.icon} ${styleConfig.name}</option>`;
+        // Get translated style name
+        const styleName = typeof styleConfig.name === 'object' ? (styleConfig.name[currentLang] || styleConfig.name.zh || styleConfig.name) : styleConfig.name;
+        styleOptionsHTML += `<option value="${styleKey}"${selected}>${styleConfig.icon} ${styleName}</option>`;
       }
       styleOptionsHTML += '</optgroup>';
     }
@@ -2642,6 +2966,72 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 .modal-content img{max-width:90vw;max-height:90vh;border-radius:8px}
 .modal-close{position:absolute;top:20px;right:20px;color:#fff;font-size:32px;cursor:pointer}
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+/* 拖放區域樣式 - 主頁面版本 */
+.drag-drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.2);
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.drag-drop-zone:hover {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: rgba(245, 158, 11, 0.05);
+}
+.drag-drop-zone.drag-over {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.15);
+    transform: scale(1.02);
+}
+.drag-drop-zone .drag-icon {
+    font-size: 32px;
+    opacity: 0.7;
+}
+.drag-drop-zone .drag-text {
+    font-size: 13px;
+    color: #9ca3af;
+}
+.drag-drop-zone .drag-subtext {
+    font-size: 11px;
+    color: #6b7280;
+}
+/* 上傳進度條樣式 */
+.upload-progress-container {
+    width: 100%;
+    margin-top: 10px;
+    display: none;
+}
+.upload-progress-container.show {
+    display: block;
+}
+.upload-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.upload-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+.upload-progress-text {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 4px;
+    text-align: center;
+}
 </style>
 </head>
 <body>
@@ -2790,11 +3180,19 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="form-group"><label data-t="pos_prompt">正面提示詞</label><textarea id="prompt" placeholder="Describe your image..." required></textarea></div>
 <div class="form-group"><label data-t="neg_prompt">負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4">nsfw, ugly, text, watermark, low quality, bad anatomy, distortion, blurry</textarea></div>
 <div class="form-group"><label data-t="ref_img">參考圖像 (Img2Img) 📸</label>
-    <div style="margin-bottom:10px;">
-        <input type="file" id="imageUpload" accept="image/*" style="display:none">
-        <button type="button" class="btn" onclick="document.getElementById('imageUpload').click()" style="background:rgba(255,255,255,0.1); width:100%;">📤 上傳參考圖</button>
+    <input type="file" id="imageUpload" accept="image/*" style="display:none">
+    <div id="imageDropZone" class="drag-drop-zone">
+        <div class="drag-icon">📷</div>
+        <div class="drag-text">拖放圖片或點擊選擇</div>
+        <div class="drag-subtext">支援 JPG, PNG, GIF (最大 32MB)</div>
+        <div id="imageUploadProgress" class="upload-progress-container">
+            <div class="upload-progress-bar">
+                <div class="upload-progress-fill" id="imageUploadProgressFill"></div>
+            </div>
+            <div class="upload-progress-text" id="imageUploadProgressText">上傳中... 0%</div>
+        </div>
     </div>
-    <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3"></textarea>
+    <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3" style="margin-top:10px;"></textarea>
     <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein</div>
 </div>
 
@@ -2808,18 +3206,22 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     
     <div style="margin-bottom: 12px;">
         <label style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: block;" data-t="prompt_generator_upload_ref">上傳參考圖片 (可選 - 用於圖片分析)</label>
-        <div style="display: flex; gap: 8px;">
-            <input type="file" id="promptImageUpload" accept="image/*" style="display:none">
-            <button type="button" id="promptImageUploadBtn"
-                    style="flex: 1; background: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
-                <span>📷</span>
-                <span data-t="prompt_generator_select_image">選擇圖片</span>
-            </button>
-            <button type="button" id="promptImageClearBtn"
-                    style="flex: 0 0 auto; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: none;">
-                <span>✕</span>
-            </button>
+        <input type="file" id="promptImageUpload" accept="image/*" style="display:none">
+        <div id="promptImageDropZone" class="drag-drop-zone">
+            <div class="drag-icon">📷</div>
+            <div class="drag-text" data-t="prompt_generator_select_image">拖放圖片或點擊選擇</div>
+            <div class="drag-subtext">支援 JPG, PNG, GIF (最大 32MB)</div>
+            <div id="promptImageUploadProgress" class="upload-progress-container">
+                <div class="upload-progress-bar">
+                    <div class="upload-progress-fill" id="promptImageUploadProgressFill"></div>
+                </div>
+                <div class="upload-progress-text" id="promptImageUploadProgressText">上傳中... 0%</div>
+            </div>
         </div>
+        <button type="button" id="promptImageClearBtn"
+                style="width: 100%; margin-top: 6px; background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.4); padding: 6px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; display: none;">
+            <span>✕ 清除圖片</span>
+        </button>
         <div id="promptImagePreview" style="display: none; margin-top: 8px;">
             <img id="promptImagePreviewImg" src="" alt="預覽" style="max-width: 100%; max-height: 120px; border-radius: 6px; border: 1px solid rgba(139, 92, 246, 0.3);">
         </div>
@@ -3111,7 +3513,7 @@ const I18N={
         prompt_generator_generated: "生成的專業提示詞",
         prompt_generator_tip: "💡 小提示：選擇左側的「藝術風格」後，生成器會自動融合該風格（如：賽博龐克、水墨畫等）到提示詞中，讓畫面更具藝術感！",
         error_no_prompt: "⚠️ 請輸入提示詞", error_energy_depleted: "🚫 本小時能量已耗盡，請稍後再來！",
-        error_image_too_large: "圖片太大！最大 5MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
+        error_image_too_large: "圖片太大！最大 32MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
     },
     en:{
         nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
@@ -3127,7 +3529,7 @@ const I18N={
         prompt_generator_generated: "Generated Professional Prompt",
         prompt_generator_tip: "💡 Tip: After selecting an 'Art Style' on the left, the generator will automatically blend that style (e.g., Cyberpunk, Ink Wash) into your prompt for more artistic results!",
         error_no_prompt: "⚠️ Please enter a prompt", error_energy_depleted: "🚫 Energy depleted this hour, please come back later!",
-        error_image_too_large: "Image too large! Max size is 5MB", error_invalid_file: "Please select an image file", error_upload_failed: "Upload failed"
+        error_image_too_large: "Image too large! Max size is 32MB", error_invalid_file: "Please select an image file", error_upload_failed: "Upload failed"
     },
     ja:{
         nav_gen:"🎨 画像生成", nav_his:"📚 履歴", nav_nano:"Nano版", settings_title:"⚙️ 生成設定", provider_label:"API プロバイダー", model_label:"モデル選択", size_label:"画像サイズ", style_label:"アートスタイル 🎨", quality_label:"品質モード", seed_label:"シード値", seed_random:"🎲 ランダム", seed_lock:"🔒 固定", auto_opt_label:"✨ 自動最適化", auto_opt_desc:"ステップ数とガイダンスを自動調整", adv_settings:"🛠️ 詳細設定", steps_label:"生成ステップ数", guidance_label:"ガイダンススケール", gen_btn:"🎨 生成開始", empty_title:"まだ画像が生成されていません", pos_prompt:"ポジティブプロンプト", neg_prompt:"ネガティブプロンプト（任意）", ref_img:"参照画像 (Img2Img) 📸", stat_total:"📊 総記録数", stat_storage:"💾 ストレージ（永続）", btn_export:"📥 エクスポート", btn_clear:"🗑️ 全削除", no_history:"履歴がありません", btn_reuse:"🔄 再利用", btn_dl:"💾 ダウンロード",
@@ -3143,7 +3545,7 @@ const I18N={
         prompt_generator_generated: "生成されたプロフェッショナルプロンプト",
         prompt_generator_tip: "💡 ヒント：左側の「アートスタイル」を選択すると、ジェネレーターがそのスタイル（サイバーパンク、水墨画など）を自動的にプロンプトにブレンドし、より芸術的な結果が得られます！",
         error_no_prompt: "⚠️ プロンプトを入力してください", error_energy_depleted: "🚫 今時間のエネルギーが枯渇しました。後でもう一度お越しください！",
-        error_image_too_large: "画像が大きすぎます！最大サイズは5MBです", error_invalid_file: "画像ファイルを選択してください", error_upload_failed: "アップロードに失敗しました"
+        error_image_too_large: "画像が大きすぎます！最大サイズは32MBです", error_invalid_file: "画像ファイルを選択してください", error_upload_failed: "アップロードに失敗しました"
     },
     ko:{
         nav_gen:"🎨 이미지 생성", nav_his:"📚 기록", nav_nano:"Nano", settings_title:"⚙️ 생성 설정", provider_label:"API 공급자", model_label:"모델 선택", size_label:"이미지 크기", style_label:"아트 스타일 🎨", quality_label:"품질 모드", seed_label:"시드 값", seed_random:"🎲 랜덤", seed_lock:"🔒 잠금", auto_opt_label:"✨ 자동 최적화", auto_opt_desc:"스텝 및 가이던스 자동 조정", adv_settings:"🛠️ 고급 설정", steps_label:"생성 스텝", guidance_label:"가이던스 스케일", gen_btn:"🎨 생성 시작", empty_title:"아직 생성된 이미지가 없습니다", pos_prompt:"긍정적 프롬프트", neg_prompt:"부정적 프롬프트 (선택 사항)", ref_img:"참조 이미지 (Img2Img) 📸", stat_total:"📊 총 기록 수", stat_storage:"💾 저장 공간 (영구)", btn_export:"📥 내보내기", btn_clear:"🗑️ 전체 삭제", no_history:"기록이 없습니다", btn_reuse:"🔄 설정 재사용", btn_dl:"💾 다운로드",
@@ -3159,7 +3561,7 @@ const I18N={
         prompt_generator_generated: "생성된 전문 프롬프트",
         prompt_generator_tip: "💡 팁: 왼쪽의 '아트 스타일'을 선택하면 생성기가 해당 스타일(사이버펑크, 수묵화 등)을 자동으로 프롬프트에 혼합하여 더 예술적인 결과를 얻을 수 있습니다!",
         error_no_prompt: "⚠️ 프롬프트를 입력하세요", error_energy_depleted: "🚫 이번 시간 에너지가 소진되었습니다. 나중에 다시 방문해주세요！",
-        error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 5MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
+        error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
     },
     ar:{
         nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip فقط)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
@@ -3427,21 +3829,140 @@ function updateModelOptions() {
     }
 }
 
+// ====== 拖放功能模塊 ======
+const DragDropHandler = {
+    // 初始化拖放區域
+    initDropZone(dropZoneId, fileInputId, onFileDrop) {
+        const dropZone = document.getElementById(dropZoneId);
+        const fileInput = document.getElementById(fileInputId);
+        
+        if (!dropZone || !fileInput) return;
+
+        // 點擊區域觸發文件選擇
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 阻止默認拖放行為
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        // 拖入效果
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.add('drag-over');
+            }, false);
+        });
+
+        // 拖離效果
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => {
+                dropZone.classList.remove('drag-over');
+            }, false);
+        });
+
+        // 處理文件放置
+        dropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                onFileDrop(files[0]);
+            }
+        }, false);
+    },
+
+    // 驗證圖片文件
+    validateImageFile(file) {
+        // 檢查文件類型
+        if (!file.type.startsWith('image/')) {
+            return { valid: false, error: '請選擇圖片文件' };
+        }
+        
+        // 檢查文件大小 (最大 32MB)
+        if (file.size > 32 * 1024 * 1024) {
+            return { valid: false, error: '圖片太大！最大 32MB' };
+        }
+        
+        return { valid: true };
+    },
+
+    // 讀取文件為 Base64
+    readFileAsBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('文件讀取失敗'));
+            reader.readAsDataURL(file);
+        });
+    }
+};
+
+// 初始化主頁面參考圖像拖放區域
+DragDropHandler.initDropZone('imageDropZone', 'imageUpload', async (file) => {
+    const validation = DragDropHandler.validateImageFile(file);
+    if (!validation.valid) {
+        alert(validation.error);
+        return;
+    }
+
+    const dropZone = document.getElementById('imageDropZone');
+    const originalContent = dropZone.innerHTML;
+    dropZone.innerHTML = '<div class="drag-icon">⏳</div><div class="drag-text">上傳中...</div>';
+
+    try {
+        const base64 = await DragDropHandler.readFileAsBase64(file);
+        
+        const formData = new FormData();
+        formData.append('fileToUpload', file);
+        
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.url && data.url.startsWith('http')) {
+                const textarea = document.getElementById('referenceImages');
+                const currentVal = textarea.value.trim();
+                textarea.value = currentVal ? currentVal + ', ' + data.url : data.url;
+                dropZone.innerHTML = '<div class="drag-icon">✅</div><div class="drag-text">上傳成功！</div>';
+                setTimeout(() => {
+                    dropZone.innerHTML = originalContent;
+                }, 2000);
+            } else {
+                throw new Error("Invalid response from server");
+            }
+        } else {
+            const errData = await response.json().catch(()=>({}));
+            throw new Error("Upload failed: " + (errData.error || response.status));
+        }
+    } catch (error) {
+        console.error("Upload error:", error);
+        dropZone.innerHTML = '<div class="drag-icon">❌</div><div class="drag-text">上傳失敗</div>';
+        setTimeout(() => {
+            dropZone.innerHTML = originalContent;
+        }, 2000);
+    }
+});
+
 const imageUpload = document.getElementById('imageUpload');
 imageUpload.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        alert("Image too large! Max size is 5MB.");
+    // Validate file size (max 32MB)
+    if (file.size > 32 * 1024 * 1024) {
+        alert("Image too large! Max size is 32MB.");
         return;
     }
 
-    const btn = e.target.nextElementSibling;
-    const originalText = btn.textContent;
-    btn.textContent = "⏳ Uploading...";
-    btn.disabled = true;
+    const dropZone = document.getElementById('imageDropZone');
+    const originalContent = dropZone.innerHTML;
+    dropZone.innerHTML = '<div class="drag-icon">⏳</div><div class="drag-text">上傳中...</div>';
 
     try {
         // Convert to Base64
@@ -3453,7 +3974,7 @@ imageUpload.addEventListener('change', async (e) => {
             // For now, let's use a simple cors-proxy trick or just assume direct base64 support if API allows
             // Pollinations supports base64 in some endpoints but URL is safer.
             
-            // Using a free image host upload via backend proxy would be best, 
+            // Using a free image host upload via backend proxy would be best,
             // but for a static-like worker, we can try to use the image directly if the model supports it.
             // However, 'reference_images' usually expects URLs.
             // Let's use a reliable temporary host service.
@@ -3474,7 +3995,8 @@ imageUpload.addEventListener('change', async (e) => {
                          const textarea = document.getElementById('referenceImages');
                          const currentVal = textarea.value.trim();
                          textarea.value = currentVal ? currentVal + ', ' + data.url : data.url;
-                         btn.textContent = "✅ Uploaded!";
+                         dropZone.innerHTML = '<div class="drag-icon">✅</div><div class="drag-text">上傳成功！</div>';
+                         setTimeout(() => { dropZone.innerHTML = originalContent; }, 2000);
                     } else {
                         throw new Error("Invalid response from server");
                     }
@@ -3484,16 +4006,15 @@ imageUpload.addEventListener('change', async (e) => {
                 }
             } catch (proxyError) {
                 console.error("Upload error:", proxyError);
-                alert("Upload failed: " + proxyError.message);
+                dropZone.innerHTML = '<div class="drag-icon">❌</div><div class="drag-text">上傳失敗</div>';
+                setTimeout(() => { dropZone.innerHTML = originalContent; }, 2000);
             }
-
-            setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
         };
         reader.readAsDataURL(file);
     } catch (err) {
         console.error(err);
-        btn.textContent = "❌ Error";
-        setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+        dropZone.innerHTML = '<div class="drag-icon">❌</div><div="drag-text">上傳失敗</div>';
+        setTimeout(() => { dropZone.innerHTML = originalContent; }, 2000);
     }
 });
 
@@ -3870,9 +4391,9 @@ const PromptGenerator = {
     handleImageUpload(file) {
         if (!file) return;
         
-        // 驗證文件大小 (最大 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-            this.showStatus('圖片太大！最大 5MB', 'error');
+        // 驗證文件大小 (最大 32MB)
+        if (file.size > 32 * 1024 * 1024) {
+            this.showStatus('圖片太大！最大 32MB', 'error');
             return;
         }
         
@@ -3948,18 +4469,50 @@ document.addEventListener('DOMContentLoaded', () => {
         applyBtn.addEventListener('click', () => PromptGenerator.applyToPrompt());
     }
     
-    // 圖片上傳按鈕事件
-    const imageUploadBtn = document.getElementById('promptImageUploadBtn');
-    if (imageUploadBtn) {
-        imageUploadBtn.addEventListener('click', () => {
-            document.getElementById('promptImageUpload').click();
+    // ====== 主頁面提示詞生成器拖放功能 ======
+    const promptImageDropZone = document.getElementById('promptImageDropZone');
+    const promptImageUpload = document.getElementById('promptImageUpload');
+    
+    if (promptImageDropZone && promptImageUpload) {
+        // 點擊區域觸發文件選擇
+        promptImageDropZone.addEventListener('click', () => {
+            promptImageUpload.click();
         });
+        
+        // 阻止默認拖放行為
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            promptImageDropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+        
+        // 拖入效果
+        ['dragenter', 'dragover'].forEach(eventName => {
+            promptImageDropZone.addEventListener(eventName, () => {
+                promptImageDropZone.classList.add('drag-over');
+            }, false);
+        });
+        
+        // 拖離效果
+        ['dragleave', 'drop'].forEach(eventName => {
+            promptImageDropZone.addEventListener(eventName, () => {
+                promptImageDropZone.classList.remove('drag-over');
+            }, false);
+        });
+        
+        // 處理文件放置
+        promptImageDropZone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                PromptGenerator.handleImageUpload(files[0]);
+            }
+        }, false);
     }
     
-    // 圖片選擇事件
-    const imageUpload = document.getElementById('promptImageUpload');
-    if (imageUpload) {
-        imageUpload.addEventListener('change', (e) => {
+    // 圖片選擇事件（保留原有功能作為後備）
+    if (promptImageUpload) {
+        promptImageUpload.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
                 PromptGenerator.handleImageUpload(file);
