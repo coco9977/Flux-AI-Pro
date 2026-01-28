@@ -5,7 +5,7 @@
 # 更新: 2026-01-27
 # ============================================
 
-name = "flux-ai-pro"
+name = "vggcaa"
 main = "worker.js"
 compatibility_date = "2024-12-01"
 
