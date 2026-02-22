@@ -1,22 +1,19 @@
 // =================================================================================
-//  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.12.0 (影片生成功能)
-//  更新: 新增影片生成功能、影片限流（每小時每IP 5個免費配額，180秒冷卻）
+// 項目: Flux AI Pro - NanoBanana Edition
+// 版本: 11.16.0
+// 更新: AI 圖像生成服務
 // =================================================================================
 
 // 導入風格適配器（僅在服務器端使用）
 import { ServerStyleManager } from './utils/style-adapter.js';
-
-// 導入影片生成功能（完整版 UI - 僅 Pollinations.ai）
-import { handleVideoAPI, videoPageGenerator } from './video/index.js';
 
 // 初始化風格管理器
 const styleManager = new ServerStyleManager();
 const mergedStyles = styleManager.merge();
 
 const CONFIG = {
-  PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.12.0",
+PROJECT_NAME: "Flux-AI-Pro",
+PROJECT_VERSION: "11.16.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -31,15 +28,24 @@ const CONFIG = {
     "square-1k": { name: "方形 1024x1024", width: 1024, height: 1024 },
     "square-1.5k": { name: "方形 1536x1536", width: 1536, height: 1536 },
     "square-2k": { name: "方形 2048x2048", width: 2048, height: 2048 },
+    "square-4k": { name: "方形 4096x4096 (4K)", width: 4096, height: 4096 },
     "portrait-9-16-hd": { name: "豎屏 9:16 HD", width: 1080, height: 1920 },
+    "portrait-9-16-2k": { name: "豎屏 9:16 2K", width: 2160, height: 3840 },
+    "portrait-9-16-4k": { name: "豎屏 9:16 4K", width: 4320, height: 7680 },
     "landscape-16-9-hd": { name: "橫屏 16:9 HD", width: 1920, height: 1080 },
+    "landscape-16-9-2k": { name: "橫屏 16:9 2K", width: 3840, height: 2160 },
+    "landscape-16-9-4k": { name: "橫屏 16:9 4K", width: 7680, height: 4320 },
     "instagram-square": { name: "Instagram 方形", width: 1080, height: 1080 },
     "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 },
+    "wallpaper-2k": { name: "桌布 2K", width: 2560, height: 1440 },
+    "wallpaper-4k": { name: "桌布 4K", width: 3840, height: 2160 },
     "portrait-3-4": { name: "豎屏 3:4", width: 768, height: 1024 },
     "portrait-4-5": { name: "豎屏 4:5", width: 1080, height: 1350 },
     "landscape-4-3": { name: "橫屏 4:3", width: 1024, height: 768 },
     "landscape-3-2": { name: "橫屏 3:2", width: 1200, height: 800 },
-    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 }
+    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 },
+    "cinematic-21-9-2k": { name: "電影感 21:9 2K", width: 3840, height: 1644 },
+    "cinematic-21-9-4k": { name: "電影感 21:9 4K", width: 7680, height: 3288 }
   },
   
   PROVIDERS: {
@@ -57,7 +63,8 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
+        { id: "flux-2-dev", name: "Flux 2 Dev 🌟", confirmed: true, category: "flux", description: "Flux 2 開發者版本 - 高品質圖像生成", max_size: 2048, pricing: { image_price: 0.0005, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "imagen-4", name: "Imagen 4 (Google) 🌟", confirmed: true, category: "google", description: "Google 最新高品質繪圖模型", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "nanobanana", name: "NanoBanana 🍌", confirmed: true, category: "flux", description: "NanoBanana 高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "flux-schnell", name: "Flux Schnell ⚡", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -86,7 +93,7 @@ const CONFIG = {
         { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
         { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 }
       ],
-      rate_limit: { requests: 30, interval: 60 },
+      rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 1792, height: 1792 }
     },
     aqua: {
@@ -97,7 +104,7 @@ const CONFIG = {
       requires_key: true,
       enabled: true,
       default: false,
-      description: "AquaDevs Premium API (Polling Models: imagen4, nanobanana)",
+      description: "AquaDevs Premium API (Polling Models: imagen-4, nanobanana)",
       features: {
         private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true, polling_mode: true
       },
@@ -105,10 +112,72 @@ const CONFIG = {
         { id: "flux-2", name: "Flux 2 ⚡", category: "flux", description: "Flux 2 Generation", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "zimage", name: "Z-Image", category: "other", description: "Z-Image Model", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "nanobanana", name: "NanoBanana 🍌", category: "flux", description: "NanoBanana Img2Img Model (Polling)", max_size: 1024, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"], polling: true },
-        { id: "imagen4", name: "Imagen 4", category: "google", description: "Google Imagen 4 (Polling)", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"], polling: true }
+        { id: "imagen-4", name: "Imagen 4", category: "google", description: "Google Imagen 4 (Polling)", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"], polling: true }
       ],
       rate_limit: { requests: 50, interval: 60 },
       max_size: { width: 2048, height: 2048 }
+    },
+    kinai: {
+      name: "Kinai API",
+      endpoint: "https://kinai.eu.cc/v1",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Kinai AI 圖像生成服務",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+      },
+      models: [
+        { id: "glm-image", name: "GLM Image 🎨", category: "glm", description: "智譜 GLM 圖像生成模型", max_size: 2048 }
+      ],
+      rate_limit: { requests: 60, interval: 60 },
+      max_size: { width: 2048, height: 2048 }
+    },
+    airforce: {
+      name: "Airforce API",
+      endpoint: "https://api.airforce",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Airforce AI 圖像生成服務",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: false, api_key_auth: true, nsfw: false
+      },
+      models: [
+        { id: "plutogen-o1", name: "Plutogen O1 🌟", category: "plutogen", description: "Plutogen O1 高品質圖像生成模型", max_size: 2048 },
+        { id: "z-image", name: "Z-Image ⚡", category: "zimage", description: "快速 6B 參數圖像生成", max_size: 2048 },
+        { id: "imagen-4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 2048 },
+        { id: "flux-2-pro", name: "Flux 2 Pro 🌟", category: "flux", description: "Flux 2 Pro 高品質模型", max_size: 2048 },
+        { id: "flux-2-flex", name: "Flux 2 Flex ⚡", category: "flux", description: "Flux 2 Flex 靈活模型", max_size: 2048 },
+        { id: "gpt-image-1.5", name: "GPT Image 1.5 🎨", category: "gpt", description: "GPT Image 1.5 圖像生成模型", max_size: 2048 },
+        { id: "flux-2-klein-4b", name: "Flux 2 Klein 4B", category: "flux", description: "Advanced Flux 2 model - 4B parameters", max_size: 2048 },
+        { id: "flux-2-klein-9b", name: "Flux 2 Klein 9B 🌟", category: "flux", description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048 },
+        { id: "seedream-4.5", name: "SeeDream 4.5 🌈", category: "seedream", description: "夢幻般的圖像生成 v4.5", max_size: 2048 }
+      ],
+      rate_limit: { requests: 60, interval: 60 },
+      max_size: { width: 2048, height: 2048 }
+    },
+    nonpon: {
+      name: "Nonpon API",
+      endpoint: "https://api-reverse-engineering.kines966176.workers.dev",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Nonpon AI 圖像生成服務",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+      },
+      models: [
+        { id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image Preview 🌟", category: "gemini", description: "Gemini 3 Pro 圖像預覽模型 - 高品質圖像生成", max_size: 4096 }
+      ],
+      rate_limit: { requests: 60, interval: 60 },
+      max_size: { width: 4096, height: 4096 }
     }
   },
   
@@ -119,14 +188,14 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: {
+      "flux-2-dev": { min: 30, optimal: 35, max: 60 },
+      "imagen-4": { min: 25, optimal: 30, max: 50 },
       "nanobanana": { min: 25, optimal: 30, max: 50 },
-      "imagen4": { min: 25, optimal: 30, max: 50 },
       "seedream": { min: 25, optimal: 30, max: 50 },
       "flux-schnell": { min: 20, optimal: 25, max: 40 },
       "zimage": { min: 25, optimal: 30, max: 50 },
       "klein": { min: 25, optimal: 30, max: 50 },
-      "klein-large": { min: 30, optimal: 35, max: 55 },
-      "kontext": { min: 20, optimal: 28, max: 40 }
+      "klein-large": { min: 30, optimal: 35, max: 55 }
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
     STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
@@ -146,14 +215,14 @@ const CONFIG = {
     },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise, jpeg artifacts, watermark, text, signature, mutation, deformed, extra limbs, extra fingers, bad hands, bad feet, poor composition, out of frame, worst quality, normal quality, error, missing fingers, extra digit, fewer digits, cropped",
     MODEL_QUALITY_PROFILES: {
+      "flux-2-dev": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.25, guidance_boost: 1.2, recommended_quality: "ultra" },
+      "imagen-4": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "imagen4": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "seedream": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "flux-schnell": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" },
-      "kontext": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" }
+      "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" }
     }
   }
 };
@@ -164,7 +233,7 @@ class Logger {
   get() { return this.logs; }
 }
 
-// ====== RateLimiter: 負責 KV 限制邏輯 (5次/小時) ======
+// ====== RateLimiter: 負責 KV 限制邏輯 (3次/分鐘) ======
 class RateLimiter {
   constructor(env) {
     this.env = env;
@@ -172,12 +241,12 @@ class RateLimiter {
   }
   async checkLimit(ip) {
     if (!this.KV) {
-      console.warn("⚠️ FLUX_KV 未綁定，跳過限制");
+      console.warn("65c2232e78044e749adb797599cb6ac8");
       return { allowed: true };
     }
     const key = `nano_limit:${ip}`;
-    const windowSize = 3600 * 1000; // 1小時 (毫秒)
-    const maxRequests = 5; 
+    const windowSize = 60 * 1000; // 1分鐘 (毫秒)
+    const maxRequests = 3;
     try {
       const rawData = await this.KV.get(key);
       let timestamps = rawData ? JSON.parse(rawData) : [];
@@ -186,11 +255,11 @@ class RateLimiter {
       if (timestamps.length >= maxRequests) {
         const oldest = timestamps[0];
         const resetTime = oldest + windowSize;
-        const waitMin = Math.ceil((resetTime - now) / 60000);
-        return { allowed: false, reason: `🍌 香蕉能量耗盡！限額已滿 (5張/小時)。請休息 ${waitMin} 分鐘後再來。`, remaining: 0 };
+        const waitSec = Math.ceil((resetTime - now) / 1000);
+        return { allowed: false, reason: `🍌 請求過於頻繁！請等待 ${waitSec} 秒後再試。`, remaining: 0 };
       }
       timestamps.push(now);
-      await this.KV.put(key, JSON.stringify(timestamps), { expirationTtl: 3600 });
+      await this.KV.put(key, JSON.stringify(timestamps), { expirationTtl: 60 });
       return { allowed: true, remaining: maxRequests - timestamps.length };
     } catch (err) {
       console.error("KV Error:", err);
@@ -399,7 +468,7 @@ class PollinationsProvider {
     let validReferenceImages = [];
     if (referenceImages && referenceImages.length > 0) {
       if (!supportsRefImages) {
-        logger.add("⚠️ Reference Images", { warning: model + " 不支持參考圖像，已忽略", supported_models: ["kontext"] });
+        logger.add("⚠️ Reference Images", { warning: model + " 不支持參考圖像，已忽略", supported_models: ["flux-2-dev", "imagen-4"] });
       } else if (referenceImages.length > maxRefImages) {
         logger.add("⚠️ Reference Images", { warning: model + " 最多支持 " + maxRefImages + " 張參考圖", provided: referenceImages.length, using: maxRefImages });
         validReferenceImages = referenceImages.slice(0, maxRefImages);
@@ -828,11 +897,11 @@ class AquaProvider {
 
     let imgUrl = null;
     
-    // Check for Polling Models (imagen4, nanobanana)
-    const isPollingModel = ["imagen4", "nanobanana"].includes(model.toLowerCase());
+    // Check for Polling Models (imagen-4, nanobanana)
+    const isPollingModel = ["imagen-4", "nanobanana"].includes(model.toLowerCase());
     
     if (isPollingModel) {
-      // Polling API Logic for imagen4 and nanobanana
+      // Polling API Logic for imagen-4 and nanobanana
       logger.add("🔄 Using Polling API", { model });
       
       // Determine ratio based on width/height
@@ -1098,56 +1167,1243 @@ class AquaProvider {
   }
 }
 
+class KinaiProvider {
+  constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
+  
+  async generate(prompt, options, logger) {
+    const { model = "flux-2-dev", width = 1024, height = 1024, apiKey = "", style = "none", negativePrompt = "", nsfw = false } = options;
+    
+    // Prefer environment variable if available
+    const finalApiKey = this.env.KINAI_API_KEY || apiKey;
+
+    if (!finalApiKey) throw new Error("Kinai API Key is required (Set KINAI_API_KEY env var or provide via UI)");
+
+    let basePrompt = prompt;
+    let translationLog = { translated: false };
+    if (/[\u4e00-\u9fa5]/.test(prompt)) {
+      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
+      const translation = await translateToEnglish(prompt, this.env);
+      if (translation.translated) {
+        basePrompt = translation.text;
+        translationLog = translation;
+        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
+      }
+    }
+
+    // Apply Style
+    const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
+    logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
+
+    const url = `${this.config.endpoint}/images/generations`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${finalApiKey}`,
+      'User-Agent': 'Flux-AI-Pro-Worker'
+    };
+    
+    // Kinai supports various sizes
+    let sizeStr = "1024x1024";
+    if (width > height && width >= 1500) sizeStr = "1792x1024";
+    else if (height > width && height >= 1500) sizeStr = "1024x1792";
+    else if (width >= 2048) sizeStr = "2048x2048";
+    
+    // Kinai supports up to 4 images per request
+    const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
+
+    const body = {
+      model: model,
+      prompt: enhancedPrompt,
+      n: batchSize,
+      size: sizeStr,
+      response_format: "url"
+    };
+
+    // NSFW Mode - Disable safety checks
+    if (nsfw) {
+      body.safety_check = false;
+      body.censor_nsfw = false;
+      logger.add("🔞 NSFW Mode", { enabled: true, note: "Safety checks disabled" });
+    }
+
+    logger.add("📡 Kinai Request", { endpoint: url, model: model, size: sizeStr });
+
+    try {
+      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Kinai API Error (${response.status}): ${errText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Handle Async Task (if any accidental async model used)
+      if (data.task_id) {
+         throw new Error("Async models (task_id) are not supported in this version. Please use Sync models like flux-2-dev.");
+      }
+      
+      if (data.data && data.data.length > 0) {
+        // Handle multiple images response
+        if (data.data.length > 1) {
+            const results = [];
+            for(const item of data.data) {
+                if(item.url) {
+                    const imgUrl = item.url;
+                    const imgResp = await fetch(imgUrl);
+                    const imageBuffer = await imgResp.arrayBuffer();
+                    results.push({
+                        imageData: imageBuffer,
+                        contentType: imgResp.headers.get('content-type') || 'image/png',
+                        url: imgUrl,
+                        provider: this.name,
+                        model: model,
+                        seed: -1,
+                        width: width,
+                        height: height,
+                        authenticated: true
+                    });
+                }
+            }
+            return {
+                batch_results: results,
+                provider: this.name,
+                cost: "QUOTA"
+            };
+        }
+
+        const imgUrl = data.data[0].url;
+        logger.add("⬇️ Downloading Image", { url: imgUrl });
+        
+        // Download image to return binary
+        const imgResp = await fetch(imgUrl);
+        const imageBuffer = await imgResp.arrayBuffer();
+        const contentType = imgResp.headers.get('content-type') || 'image/png';
+        
+        return {
+            imageData: imageBuffer,
+            contentType: contentType,
+            url: imgUrl,
+            provider: this.name,
+            model: model,
+            seed: -1,
+            width: width,
+            height: height,
+            auto_translated: translationLog.translated,
+            authenticated: true,
+            cost: "QUOTA"
+        };
+      } else {
+        throw new Error("Invalid response format from Kinai API");
+      }
+    } catch (e) {
+      logger.add("❌ Kinai Failed", { error: e.message });
+      throw e;
+    }
+  }
+}
+
+// =================================================================================
+// AirforceProvider - Airforce API Provider
+// =================================================================================
+class AirforceProvider {
+  constructor(config, env) {
+    this.config = config;
+    this.name = config.name;
+    this.env = env;
+  }
+
+  async generate(prompt, options, logger) {
+    const {
+      model = "plutogen-o1",
+      width = 1024,
+      height = 1024,
+      apiKey = "",
+      nsfw = false,
+      style = "none",
+      negativePrompt = "",
+      language = "en"
+    } = options;
+
+    const finalApiKey = this.env.AIRFORCE_API_KEY || apiKey;
+    if (!finalApiKey || finalApiKey.trim() === '') {
+      throw new Error("Airforce API key is required. Please configure AIRFORCE_API_KEY in your environment variables or provide it in the request.");
+    }
+    
+    // Validate API key format (should be a bearer token)
+    if (finalApiKey.length < 10) {
+      throw new Error("Invalid Airforce API key format. API key should be at least 10 characters.");
+    }
+
+    logger.add("🎨 Airforce Generating", {
+      model,
+      width,
+      height,
+      style,
+      nsfw,
+      language,
+      promptLength: prompt.length
+    });
+
+    try {
+      // Translate prompt to English if needed
+      const translationResult = await translateToEnglish(prompt, this.env);
+      const translatedPrompt = translationResult.text || prompt;
+      
+      // Apply style if specified
+      let finalPrompt = translatedPrompt;
+      if (style !== "none") {
+        const styleResult = StyleProcessor.applyStyle(translatedPrompt, style, negativePrompt);
+        finalPrompt = styleResult.enhancedPrompt || translatedPrompt;
+      }
+
+      const size = `${width}x${height}`;
+      const url = `${this.config.endpoint}/v1/images/generations`;
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': finalApiKey.startsWith('Bearer ') ? finalApiKey : `Bearer ${finalApiKey}`,
+        'User-Agent': 'Flux-AI-Pro-Worker'
+      };
+
+      const body = {
+        model: model,
+        prompt: finalPrompt,
+        n: 1,
+        size: size,
+        response_format: "b64_json"
+      };
+
+      logger.add("📤 Request to Airforce", {
+        url,
+        model: body.model,
+        size: body.size,
+        response_format: body.response_format,
+        promptLength: finalPrompt.length,
+        apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none',
+        apiKeyLength: finalApiKey ? finalApiKey.length : 0,
+        hasBearerPrefix: finalApiKey ? finalApiKey.startsWith('Bearer ') : false
+      });
+
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(body)
+      }, this.config.timeout || 120000);
+
+      logger.add("📥 Airforce Response Status", {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.add("❌ Airforce API Error", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText,
+          headers: Object.fromEntries(response.headers.entries())
+        });
+        
+        // Parse error details if possible
+        let errorMessage = `Airforce API error: ${response.status}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error) {
+            errorMessage += ` - ${errorData.error.message || errorData.error}`;
+            if (errorData.error.code) {
+              errorMessage += ` (code: ${errorData.error.code})`;
+            }
+          } else if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          } else {
+            errorMessage += ` - ${errorText}`;
+          }
+        } catch {
+          errorMessage += ` - ${errorText}`;
+        }
+        
+        // Add helpful hints for common errors
+        if (response.status === 401 || response.status === 403) {
+          errorMessage += '. Please check your Airforce API key.';
+        } else if (response.status === 429) {
+          errorMessage += '. Rate limit exceeded. Please try again later.';
+        } else if (response.status === 530) {
+          errorMessage += '. This may be an authentication issue. Please verify your API key.';
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      // Check if response is SSE (Server-Sent Events) or regular JSON
+      const contentType = response.headers.get('content-type') || '';
+      let results = [];
+      
+      if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
+        // Handle SSE streaming response (fallback for unexpected SSE responses)
+        logger.add("📡 Using SSE stream handler (fallback)");
+        results = await this.handleSSEStream(response, logger, width, height, model);
+      } else {
+        // Handle regular JSON response (standard for Airforce API)
+        logger.add("📡 Using JSON response handler");
+        const data = await response.json();
+        logger.add("📊 Airforce Response Data", {
+          data,
+          dataType: typeof data,
+          dataKeys: Object.keys(data),
+          dataPreview: JSON.stringify(data).substring(0, 500)
+        });
+
+        // Parse JSON response
+        if (data.url) {
+          results.push({
+            url: data.url,
+            width: width,
+            height: height,
+            model: model,
+            provider: this.name
+          });
+          logger.add("✅ JSON: Found URL in data.url");
+        } else if (data.data && Array.isArray(data.data)) {
+          for (const item of data.data) {
+            if (item.url) {
+              results.push({
+                url: item.url,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+            if (item.b64_json) {
+              results.push({
+                url: `data:image/png;base64,${item.b64_json}`,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+          }
+          logger.add("✅ JSON: Processed data.data array", { count: results.length });
+        } else if (data.b64_json) {
+          results.push({
+            url: `data:image/png;base64,${data.b64_json}`,
+            width: width,
+            height: height,
+            model: model,
+            provider: this.name
+          });
+          logger.add("✅ JSON: Found b64_json");
+        } else if (data.images && Array.isArray(data.images)) {
+          for (const item of data.images) {
+            if (item.url) {
+              results.push({
+                url: item.url,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+          }
+          logger.add("✅ JSON: Processed data.images array", { count: results.length });
+        } else if (data.image) {
+          results.push({
+            url: data.image,
+            width: width,
+            height: height,
+            model: model,
+            provider: this.name
+          });
+          logger.add("✅ JSON: Found URL in data.image");
+        } else if (data.output && Array.isArray(data.output)) {
+          for (const item of data.output) {
+            if (item.url || item.image) {
+              results.push({
+                url: item.url || item.image,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+            if (item.b64_json) {
+              results.push({
+                url: `data:image/png;base64,${item.b64_json}`,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+          }
+          logger.add("✅ JSON: Processed data.output array", { count: results.length });
+        } else if (data.result && (data.result.url || data.result.b64_json)) {
+          if (data.result.url) {
+            results.push({
+              url: data.result.url,
+              width: width,
+              height: height,
+              model: model,
+              provider: this.name
+            });
+          }
+          if (data.result.b64_json) {
+            results.push({
+              url: `data:image/png;base64,${data.result.b64_json}`,
+              width: width,
+              height: height,
+              model: model,
+              provider: this.name
+            });
+          }
+          logger.add("✅ JSON: Found data in data.result");
+        } else {
+          logger.add("⚠️ JSON: Unknown format - deep searching", {
+            dataKeys: Object.keys(data),
+            fullData: JSON.stringify(data)
+          });
+          
+          const findImages = (obj, path = "") => {
+            const images = [];
+            if (typeof obj === 'string') {
+              if (obj.startsWith('http://') || obj.startsWith('https://')) {
+                images.push({ url: obj, path });
+              } else if (obj.startsWith('data:image')) {
+                images.push({ url: obj, path });
+              }
+            } else if (typeof obj === 'object' && obj !== null) {
+              for (const [key, value] of Object.entries(obj)) {
+                images.push(...findImages(value, path ? `${path}.${key}` : key));
+              }
+            }
+            return images;
+          };
+          
+          const foundImages = findImages(data);
+          if (foundImages.length > 0) {
+            for (const { url } of foundImages) {
+              results.push({
+                url: url,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+            logger.add("✅ JSON: Found images via deep search", { count: results.length });
+          }
+        }
+      }
+
+      if (results.length === 0) {
+        throw new Error("No images returned from Airforce API");
+      }
+
+      logger.add("✅ Success", {
+        imageCount: results.length,
+        firstUrl: results[0].url?.substring(0, 50) + "..."
+      });
+
+      // Return single result object (compatible with other providers)
+      const firstResult = results[0];
+      
+      // If the URL is a base64 data URI, extract the base64 part
+      let imgData = null;
+      let imgContentType = 'image/png';
+      const imgUrl = firstResult.url;
+      
+      if (imgUrl.startsWith('data:image/')) {
+        // It's already a base64 data URI
+        const match = imgUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+        if (match) {
+          imgContentType = match[1];
+          const base64Data = match[2];
+          // Convert base64 to ArrayBuffer
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          imgData = bytes.buffer;
+        }
+      }
+      
+      return {
+        imageData: imgData,
+        contentType: imgContentType,
+        url: imgUrl,
+        provider: this.name,
+        model: model,
+        seed: -1, // Airforce doesn't return seed
+        width: width,
+        height: height,
+        auto_translated: false,
+        authenticated: true,
+        cost: "QUOTA"
+      };
+    } catch (e) {
+      logger.add("❌ Airforce Failed", { error: e.message });
+      throw e;
+    }
+  }
+
+  getAspectRatio(width, height) {
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+    const divisor = gcd(width, height);
+    return `${width / divisor}:${height / divisor}`;
+  }
+
+  getResolution(width, height) {
+    const totalPixels = width * height;
+    if (totalPixels >= 1920 * 1080) return "2k";
+    if (totalPixels >= 1024 * 1024) return "1k";
+    return "512";
+  }
+
+  async handleSSEStream(response, logger, width, height, model) {
+    const results = [];
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedData = '';
+    let chunkCount = 0;
+
+    logger.add("📡 SSE Stream Started", {
+      contentType: response.headers.get('content-type'),
+      hasBody: !!response.body
+    });
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          logger.add("📡 SSE Stream Ended", {
+            totalChunks: chunkCount,
+            accumulatedDataLength: accumulatedData.length
+          });
+          break;
+        }
+
+        chunkCount++;
+        const decodedChunk = decoder.decode(value, { stream: true });
+        accumulatedData += decodedChunk;
+
+        // Use standard SSE format splitting (same as official example)
+        const lines = accumulatedData.split('\n\n');
+        accumulatedData = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            
+            // Skip keepalive and done messages (same as official example)
+            if (dataStr === '[DONE]') {
+              logger.add("📡 SSE: Received [DONE] signal");
+              continue;
+            }
+            if (dataStr === ': keepalive') continue;
+            if (!dataStr || dataStr.trim() === '') continue;
+
+            try {
+              const data = JSON.parse(dataStr);
+            console.log("📡 [AirforceProvider] SSE Data:", data);
+
+            // Handle different response formats
+            // Format 1: Direct URL
+            if (data.url) {
+              results.push({
+                url: data.url,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+              logger.add("✅ SSE: Found URL in data.url", { url: data.url.substring(0, 50) + "..." });
+            }
+            // Format 2: OpenAI compatible - data array
+            else if (data.data && Array.isArray(data.data)) {
+              for (const item of data.data) {
+                if (item.url) {
+                  results.push({
+                    url: item.url,
+                    width: width,
+                    height: height,
+                    model: model,
+                    provider: this.name
+                  });
+                }
+                // Handle b64_json in data array
+                if (item.b64_json) {
+                  results.push({
+                    url: `data:image/png;base64,${item.b64_json}`,
+                    width: width,
+                    height: height,
+                    model: model,
+                    provider: this.name
+                  });
+                  logger.add("✅ SSE: Found b64_json in data.data array");
+                }
+              }
+              logger.add("✅ SSE: Processed data.data array", { count: results.length });
+            }
+            // Format 3: Images array
+            else if (data.images && Array.isArray(data.images)) {
+              for (const item of data.images) {
+                if (item.url) {
+                  results.push({
+                    url: item.url,
+                    width: width,
+                    height: height,
+                    model: model,
+                    provider: this.name
+                  });
+                }
+              }
+              logger.add("✅ SSE: Processed data.images array", { count: results.length });
+            }
+            // Format 4: Direct image property
+            else if (data.image) {
+              results.push({
+                url: data.image,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+              logger.add("✅ SSE: Found URL in data.image", { url: data.image.substring(0, 50) + "..." });
+            }
+            // Format 5: Base64 encoded image (b64_json)
+            else if (data.b64_json) {
+              results.push({
+                url: `data:image/png;base64,${data.b64_json}`,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+              logger.add("✅ SSE: Found b64_json", { dataLength: data.b64_json.length });
+            }
+            // Format 6: Output array
+            else if (data.output && Array.isArray(data.output)) {
+              for (const item of data.output) {
+                if (item.url || item.image) {
+                  results.push({
+                    url: item.url || item.image,
+                    width: width,
+                    height: height,
+                    model: model,
+                    provider: this.name
+                  });
+                }
+                if (item.b64_json) {
+                  results.push({
+                    url: `data:image/png;base64,${item.b64_json}`,
+                    width: width,
+                    height: height,
+                    model: model,
+                    provider: this.name
+                  });
+                }
+              }
+              logger.add("✅ SSE: Processed data.output array", { count: results.length });
+            }
+            // Format 7: Result object
+            else if (data.result && (data.result.url || data.result.b64_json)) {
+              if (data.result.url) {
+                results.push({
+                  url: data.result.url,
+                  width: width,
+                  height: height,
+                  model: model,
+                  provider: this.name
+                });
+              }
+              if (data.result.b64_json) {
+                results.push({
+                  url: `data:image/png;base64,${data.result.b64_json}`,
+                  width: width,
+                  height: height,
+                  model: model,
+                  provider: this.name
+                });
+              }
+              logger.add("✅ SSE: Found data in data.result");
+            }
+            // Format 8: Deep search for any URL or base64
+            else {
+              logger.add("⚠️ SSE: Unknown format - deep searching", {
+                dataKeys: Object.keys(data),
+                dataPreview: JSON.stringify(data).substring(0, 300)
+              });
+              
+              const findImages = (obj, path = "") => {
+                const images = [];
+                if (typeof obj === 'string') {
+                  if (obj.startsWith('http://') || obj.startsWith('https://')) {
+                    images.push({ url: obj, path });
+                  } else if (obj.startsWith('data:image')) {
+                    images.push({ url: obj, path });
+                  }
+                } else if (typeof obj === 'object' && obj !== null) {
+                  for (const [key, value] of Object.entries(obj)) {
+                    images.push(...findImages(value, path ? `${path}.${key}` : key));
+                  }
+                }
+                return images;
+              };
+              
+              const foundImages = findImages(data);
+              if (foundImages.length > 0) {
+                for (const { url } of foundImages) {
+                  results.push({
+                    url: url,
+                    width: width,
+                    height: height,
+                    model: model,
+                    provider: this.name
+                  });
+                }
+                logger.add("✅ SSE: Found images via deep search", { count: results.length });
+              }
+            }
+            } catch (parseError) {
+              logger.add("⚠️ SSE Parse Error", {
+                dataStr: dataStr.substring(0, 500),
+                error: parseError.message
+              });
+            }
+          }
+        }
+      }
+    } catch (streamError) {
+      logger.add("❌ SSE Stream Error", {
+        error: streamError.message
+      });
+    } finally {
+      reader.releaseLock();
+    }
+
+    logger.add("📊 SSE Stream Complete", {
+      totalResults: results.length,
+      accumulatedDataRemaining: accumulatedData.length
+    });
+
+    return results;
+  }
+}
+
+// =================================================================================
+// NonponProvider - Nonpon API Provider
+// =================================================================================
+class NonponProvider {
+  constructor(config, env) {
+    this.config = config;
+    this.name = config.name;
+    this.env = env;
+  }
+
+  async generate(prompt, options, logger) {
+  	const {
+  		model = "gemini-3-pro-image-preview",
+  		width = 1024,
+  		height = 1024,
+  		apiKey = "",
+  		style = "none",
+  		negativePrompt = "",
+  		seed = -1,
+  		steps = 30,
+  		guidance = 7.5,
+  		quality_mode = "standard"
+  	} = options;
+ 
+  	const finalApiKey = this.env.NONPON_API_KEY || apiKey;
+  	if (!finalApiKey || finalApiKey.trim() === '') {
+  		throw new Error("Nonpon API key is required. Please configure NONPON_API_KEY in your environment variables or provide it in the request.");
+  	}
+ 
+  	logger.add("🎨 Nonpon Generating", {
+  		model,
+  		width,
+  		height,
+  		style,
+  		seed,
+  		steps,
+  		guidance,
+  		quality_mode,
+  		promptLength: prompt.length
+  	});
+ 
+  	try {
+  		// Translate prompt to English if needed
+  		const translationResult = await translateToEnglish(prompt, this.env);
+  		const translatedPrompt = translationResult.text || prompt;
+ 
+  		// Apply style if specified
+  		let finalPrompt = translatedPrompt;
+  		let finalNegativePrompt = negativePrompt;
+  		if (style !== "none") {
+  			const styleResult = StyleProcessor.applyStyle(translatedPrompt, style, negativePrompt);
+  			finalPrompt = styleResult.enhancedPrompt || translatedPrompt;
+  			if (styleResult.negativePrompt) {
+  				finalNegativePrompt = styleResult.negativePrompt;
+  			}
+  		}
+ 
+  		const size = `${width}x${height}`;
+  		const url = `${this.config.endpoint}/v1/images/generations`;
+ 
+  		const headers = {
+  			'Content-Type': 'application/json',
+  			'Authorization': finalApiKey.startsWith('Bearer ') ? finalApiKey : `Bearer ${finalApiKey}`,
+  			'User-Agent': 'Flux-AI-Pro-Worker'
+  		};
+ 
+  		// 映射 quality_mode 到 API 的 quality 參數
+  		const qualityMap = {
+  			'economy': 'standard',
+  			'standard': 'standard',
+  			'ultra': 'hd'
+  		};
+ 
+  		// 構建符合官方 API 規範的請求體
+  		const body = {
+  			model: model,
+  			prompt: finalPrompt,
+  			size: size,
+  			quality: qualityMap[quality_mode] || 'standard',
+  			style: "vivid",
+  			n: 1,
+  			response_format: "b64_json",
+  			extra_body: {
+  				seed: seed > 0 ? seed : undefined,
+  				temperature: 0.8,
+  				top_p: 0.9,
+  				top_k: 40,
+  				negative_prompt: finalNegativePrompt || undefined,
+  				steps: steps,
+  				guidance: guidance
+  			}
+  		};
+ 
+  		// 移除 undefined 值
+  		Object.keys(body.extra_body).forEach(key => {
+  			if (body.extra_body[key] === undefined) {
+  				delete body.extra_body[key];
+  			}
+  		});
+ 
+  		logger.add("📤 Request to Nonpon", {
+  			url,
+  			model: body.model,
+  			size: body.size,
+  			quality: body.quality,
+  			style: body.style,
+  			response_format: body.response_format,
+  			extra_body: body.extra_body,
+  			promptLength: finalPrompt.length,
+  			apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none'
+  		});
+ 
+  		const response = await fetchWithTimeout(url, {
+  			method: 'POST',
+  			headers: headers,
+  			body: JSON.stringify(body)
+  		}, 120000);
+ 
+  		logger.add("📥 Nonpon Response Status", {
+  			status: response.status,
+  			ok: response.ok,
+  			contentType: response.headers.get('content-type')
+  		});
+ 
+  		if (!response.ok) {
+  			const errorText = await response.text();
+  			logger.add("❌ Nonpon API Error", {
+  				status: response.status,
+  				statusText: response.statusText,
+  				error: errorText
+  			});
+ 
+  			let errorMessage = `Nonpon API error: ${response.status}`;
+  			try {
+  				const errorData = JSON.parse(errorText);
+  				if (errorData.error) {
+  					errorMessage += ` - ${errorData.error.message || errorData.error}`;
+  				} else if (errorData.message) {
+  					errorMessage += ` - ${errorData.message}`;
+  				} else {
+  					errorMessage += ` - ${errorText}`;
+  				}
+  			} catch {
+  				errorMessage += ` - ${errorText}`;
+  			}
+ 
+  			if (response.status === 401 || response.status === 403) {
+  				errorMessage += '. Please check your Nonpon API key.';
+  			} else if (response.status === 429) {
+  				errorMessage += '. Rate limit exceeded. Please try again later.';
+  			}
+ 
+  			throw new Error(errorMessage);
+  		}
+ 
+  		const data = await response.json();
+  		logger.add("📊 Nonpon Response Data", {
+  			dataKeys: Object.keys(data),
+  			dataPreview: JSON.stringify(data).substring(0, 500)
+  		});
+ 
+  		let imageBuffer = null;
+  		let contentType = 'image/png';
+  		let imgUrl = null;
+  		let returnedSeed = -1;
+ 
+  		// Parse response - support multiple formats (b64_json and URL)
+  		if (data.b64_json) {
+  			// 直接返回 base64 數據
+  			const base64Data = data.b64_json;
+  			const binaryString = atob(base64Data);
+  			const bytes = new Uint8Array(binaryString.length);
+  			for (let i = 0; i < binaryString.length; i++) {
+  				bytes[i] = binaryString.charCodeAt(i);
+  			}
+  			imageBuffer = bytes.buffer;
+  			logger.add("✅ Found b64_json in data.b64_json");
+  		} else if (data.data && Array.isArray(data.data)) {
+  			// OpenAI 格式: data.data[0].b64_json 或 data.data[0].url
+  			const firstItem = data.data[0];
+  			if (firstItem.b64_json) {
+  				const base64Data = firstItem.b64_json;
+  				const binaryString = atob(base64Data);
+  				const bytes = new Uint8Array(binaryString.length);
+  				for (let i = 0; i < binaryString.length; i++) {
+  					bytes[i] = binaryString.charCodeAt(i);
+  				}
+  				imageBuffer = bytes.buffer;
+  				logger.add("✅ Found b64_json in data.data[0].b64_json");
+  			} else if (firstItem.url) {
+  				imgUrl = firstItem.url;
+  				logger.add("✅ Found URL in data.data[0].url");
+  			}
+  			// 獲取返回的 seed
+  			if (firstItem.seed !== undefined) {
+  				returnedSeed = firstItem.seed;
+  			}
+  		} else if (data.url) {
+  			imgUrl = data.url;
+  			logger.add("✅ Found URL in data.url");
+  		} else if (data.images && Array.isArray(data.images) && data.images[0] && data.images[0].url) {
+  			imgUrl = data.images[0].url;
+  			logger.add("✅ Found URL in data.images[0].url");
+  		} else if (data.image) {
+  			imgUrl = data.image;
+  			logger.add("✅ Found URL in data.image");
+  		} else {
+  			throw new Error("Invalid response format from Nonpon API - no image data found");
+  		}
+ 
+  		// 如果是 URL，需要下載圖片
+  		if (imgUrl && !imageBuffer) {
+  			logger.add("⬇️ Downloading Image", { url: imgUrl });
+  			const imgResp = await fetch(imgUrl);
+  			imageBuffer = await imgResp.arrayBuffer();
+  			contentType = imgResp.headers.get('content-type') || 'image/png';
+  		}
+ 
+  		// 獲取返回的 seed（如果有的話）
+  		if (data.seed !== undefined) {
+  			returnedSeed = data.seed;
+  		}
+ 
+  		return {
+  			imageData: imageBuffer,
+  			contentType: contentType,
+  			url: imgUrl,
+  			provider: this.name,
+  			model: model,
+  			seed: returnedSeed,
+  			width: width,
+  			height: height,
+  			auto_translated: translationResult.translated,
+  			authenticated: true,
+  			cost: "QUOTA"
+  		};
+  	} catch (e) {
+  		logger.add("❌ Nonpon Failed", { error: e.message });
+  		throw e;
+  	}
+  }
+ }
+
+// =================================================================================
+// 供應商隊列管理器 - 為指定供應商提供獨立的隊列和並發控制
+// =================================================================================
+class ProviderQueueManager {
+  constructor() {
+    // 只為需要隊列的供應商配置隊列
+    this.queues = {
+      aqua: { queue: [], maxConcurrent: 2, processing: 0 },
+      airforce: { queue: [], maxConcurrent: 1, processing: 0 }
+    };
+    
+    // 不使用隊列的供應商列表
+    this.noQueueProviders = ['pollinations', 'infip', 'kinai', 'nonpon'];
+  }
+
+  /**
+   * 添加請求到指定供應商的隊列
+   * @param {string} provider - 供應商名稱
+   * @param {Function} requestFn - 請求函數
+   * @returns {Promise} 請求結果
+   */
+  async addToQueue(provider, requestFn) {
+    // 如果供應商不使用隊列，直接執行
+    if (this.noQueueProviders.includes(provider)) {
+      return requestFn();
+    }
+    
+    const queue = this.queues[provider];
+    if (!queue) {
+      // 如果供應商沒有配置隊列，直接執行
+      return requestFn();
+    }
+    
+    return new Promise((resolve, reject) => {
+      const position = queue.queue.length;
+      const item = {
+        fn: requestFn,
+        resolve,
+        reject,
+        position,
+        timestamp: Date.now()
+      };
+      queue.queue.push(item);
+      this.processQueue(provider);
+    });
+  }
+
+  /**
+   * 處理指定供應商的隊列
+   * @param {string} provider - 供應商名稱
+   */
+  async processQueue(provider) {
+    const queue = this.queues[provider];
+    if (!queue) return;
+    
+    if (queue.processing >= queue.maxConcurrent || queue.queue.length === 0) return;
+
+    queue.processing++;
+    const item = queue.queue.shift();
+    
+    try {
+      const result = await item.fn();
+      item.resolve(result);
+    } catch (error) {
+      item.reject(error);
+    } finally {
+      queue.processing--;
+      this.processQueue(provider);
+    }
+  }
+
+  /**
+   * 獲取指定供應商的隊列狀態
+   * @param {string} provider - 供應商名稱
+   * @returns {Object} 隊列狀態
+   */
+  getQueueStatus(provider) {
+    // 如果供應商不使用隊列，返回空狀態
+    if (this.noQueueProviders.includes(provider)) {
+      return { waiting: 0, processing: 0, maxConcurrent: 0, total: 0, usesQueue: false };
+    }
+    
+    const queue = this.queues[provider];
+    if (!queue) {
+      return { waiting: 0, processing: 0, maxConcurrent: 0, total: 0, usesQueue: false };
+    }
+    
+    return {
+      waiting: queue.queue.length,
+      processing: queue.processing,
+      maxConcurrent: queue.maxConcurrent,
+      total: queue.queue.length + queue.processing,
+      usesQueue: true
+    };
+  }
+
+  /**
+   * 獲取所有供應商的隊列狀態
+   * @returns {Object} 所有供應商的隊列狀態
+   */
+  getAllQueueStatus() {
+    const status = {};
+    
+    // 添加不使用隊列的供應商
+    for (const provider of this.noQueueProviders) {
+      status[provider] = { waiting: 0, processing: 0, maxConcurrent: 0, total: 0, usesQueue: false };
+    }
+    
+    // 添加使用隊列的供應商
+    for (const [provider, queue] of Object.entries(this.queues)) {
+      status[provider] = {
+        waiting: queue.queue.length,
+        processing: queue.processing,
+        maxConcurrent: queue.maxConcurrent,
+        total: queue.queue.length + queue.processing,
+        usesQueue: true
+      };
+    }
+    return status;
+  }
+
+  /**
+   * 清空指定供應商的隊列
+   * @param {string} provider - 供應商名稱
+   */
+  clearQueue(provider) {
+    const queue = this.queues[provider];
+    if (queue) {
+      // 拒絕所有等待中的請求
+      queue.queue.forEach(item => {
+        item.reject(new Error('Queue cleared'));
+      });
+      queue.queue = [];
+    }
+  }
+
+  /**
+   * 清空所有隊列
+   */
+  clearAllQueues() {
+    for (const provider of Object.keys(this.queues)) {
+      this.clearQueue(provider);
+    }
+  }
+
+  /**
+   * 更新供應商的並發限制
+   * @param {string} provider - 供應商名稱
+   * @param {number} maxConcurrent - 最大並發數
+   */
+  updateMaxConcurrent(provider, maxConcurrent) {
+    const queue = this.queues[provider];
+    if (queue) {
+      queue.maxConcurrent = maxConcurrent;
+    }
+  }
+}
+
 class MultiProviderRouter {
   constructor(apiKeys = {}, env = null) {
     this.providers = {};
     this.apiKeys = apiKeys;
     this.env = env;
+    this.queueManager = new ProviderQueueManager();
     for (const [key, config] of Object.entries(CONFIG.PROVIDERS)) {
       if (config.enabled) {
         if (key === 'pollinations') this.providers[key] = new PollinationsProvider(config, env);
         else if (key === 'infip') this.providers[key] = new InfipProvider(config, env);
         else if (key === 'aqua') this.providers[key] = new AquaProvider(config, env);
+        else if (key === 'kinai') this.providers[key] = new KinaiProvider(config, env);
+        else if (key === 'airforce') this.providers[key] = new AirforceProvider(config, env);
+        else if (key === 'nonpon') this.providers[key] = new NonponProvider(config, env);
       }
     }
   }
   getProvider(providerName = null) {
-    if (providerName && this.providers[providerName]) return { name: providerName, instance: this.providers[providerName] };
+    console.log("🔍 [MultiProviderRouter] getProvider called with:", {
+      providerName,
+      availableProviders: Object.keys(this.providers),
+      hasProviderName: !!providerName,
+      providerExists: providerName ? !!this.providers[providerName] : false
+    });
+    
+    if (providerName && this.providers[providerName]) {
+      console.log("✅ [MultiProviderRouter] Using requested provider:", providerName);
+      return { name: providerName, instance: this.providers[providerName] };
+    }
+    
     const defaultName = CONFIG.DEFAULT_PROVIDER;
-    if (this.providers[defaultName]) return { name: defaultName, instance: this.providers[defaultName] };
+    console.log("🔄 [MultiProviderRouter] Falling back to default provider:", defaultName);
+    
+    if (this.providers[defaultName]) {
+      console.log("✅ [MultiProviderRouter] Using default provider:", defaultName);
+      return { name: defaultName, instance: this.providers[defaultName] };
+    }
+    
     const firstProvider = Object.keys(this.providers)[0];
-    if (firstProvider) return { name: firstProvider, instance: this.providers[firstProvider] };
+    console.log("🔄 [MultiProviderRouter] Falling back to first provider:", firstProvider);
+    
+    if (firstProvider) {
+      console.log("✅ [MultiProviderRouter] Using first provider:", firstProvider);
+      return { name: firstProvider, instance: this.providers[firstProvider] };
+    }
+    
     throw new Error('No available provider');
   }
   async generate(prompt, options, logger) {
     const { provider: requestedProvider = null, numOutputs = 1 } = options;
-    const { name: providerName, instance: provider } = this.getProvider(requestedProvider);
-    const results = [];
     
-    // Optimization for Infip: Use native batching if available
-    if (providerName === 'infip' && numOutputs > 1) {
-         const batchOptions = { ...options, numOutputs: numOutputs, seed: options.seed };
-         try {
-             const result = await provider.generate(prompt, batchOptions, logger);
-             if (result.batch_results) {
-                 results.push(...result.batch_results);
-                 return results;
-             } else {
-                 results.push(result);
-             }
-         } catch (e) {
-             logger.add("❌ Batch Generation Failed", { error: e.message });
-             throw e;
-         }
-         return results;
-    }
+    logger.add("🔍 MultiProviderRouter: Generating", {
+      requestedProvider,
+      availableProviders: Object.keys(this.providers),
+      options: { ...options, apiKey: options.apiKey ? '***' : '' }
+    });
+    
+    const { name: providerName, instance: provider } = this.getProvider(requestedProvider);
+    
+    logger.add("✅ MultiProviderRouter: Provider selected", {
+      providerName,
+      providerInstance: provider ? provider.name : 'null'
+    });
+    
+    // 使用隊列管理器處理請求
+    return await this.queueManager.addToQueue(providerName, async () => {
+      const results = [];
+      
+      // Optimization for Infip: Use native batching if available
+      if (providerName === 'infip' && numOutputs > 1) {
+           const batchOptions = { ...options, numOutputs: numOutputs, seed: options.seed };
+           try {
+               const result = await provider.generate(prompt, batchOptions, logger);
+               if (result.batch_results) {
+                   results.push(...result.batch_results);
+                   return results;
+               } else {
+                   results.push(result);
+               }
+           } catch (e) {
+               logger.add("❌ Batch Generation Failed", { error: e.message });
+               throw e;
+           }
+           return results;
+      }
 
-    for (let i = 0; i < numOutputs; i++) {
-      const currentOptions = { ...options, seed: options.seed === -1 ? -1 : options.seed + i };
-      const result = await provider.generate(prompt, currentOptions, logger);
-      results.push(result);
-    }
-    return results;
+      for (let i = 0; i < numOutputs; i++) {
+        const currentOptions = { ...options, seed: options.seed === -1 ? -1 : options.seed + i };
+        const result = await provider.generate(prompt, currentOptions, logger);
+        results.push(result);
+      }
+      return results;
+    });
+  }
+
+  /**
+   * 獲取指定供應商的隊列狀態
+   * @param {string} provider - 供應商名稱
+   * @returns {Object} 隊列狀態
+   */
+  getQueueStatus(provider) {
+    return this.queueManager.getQueueStatus(provider);
+  }
+
+  /**
+   * 獲取所有供應商的隊列狀態
+   * @returns {Object} 所有供應商的隊列狀態
+   */
+  getAllQueueStatus() {
+    return this.queueManager.getAllQueueStatus();
   }
 }
 // Global Cache for Online Count (To save KV List operations)
@@ -1186,16 +2442,12 @@ export default {
       else if (url.pathname === '/api/generate-prompt') {
         response = await handlePromptGeneration(request, env);
       }
-      else if (url.pathname === '/video') {
-        // 影片生成頁面 - 完整 UI 介面
-        response = videoPageGenerator.handleVideoPage(request);
-      }
-      else if (url.pathname.startsWith('/api/video')) {
-        response = await handleVideoAPI(request, env);
-      }
-      else if (url.pathname === '/video/nano') {
-        // Nano 版本頁面 - 簡化 UI 介面
-        response = videoPageGenerator.handleVideoPage(request);
+      else if (url.pathname === '/api/queue-status') {
+        const router = new MultiProviderRouter({}, env);
+        response = new Response(JSON.stringify({
+          status: 'ok',
+          queues: router.getAllQueueStatus()
+        }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
       }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
@@ -1206,8 +2458,9 @@ export default {
           models: CONFIG.PROVIDERS.pollinations.models.map(m => ({ id: m.id, name: m.name, category: m.category, supports_reference_images: m.supports_reference_images || false })),
           style_categories: Object.keys(CONFIG.STYLE_CATEGORIES).map(key => ({ id: key, name: CONFIG.STYLE_CATEGORIES[key].name, icon: CONFIG.STYLE_CATEGORIES[key].icon, count: Object.values(CONFIG.STYLE_PRESETS).filter(s => s.category === key).length }))
         }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+
       } else {
-        response = new Response(JSON.stringify({ error: 'Not Found', message: '此 Worker 僅提供 Web UI 界面', available_paths: ['/', '/health', '/_internal/generate', '/nano', '/video', '/video/nano', '/api/video'] }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+        response = new Response(JSON.stringify({ error: 'Not Found', message: '此 Worker 僅提供 Web UI 界面', available_paths: ['/', '/health', '/_internal/generate', '/nano'] }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
       }
       const duration = Date.now() - startTime;
       const headers = new Headers(response.headers);
@@ -1566,6 +2819,7 @@ async function handleInternalGenerate(request, env, ctx) {
       prompt: prompt.substring(0, 50) + "...",
       width: body.width,
       height: body.height,
+      provider: body.provider,
       source: request.headers.get('X-Source')
     });
 
@@ -1615,22 +2869,23 @@ async function handleInternalGenerate(request, env, ctx) {
       provider: body.provider || null,
       model: body.model || "flux-schnell",
       apiKey: request.headers.get('X-API-Key') || body.api_key || "",
-      width: Math.min(Math.max(width, 256), 2048), 
-      height: Math.min(Math.max(height, 256), 2048), 
-      numOutputs: Math.min(Math.max(body.n || 1, 1), 4), 
-      seed: seedValue, 
-      negativePrompt: body.negative_prompt || "", 
-      guidance: autoOptimize ? null : userGuidance, 
-      steps: autoOptimize ? null : userSteps, 
-      enhance: body.enhance === true, 
-      nologo: body.nologo !== false, 
-      privateMode: body.private !== false, 
-      style: body.style || "none", 
-      autoOptimize: autoOptimize, 
-      autoHD: body.auto_hd !== false, 
-      qualityMode: body.quality_mode || 'standard', 
+      width: Math.min(Math.max(width, 256), 2048),
+      height: Math.min(Math.max(height, 256), 2048),
+      numOutputs: Math.min(Math.max(body.n || 1, 1), 4),
+      seed: seedValue,
+      negativePrompt: body.negative_prompt || "",
+      guidance: autoOptimize ? null : userGuidance,
+      steps: autoOptimize ? null : userSteps,
+      enhance: body.enhance === true,
+      nologo: body.nologo !== false,
+      privateMode: body.private !== false,
+      style: body.style || "none",
+      autoOptimize: autoOptimize,
+      autoHD: body.auto_hd !== false,
+      qualityMode: body.quality_mode || 'standard',
       referenceImages: referenceImages,
-      nsfw: body.nsfw === true
+      nsfw: body.nsfw === true,
+      language: body.language || 'en'  // Track interface language
     };
     
     const router = new MultiProviderRouter({}, env);
@@ -1665,7 +2920,7 @@ function handleNanoPage(request) {
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>🍌 NanoBanana Pro - 控制台</title>
+<title>🍌 Nano Pro - Gemini 3 Pro 控制台</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>">
 <style>
 :root {
@@ -1915,6 +3170,367 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     margin-top: 3px;
     text-align: center;
 }
+
+/* 方案四：功能區塊重組樣式 */
+.core-input-block,
+.size-style-block,
+.advanced-settings-block,
+.action-block,
+.prompt-generator-block {
+    background: rgba(30, 30, 35, 0.5);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid rgba(250, 204, 21, 0.1);
+    transition: all 0.3s ease;
+}
+
+.core-input-block:hover,
+.size-style-block:hover,
+.advanced-settings-block:hover,
+.action-block:hover,
+.prompt-generator-block:hover {
+    border-color: rgba(250, 204, 21, 0.3);
+    box-shadow: 0 4px 20px rgba(250, 204, 21, 0.1);
+}
+
+/* 可折疊進階設定樣式 */
+.collapsible-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 12px 16px;
+    background: rgba(250, 204, 21, 0.05);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.collapsible-header:hover {
+    background: rgba(250, 204, 21, 0.1);
+}
+
+.collapsible-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #facc15;
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.collapsible-header.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.collapsible-content {
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+}
+
+.collapsible-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* 區塊標題樣式 */
+.block-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #facc15;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.block-title::before {
+    content: '';
+    width: 3px;
+    height: 16px;
+    background: linear-gradient(180deg, #facc15, #f59e0b);
+    border-radius: 2px;
+}
+
+/* 方案三：載入動畫視覺增強 */
+.loading-text {
+    font-size: 14px;
+    color: #FACC15;
+    margin-top: 16px;
+    text-align: center;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    animation: textPulse 2s ease-in-out infinite;
+}
+
+@keyframes textPulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.8;
+        transform: scale(1.02);
+    }
+}
+
+.banana-loader {
+    font-size: 48px;
+    animation: bananaBounce 1s ease-in-out infinite;
+}
+
+@keyframes bananaBounce {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    25% {
+        transform: translateY(-10px) rotate(-5deg);
+    }
+    50% {
+        transform: translateY(0) rotate(0deg);
+    }
+    75% {
+        transform: translateY(-10px) rotate(5deg);
+    }
+}
+
+.loading-overlay {
+    backdrop-filter: blur(8px);
+    background: rgba(15, 15, 17, 0.85);
+}
+
+/* 載入狀態文字過渡效果 */
+.loading-text.state-change {
+    animation: stateTransition 0.5s ease-out;
+}
+
+@keyframes stateTransition {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 方案三：比例預覽樣式 */
+.ratio-preview-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(15, 15, 17, 0.9);
+    border: 2px solid #FACC15;
+    border-radius: 8px;
+    padding: 16px;
+    display: none;
+    z-index: 10;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.3s ease;
+}
+
+.ratio-preview-overlay.show {
+    display: block;
+}
+
+.ratio-preview-box {
+    background: rgba(250, 204, 21, 0.1);
+    border: 2px dashed #FACC15;
+    border-radius: 4px;
+    margin: 0 auto;
+    transition: all 0.3s ease;
+}
+
+.ratio-preview-info {
+    text-align: center;
+    color: #FACC15;
+    font-size: 14px;
+    margin-top: 12px;
+    font-weight: 500;
+}
+
+.ratio-preview-dimensions {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* 方案三：風格按鈕懸停預覽樣式 */
+.style-preview-tooltip {
+    position: fixed;
+    background: rgba(15, 15, 17, 0.95);
+    border: 1px solid rgba(250, 204, 21, 0.3);
+    border-radius: 8px;
+    padding: 12px 16px;
+    z-index: 1000;
+    display: none;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    animation: tooltipFadeIn 0.2s ease;
+    max-width: 200px;
+}
+
+.style-preview-tooltip.show {
+    display: block;
+}
+
+.style-preview-title {
+    color: #FACC15;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.style-preview-desc {
+    color: #9ca3af;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* 比例項目懸停效果 */
+.ratio-item:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+}
+
+/* 風格快捷按鈕懸停效果 */
+.style-shortcut-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+}
+
+/* 方案三：歷史記錄改進樣式 */
+.history-item {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.history-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+/* 縮圖懸停放大效果 */
+.history-item:hover img {
+    transform: scale(1.15);
+}
+
+/* 歷史記錄項目操作按鈕 */
+.history-item-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.history-item:hover .history-item-actions {
+    opacity: 1;
+}
+
+.history-action-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    background: rgba(15, 15, 17, 0.9);
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.history-action-btn:hover {
+    background: #FACC15;
+    color: #000;
+    transform: scale(1.1);
+}
+
+.history-action-btn.delete:hover {
+    background: #ef4444;
+    color: #fff;
+}
+
+/* 歷史記錄項目拖曳樣式 */
+.history-item.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.history-item.drag-over {
+    border: 2px dashed #FACC15;
+}
+
+/* 歷史記錄項目激活狀態 */
+.history-item.active {
+    border: 2px solid #FACC15;
+    box-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+}
+
+.history-item.active::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    background: #FACC15;
+    color: #000;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+}
 </style>
 </head>
 <body>
@@ -1967,15 +3583,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 </div>
             </div>
 
-            <div class="control-group">
+            <!-- ====== 區塊 1: 核心輸入 ====== -->
+            <div class="control-group core-input-block">
                 <div class="label-row">
                     <label>Prompt</label>
-                    <button class="tool-btn" id="randomBtn" title="隨機靈感">🎲 靈感骰子</button>
+                    <button class="tool-btn" id="randomBtn" title="隨機隨機靈感">🎲 靈感骰子</button>
                 </div>
                 <textarea id="prompt" rows="4" placeholder="描述你想像中的畫面... (支援中文)"></textarea>
             </div>
-
-            <div class="control-group">
+         
+            <!-- ====== 區塊 2: 尺寸與風格 ====== -->
+            <div class="control-group size-style-block">
                 <label id="ratioLabel" style="margin-bottom:10px; display:block">畫布比例</label>
                 <div class="ratio-grid">
                     <div class="ratio-item active" data-w="1024" data-h="1024" title="1:1 方形">
@@ -1993,33 +3611,125 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <div class="ratio-item" data-w="2048" data-h="858" title="21:9 電影">
                         <div class="ratio-shape" style="width:18px; height:7px;"></div>
                     </div>
+                    <div class="ratio-item" data-w="2048" data-h="2048" title="2K 方形">
+                        <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #FACC15;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="3840" data-h="2160" title="2K 16:9">
+                        <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #FACC15;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="2160" data-h="3840" title="2K 9:16">
+                        <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #FACC15;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="4096" data-h="4096" title="4K 方形">
+                        <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #8B5CF6;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="7680" data-h="4320" title="4K 16:9">
+                        <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #8B5CF6;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="4320" data-h="7680" title="4K 9:16">
+                        <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #8B5CF6;"></div>
+                    </div>
                 </div>
                 <input type="hidden" id="width" value="1024">
                 <input type="hidden" id="height" value="1024">
             </div>
-
-            <div class="control-group">
+         
+            <div class="control-group size-style-block">
                 <div class="label-row">
-                    <label id="styleLabel">風格 & 設定</label>
+                    <label id="styleLabel">風格選擇</label>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <select id="style" id="nanoStyleSelect">
-                        <!-- 風格選項將由 JavaScript 動態生成 -->
-                    </select>
-                    <div style="position:relative">
-                         <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="padding-right:30px">
-                         <button id="lockSeedBtn" class="tool-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%)">🎲</button>
+                <select id="style" style="width: 100%; margin-bottom: 10px;">
+                    <!-- 風格選項將由 JavaScript 動態生成 -->
+                </select>
+                
+                <label style="font-size: 12px; color: #9ca3af; margin-bottom: 8px; display: block;">常用風格快捷鍵</label>
+                <div class="style-shortcuts" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;">
+                    <button class="style-shortcut-btn" data-style="photorealistic" title="寫實">📷</button>
+                    <button class="style-shortcut-btn" data-style="anime" title="動漫">🎭</button>
+                    <button class="style-shortcut-btn" data-style="oil-painting" title="油畫">🖼️</button>
+                    <button class="style-shortcut-btn" data-style="cyberpunk" title="賽博龐克">🌆</button>
+                    <button class="style-shortcut-btn" data-style="watercolor" title="水彩">💧</button>
+                    <button class="style-shortcut-btn" data-style="sketch" title="素描">✏️</button>
+                    <button class="style-shortcut-btn" data-style="3d-render" title="3D渲染">🎮</button>
+                    <button class="style-shortcut-btn" data-style="pixel-art" title="像素title="像素藝術">👾</button>
+                    <button class="style-shortcut-btn" data-style="cinematic" title="電影感">🎬</button>
+                    <button class="style-shortcut-btn" data-style="none" title="無風格">⚡</button>
+                </div>
+            </div>
+         
+            <!-- ====== 區塊 3: 進階設定 (可折疊) ====== -->
+            <div class="control-group advanced-settings-block">
+                <div class="collapsible-header" id="advancedSettingsHeader">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <span style="font-size: 16px;">⚙️</span>
+                        <span style="font-weight: 700;">進階設定</span>
+                        <span class="collapse-icon">▼</span>
+                    </label>
+                </div>
+                <div class="collapsible-content" id="advancedSettingsContent">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                        <div style="position:relative">
+                            <label style="font-size: 11px; color: #9ca3af; display: block; margin-bottom: 4px;">Seed</label>
+                            <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="width: 100%; padding-right:30px">
+                            <button id="lockSeedBtn" class="tool-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%)">🎲</button>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 10px;">
+                        <label id="negativeLabel">排除 (Negative)</label>
+                        <input type="text" id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" style="font-size:12px; color:#aaa; width: 100%;">
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 16px;">
+                        <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: #8B5CF6;">
+                            <span style="font-size: 14px;">🎯</span>
+                            <span style="font-weight: 700;">Gemini 3 Pro 參數</span>
+                        </label>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                            <div>
+                                <label style="font-size: 11px; color: #9ca3af; display: block; margin-bottom: 4px;">Steps (生成步數)</label>
+                                <input type="number" id="nanoSteps" value="30" min="10" max="100" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 6px; padding: 8px; color: #fff;">
+                            </div>
+                            <div>
+                                <label style="font-size: 11px; color: #9ca3af; display: block; margin-bottom: 4px;">Guidance (引導係數)</label>
+                                <input type="number" id="nanoGuidance" value="7.5" min="1" max="20" step="0.5" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 6px; padding: 8px; color: #fff;">
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label style="font-size: 11px; color: #9ca3af; display: block; margin-bottom: 4px;">質量模式</label>
+                            <select id="nanoQuality" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 6px; padding: 8px; color: #fff;">
+                                <option value="economy">Economy (快速)</option>
+                                <option value="standard" selected>Standard (平衡)</option>
+                                <option value="ultra">Ultra HD (極致)</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <div class="control-group">
-                <label id="negativeLabel">排除 (Negative)</label>
-                <input type="text" id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" style="font-size:12px; color:#aaa">
+         
+            <!-- ====== 區塊 4: 操作區域 ====== -->
+            <div class="control-group action-block">
+                <button id="genBtn" class="gen-btn">
+                    <span id="genBtnText">生成圖像</span>
+                    <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">Gemini 3 Pro 🌟</span>
+                </button>
+                
+                <div class="quota-box">
+                    <div class="quota-info">
+                        <span id="quotaLabel">每分鐘能量</span>
+                        <span id="quotaText" class="quota-text">3 / 3</span>
+                    </div>
+                    <div class="quota-bar">
+                        <div id="quotaFill" class="quota-fill"></div>
+                    </div>
+                    <div style="font-size:10px; color:#9ca3af; margin-top:6px; text-align:center;">支援 2K / 4K 輸出</div>
+                </div>
             </div>
-
-            <!-- ====== 專業提示詞生成器 (Nano Pro 版) ====== -->
-            <div class="control-group" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
+         
+            <!-- ====== AI 提示詞生成器 (移至底部) ====== -->
+            <div class="control-group prompt-generator-block" style="background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(139, 92, 246, 0.1)); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--primary);">
                     <span style="font-size: 16px;">🤖</span>
                     <span id="promptGeneratorTitle" style="font-weight: 700;">AI 提示詞生成器</span>
@@ -2072,26 +3782,18 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 
                 <div id="nanoPromptGeneratorStatus" style="font-size: 10px; color: #9ca3af; margin-top: 6px; display: none;"></div>
             </div>
-
-            <button id="genBtn" class="gen-btn">
-                <span id="genBtnText">生成圖像</span>
-                <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
-            </button>
-            
-            <div class="quota-box">
-                <div class="quota-info">
-                    <span id="quotaLabel">每小時能量</span>
-                    <span id="quotaText" class="quota-text">5 / 5</span>
-                </div>
-                <div class="quota-bar">
-                    <div id="quotaFill" class="quota-fill"></div>
-                </div>
-            </div>
         </div>
 
         <div class="main-stage">
             <div id="placeholderText" class="placeholder-text">NANOPRO</div>
             <img id="resultImg" alt="Generated Image" title="點擊放大">
+            
+            <!-- 方案三：比例預覽覆蓋層 -->
+            <div id="ratioPreviewOverlay" class="ratio-preview-overlay">
+                <div id="ratioPreviewBox" class="ratio-preview-box"></div>
+                <div id="ratioPreviewInfo" class="ratio-preview-info"></div>
+                <div id="ratioPreviewDimensions" class="ratio-preview-dimensions"></div>
+            </div>
             
             <div class="loading-overlay">
                 <div class="banana-loader">🍌</div>
@@ -2100,6 +3802,15 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
             <div class="history-dock" id="historyStrip">
                 <!-- History Items -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 方案三：風格預覽提示框 -->
+    <div id="stylePreviewTooltip" class="style-preview-tooltip">
+        <div id="stylePreviewTitle" class="style-preview-title"></div>
+        <div id="stylePreviewDesc" class="style-preview-desc"></div>
+    </div>
             </div>
         </div>
     </div>
@@ -2160,13 +3871,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             gen_btn: "生成圖像",
             gen_btn_cost: "消耗 1 香蕉能量 🍌",
             gen_btn_charging: "⚡ 能量回充中... ({s}s)",
-            gen_btn_depleted: "本小時能量已耗盡",
+            gen_btn_depleted: "本分鐘能量已耗盡",
             gen_btn_depleted_sub: "請稍後再來",
-            quota_label: "每小時能量",
+            quota_label: "每分鐘能量",
             placeholder_text: "NANOPRO",
             loading_text: "正在注入 AI 能量...",
+            loading_state_1: "🎨 正在創作...",
+            loading_state_2: "✨ 添加細節...",
+            loading_state_3: "🖼️ 生成圖像...",
+            loading_state_4: "⏳ 即將完成...",
             toast_no_prompt: "⚠️ 請輸入提示詞",
-            toast_energy_depleted: "🚫 本小時能量已耗盡，請稍後再來！",
+            toast_energy_depleted: "🚫 本分鐘能量已耗盡，請稍後再來！",
             toast_error: "❌ ",
             lightbox_save: "📥 保存圖片",
             lightbox_close: "❌ 關閉"
@@ -2184,6 +3899,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             style_cyberpunk: "🌃 Cyberpunk",
             style_manga: "📖 Manga",
             style_oil_painting: "🎨 Oil Painting",
+            style_watercolor: "💧 Watercolor",
+            style_sketch: "✏️ Sketch",
+            style_pixel_art: "👾 Pixel Art",
+            style_cinematic: "🎬 Cinematic",
             seed_placeholder: "Seed",
             negative_label: "Negative",
             negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
@@ -2208,13 +3927,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             gen_btn: "Generate Image",
             gen_btn_cost: "Consume 1 Banana Energy 🍌",
             gen_btn_charging: "⚡ Energy Charging... ({s}s)",
-            gen_btn_depleted: "Energy Depleted This Hour",
+            gen_btn_depleted: "Energy Depleted This Minute",
             gen_btn_depleted_sub: "Please come back later",
-            quota_label: "Hourly Energy",
+            quota_label: "Minute Energy",
             placeholder_text: "NANOPRO",
             loading_text: "Injecting AI Energy...",
+            loading_state_1: "🎨 Creating...",
+            loading_state_2: "✨ Adding details...",
+            loading_state_3: "🖼️ Generating image...",
+            loading_state_4: "⏳ Almost done...",
             toast_no_prompt: "⚠️ Please enter a prompt",
-            toast_energy_depleted: "🚫 Energy depleted this hour, please come back later!",
+            toast_energy_depleted: "🚫 Energy depleted this minute, please come back later!",
             toast_error: "❌ ",
             lightbox_save: "📥 Save Image",
             lightbox_close: "❌ Close"
@@ -2232,6 +3955,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             style_cyberpunk: "🌃 サイバーパンク",
             style_manga: "📖 漫画",
             style_oil_painting: "🎨 油絵",
+            style_watercolor: "💧 水彩画",
+            style_sketch: "✏️ スケッチ",
+            style_pixel_art: "👾 ピクセルアート",
+            style_cinematic: "🎬 映画的",
             seed_placeholder: "Seed",
             negative_label: "ネガティブ",
             negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
@@ -2256,13 +3983,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             gen_btn: "画像を生成",
             gen_btn_cost: "バナナエネルギー1消費 🍌",
             gen_btn_charging: "⚡ エネルギー充電中... ({s}s)",
-            gen_btn_depleted: "今時間のエネルギーが枯渇しました",
+            gen_btn_depleted: "今分のエネルギーが枯渇しました",
             gen_btn_depleted_sub: "後でもう一度お越しください",
-            quota_label: "1時間あたりのエネルギー",
+            quota_label: "1分あたりのエネルギー",
             placeholder_text: "NANOPRO",
             loading_text: "AIエネルギーを注入中...",
+            loading_state_1: "🎨 創作中...",
+            loading_state_2: "✨ ディテールを追加中...",
+            loading_state_3: "🖼️ 画像を生成中...",
+            loading_state_4: "⏳ まもなく完了...",
             toast_no_prompt: "⚠️ プロンプトを入力してください",
-            toast_energy_depleted: "🚫 今時間のエネルギーが枯渇しました。後でもう一度お越しください！",
+            toast_energy_depleted: "🚫 今分のエネルギーが枯渇しました。後でもう一度お越しください！",
             toast_error: "❌ ",
             lightbox_save: "📥 画像を保存",
             lightbox_close: "❌ 閉じる"
@@ -2280,6 +4011,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             style_cyberpunk: "🌃 사이버펑크",
             style_manga: "📖 만화",
             style_oil_painting: "🎨 유화",
+            style_watercolor: "💧 수채화",
+            style_sketch: "✏️ 스케치",
+            style_pixel_art: "👾 픽셀 아트",
+            style_cinematic: "🎬 시네마틱",
             seed_placeholder: "Seed",
             negative_label: "네거티브",
             negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
@@ -2304,13 +4039,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             gen_btn: "이미지 생성",
             gen_btn_cost: "바나나 에너지 1 소비 🍌",
             gen_btn_charging: "⚡ 에너지 충전 중... ({s}s)",
-            gen_btn_depleted: "이번 시간 에너지 소진됨",
+            gen_btn_depleted: "이번 분 에너지 소진됨",
             gen_btn_depleted_sub: "나중에 다시 방문해주세요",
-            quota_label: "시간당 에너지",
+            quota_label: "분당 에너지",
             placeholder_text: "NANOPRO",
             loading_text: "AI 에너지 주입 중...",
+            loading_state_1: "🎨 창작 중...",
+            loading_state_2: "✨ 디테일 추가 중...",
+            loading_state_3: "🖼️ 이미지 생성 중...",
+            loading_state_4: "⏳ 곧 완료...",
             toast_no_prompt: "⚠️ 프롬프트를 입력하세요",
-            toast_energy_depleted: "🚫 이번 시간 에너지가 소진되었습니다. 나중에 다시 방문해주세요！",
+            toast_energy_depleted: "🚫 이번 분 에너지가 소진되었습니다. 나중에 다시 방문해주세요！",
             toast_error: "❌ ",
             lightbox_save: "📥 이미지 저장",
             lightbox_close: "❌ 닫기"
@@ -2328,6 +4067,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             style_cyberpunk: "🌃 سايبربانك",
             style_manga: "📖 مانغا",
             style_oil_painting: "🎨 رسم زيتي",
+            style_watercolor: "💧 ألوان مائية",
+            style_sketch: "✏️ رسم تخطيطي",
+            style_pixel_art: "👾 فن البكسل",
+            style_cinematic: "🎬 سينمائي",
             seed_placeholder: "Seed",
             negative_label: "سلبي",
             negative_default: "nsfw, ugly, text, watermark, low quality, bad anatomy",
@@ -2352,13 +4095,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             gen_btn: "إنشاء صورة",
             gen_btn_cost: "استهلاك 1 طاقة موز 🍌",
             gen_btn_charging: "⚡ إعادة شحن الطاقة... ({s}s)",
-            gen_btn_depleted: "نفدت الطاقة لهذه الساعة",
+            gen_btn_depleted: "نفدت الطاقة لهذه الدقيقة",
             gen_btn_depleted_sub: "يرجى العودة لاحقًا",
-            quota_label: "الطاقة لكل ساعة",
+            quota_label: "الطاقة لكل دقيقة",
             placeholder_text: "NANOPRO",
             loading_text: "حقن طاقة AI...",
+            loading_state_1: "🎨 جاري الإبداع...",
+            loading_state_2: "✨ إضافة التفاصيل...",
+            loading_state_3: "🖼️ إنشاء الصورة...",
+            loading_state_4: "⏳ على وشك الانتهاء...",
             toast_no_prompt: "⚠️ يرجى إدخال موجه",
-            toast_energy_depleted: "🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!",
+            toast_energy_depleted: "🚫 نفدت الطاقة لهذه الدقيقة، يرجى العودة لاحقًا!",
             toast_error: "❌ ",
             lightbox_save: "📥 حفظ الصورة",
             lightbox_close: "❌ إغلاق"
@@ -2487,7 +4234,11 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             { key: '3d-render', icon: '🧊', nameKey: 'style_3d_render' },
             { key: 'cyberpunk', icon: '🌃', nameKey: 'style_cyberpunk' },
             { key: 'manga', icon: '📖', nameKey: 'style_manga' },
-            { key: 'oil-painting', icon: '🎨', nameKey: 'style_oil_painting' }
+            { key: 'oil-painting', icon: '🎨', nameKey: 'style_oil_painting' },
+            { key: 'watercolor', icon: '💧', nameKey: 'style_watercolor' },
+            { key: 'sketch', icon: '✏️', nameKey: 'style_sketch' },
+            { key: 'pixel-art', icon: '👾', nameKey: 'style_pixel_art' },
+            { key: 'cinematic', icon: '🎬', nameKey: 'style_cinematic' }
         ];
         
         // 生成選項
@@ -2747,13 +4498,13 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         lbDownload: document.getElementById('lbDownload')
     };
     
-    // UI Quota Logic (Syncs with server limit of 5)
-    let currentQuota = 5;
-    const maxQuota = 5;
+    // UI Quota Logic (Syncs with server limit of 3 per minute)
+    let currentQuota = 3;
+    const maxQuota = 3;
     
     // Cooldown Logic
     const COOLDOWN_KEY = 'nano_cooldown_timestamp';
-    const COOLDOWN_SEC = 180;
+    const COOLDOWN_SEC = 20;
     let cooldownInterval = null;
 
     // Online Count (whos.amung.us widget handled in HTML)
@@ -2795,31 +4546,42 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     }
 
     function updateCooldownText(sec) {
-        els.genBtn.innerHTML = \`<span>\${nanoT('gen_btn_charging').replace('{s}', sec)}</span>\`;
+        els.genBtn.innerHTML = '<span>' + nanoT('gen_btn_charging').replace('{s}', sec) + '</span>';
     }
     
-    const now = new Date();
-    const currentHourStr = now.toDateString() + '-' + now.getHours();
-    const stored = localStorage.getItem('nano_quota_hourly_v2'); 
-    
-    if(stored) {
-        const data = JSON.parse(stored);
-        if(data.hour === currentHourStr) {
-            currentQuota = data.val;
+    // Check quota reset (per minute)
+    function checkQuotaReset() {
+        const now = new Date();
+        const currentMinStr = now.toDateString() + '-' + now.getHours() + '-' + now.getMinutes();
+        const stored = localStorage.getItem('nano_quota_minutely');
+        
+        if(stored) {
+            const data = JSON.parse(stored);
+            if(data.min !== currentMinStr) {
+                // New minute, reset quota
+                localStorage.setItem('nano_quota_minutely', JSON.stringify({min: currentMinStr, val: maxQuota}));
+                currentQuota = maxQuota;
+            } else {
+                currentQuota = data.val;
+            }
         } else {
-            localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+            localStorage.setItem('nano_quota_minutely', JSON.stringify({min: currentMinStr, val: maxQuota}));
             currentQuota = maxQuota;
         }
-    } else {
-        localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+        updateQuotaUI();
     }
-    updateQuotaUI();
+    
+    // Initial quota check
+    checkQuotaReset();
+    
+    // Auto-check quota reset every 10 seconds
+    setInterval(checkQuotaReset, 10000);
     
     // Check cooldown on load
     checkAndStartCooldown();
     
     function updateQuotaUI() {
-        els.quotaText.textContent = \`\${currentQuota} / \${maxQuota}\`;
+        els.quotaText.textContent = currentQuota + ' / ' + maxQuota;
         const pct = (currentQuota / maxQuota) * 100;
         els.quotaFill.style.width = pct + '%';
         if(currentQuota <= 0) {
@@ -2832,19 +4594,59 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     function consumeQuota() {
         if(currentQuota > 0) {
             currentQuota--;
-            const n = new Date();
-            const h = n.toDateString() + '-' + n.getHours();
-            localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: h, val: currentQuota}));
+            const now = new Date();
+            const currentMinStr = now.toDateString() + '-' + now.getHours() + '-' + now.getMinutes();
+            localStorage.setItem('nano_quota_minutely', JSON.stringify({min: currentMinStr, val: currentQuota}));
             updateQuotaUI();
         }
     }
 
+    // 方案三：比例預覽功能
+    const ratioPreviewOverlay = document.getElementById('ratioPreviewOverlay');
+    const ratioPreviewBox = document.getElementById('ratioPreviewBox');
+    const ratioPreviewInfo = document.getElementById('ratioPreviewInfo');
+    const ratioPreviewDimensions = document.getElementById('ratioPreviewDimensions');
+    
     els.ratios.forEach(r => {
+        // 點擊事件
         r.onclick = () => {
             els.ratios.forEach(i => i.classList.remove('active'));
             r.classList.add('active');
             els.width.value = r.dataset.w;
             els.height.value = r.dataset.h;
+        }
+        
+        // 懸停事件 - 顯示比例預覽
+        r.onmouseenter = () => {
+            const width = parseInt(r.dataset.w);
+            const height = parseInt(r.dataset.h);
+            const title = r.title;
+            
+            // 計算預覽框尺寸（最大 120px）
+            const maxSize = 120;
+            let previewWidth, previewHeight;
+            
+            if (width >= height) {
+                previewWidth = maxSize;
+                previewHeight = (height / width) * maxSize;
+            } else {
+                previewHeight = maxSize;
+                previewWidth = (width / height) * maxSize;
+            }
+            
+            // 設置預覽框樣式
+            ratioPreviewBox.style.width = previewWidth + 'px';
+            ratioPreviewBox.style.height = previewHeight + 'px';
+            ratioPreviewInfo.textContent = title;
+            ratioPreviewDimensions.textContent = width + ' x ' + height;
+            
+            // 顯示預覽覆蓋層
+            ratioPreviewOverlay.classList.add('show');
+        }
+        
+        // 離開事件 - 隱藏比例預覽
+        r.onmouseleave = () => {
+            ratioPreviewOverlay.classList.remove('show');
         }
     });
 
@@ -2881,6 +4683,87 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     if (els.randomBtn) {
         els.randomBtn.textContent = nanoT('random_btn');
     }
+    
+    // 方案三：風格按鈕懸停預覽功能
+    const stylePreviewTooltip = document.getElementById('stylePreviewTooltip');
+    const stylePreviewTitle = document.getElementById('stylePreviewTitle');
+    const stylePreviewDesc = document.getElementById('stylePreviewDesc');
+    
+    // 風格描述映射
+    const styleDescriptions = {
+        'photorealistic': '照片般真實的細節，適合寫實場景',
+        'anime': '日式動漫風格，色彩鮮豔',
+        'oil-painting': '經典油畫質感，筆觸豐富',
+        'cyberpunk': '未來科技感，霓虹燈光效',
+        'watercolor': '水彩畫風格，柔和透明',
+        'sketch': '素描線條，藝術感強',
+        '3d-render': '3D 渲染效果，立體感強',
+        'pixel-art': '像素藝術，復古遊戲風格',
+        'cinematic': '電影級光效，戲劇性強',
+        'fantasy': '奇幻風格，夢幻色彩',
+        'neon': '霓虹發光效果，視覺衝擊',
+        'vintage': '復古懷舊風格',
+        'steampunk': '蒸汽龐克，機械與魔法結合',
+        'minimalist': '極簡主義，乾淨俐落',
+        'vaporwave': '蒸汽波風格，80年代復古',
+        'pixel-art': '像素藝術，復古遊戲風格',
+        'low-poly': '低多邊形，幾何風格',
+        'gradient': '漸變色彩，流動美感',
+        'glitch': '故障藝術，數位干擾效果',
+        'ukiyo-e': '浮世繪風格，日本傳統藝術',
+        'stained-glass': '彩色玻璃，宗教藝術風格',
+        'paper-cut': '剪紙藝術，層次分明',
+        'gothic': '哥特風格，黑暗神秘',
+        'art-nouveau': '新藝術風格，曲線優美',
+        'cyberpunk': '賽博龐克，未來科技',
+        'fantasy': '奇幻風格，夢幻色彩'
+    };
+    
+    // 風格快捷按鈕事件處理
+    document.querySelectorAll('.style-shortcut-btn').forEach(btn => {
+        // 點擊事件
+        btn.onclick = () => {
+            const style = btn.dataset.style;
+            if (els.style) {
+                els.style.value = style;
+                // 添加點擊動畫效果
+                btn.style.transform = 'scale(0.9)';
+                setTimeout(() => btn.style.transform = 'scale(1)', 150);
+            }
+        };
+        
+        // 懸停事件 - 顯示風格預覽
+        btn.onmouseenter = (e) => {
+            const style = btn.dataset.style;
+            const title = btn.title || style;
+            const desc = styleDescriptions[style] || '選擇此風格';
+            
+            stylePreviewTitle.textContent = title;
+            stylePreviewDesc.textContent = desc;
+            
+            // 計算提示框位置
+            const rect = btn.getBoundingClientRect();
+            const tooltipWidth = 200;
+            const tooltipHeight = 80;
+            
+            let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+            let top = rect.top - tooltipHeight - 10;
+            
+            // 防止超出視窗邊界
+            if (left < 10) left = 10;
+            if (left + tooltipWidth > window.innerWidth - 10) left = window.innerWidth - tooltipWidth - 10;
+            if (top < 10) top = rect.bottom + 10;
+            
+            stylePreviewTooltip.style.left = left + 'px';
+            stylePreviewTooltip.style.top = top + 'px';
+            stylePreviewTooltip.classList.add('show');
+        }
+        
+        // 離開事件 - 隱藏風格預覽
+        btn.onmouseleave = () => {
+            stylePreviewTooltip.classList.remove('show');
+        }
+    });
     
     function openLightbox(url) {
         els.lbImg.src = url;
@@ -3176,34 +5059,151 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         setTimeout(() => t.style.display = 'none', 3000);
     }
 
+    // 方案三：增強的歷史記錄功能
+    let draggedItem = null;
+    
     function addHistory(url) {
         const div = document.createElement('div');
         div.className = 'history-item';
-        div.innerHTML = \`<img src="\${url}">\`;
+        div.draggable = true;
+        div.dataset.url = url;
+        
+        // 創建圖片
+        const img = document.createElement('img');
+        img.src = url;
+        div.appendChild(img);
+        
+        // 創建操作按鈕容器
+        const actions = document.createElement('div');
+        actions.className = 'history-item-actions';
+        
+        // 下載按鈕
+        const downloadBtn = document.createElement('button');
+        downloadBtn.className = 'history-action-btn';
+        downloadBtn.innerHTML = '⬇️';
+        downloadBtn.title = '下載';
+        downloadBtn.onclick = (e) => {
+            e.stopPropagation();
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'nano-pro-' + Date.now() + '.png';
+            a.click();
+        };
+        actions.appendChild(downloadBtn);
+        
+        // 刪除按鈕
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'history-action-btn delete';
+        deleteBtn.innerHTML = '✕';
+        deleteBtn.title = '刪除';
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            div.style.transform = 'scale(0)';
+            div.style.opacity = '0';
+            setTimeout(() => div.remove(), 300);
+        };
+        actions.appendChild(deleteBtn);
+        
+        div.appendChild(actions);
+        
+        // 點擊事件 - 顯示圖片
         div.onclick = () => {
             els.img.src = url;
             document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
             div.classList.add('active');
         };
+        
+        // 拖曳事件
+        div.ondragstart = (e) => {
+            draggedItem = div;
+            div.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        };
+        
+        div.ondragend = () => {
+            div.classList.remove('dragging');
+            document.querySelectorAll('.history-item').forEach(i => i.classList.remove('drag-over'));
+            draggedItem = null;
+        };
+        
+        div.ondragover = (e) => {
+            e.preventDefault();
+            if (draggedItem && draggedItem !== div) {
+                div.classList.add('drag-over');
+            }
+        };
+        
+        div.ondragleave = () => {
+            div.classList.remove('drag-over');
+        };
+        
+        div.ondrop = (e) => {
+            e.preventDefault();
+            div.classList.remove('drag-over');
+            if (draggedItem && draggedItem !== div) {
+                const rect = div.getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (e.clientY < midY) {
+                    els.history.insertBefore(draggedItem, div);
+                } else {
+                    els.history.insertBefore(draggedItem, div.nextSibling);
+                }
+            }
+        };
+        
         els.history.prepend(div);
         if(els.history.children.length > 10) els.history.lastChild.remove();
         document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
         div.classList.add('active');
     }
 
+    // 方案三：載入狀態循環機制
+    let loadingStateInterval = null;
+    
+    function startLoadingStateCycle() {
+        const loadingText = document.getElementById('loadingText');
+        if (!loadingText) return;
+        
+        const states = [
+            nanoT('loading_state_1'),
+            nanoT('loading_state_2'),
+            nanoT('loading_state_3'),
+            nanoT('loading_state_4')
+        ];
+        let currentIndex = 0;
+        
+        // 立即顯示第一個狀態
+        loadingText.textContent = states[0];
+        
+        // 每 2 秒切換一次狀態
+        loadingStateInterval = setInterval(() => {
+            currentIndex = (currentIndex + 1) % states.length;
+            loadingText.textContent = states[currentIndex];
+        }, 2000);
+    }
+    
+    function stopLoadingStateCycle() {
+        if (loadingStateInterval) {
+            clearInterval(loadingStateInterval);
+            loadingStateInterval = null;
+        }
+    }
+    
     els.genBtn.onclick = async () => {
         const p = els.prompt.value.trim();
         if(!p) return nanoToast('toast_no_prompt', "⚠️ 請輸入提示詞");
-        if(currentQuota <= 0) return nanoToast('toast_energy_depleted', "🚫 本小時能量已耗盡，請稍後再來！");
+        if(currentQuota <= 0) return nanoToast('toast_energy_depleted', "🚫 本分鐘能量已耗盡，請稍後再來！");
 
         els.genBtn.disabled = true;
         els.loader.style.display = 'flex';
+        startLoadingStateCycle(); // 方案三：啟動載入狀態循環
         els.img.style.opacity = '0.5';
 
         try {
             console.log("🍌 Nano Pro: 開始生成圖片...", {
                 prompt: p,
-                model: 'nanobanana',
+                provider: 'nonpon',
+                model: 'gemini-3-pro-image-preview',
                 width: els.width.value,
                 height: els.height.value,
                 style: els.style.value,
@@ -3213,16 +5213,20 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const requestBody = {
                 prompt: p,
                 negative_prompt: els.negative.value,
-                model: 'nanobanana',
+                provider: 'nonpon',
+                model: 'gemini-3-pro-image-preview',
                 width: parseInt(els.width.value),
                 height: parseInt(els.height.value),
                 style: els.style.value,
                 seed: parseInt(els.seed.value),
+                steps: parseInt(els.nanoSteps?.value || 30),
+                guidance: parseFloat(els.nanoGuidance?.value || 7.5),
+                quality_mode: els.nanoQuality?.value || 'standard',
                 n: 1,
                 nologo: true,
                 auto_optimize: true,
                 auto_hd: true,
-                quality_mode: 'standard'
+                language: nanoCurLang  // Track interface language
             };
             
             console.log("🍌 Nano Pro: 請求體", requestBody);
@@ -3241,8 +5245,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 console.error("🍌 Nano Pro: 限額錯誤", err);
                 currentQuota = 0;
                 const n = new Date();
-                const h = n.toDateString() + '-' + n.getHours();
-                localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: h, val: 0}));
+                const m = n.toDateString() + '-' + n.getHours() + '-' + n.getMinutes();
+                localStorage.setItem('nano_quota_minutely', JSON.stringify({min: m, val: 0}));
                 updateQuotaUI();
                 throw new Error(err.error?.message || '限額已滿');
             }
@@ -3272,6 +5276,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             if(!isSeedRandom && realSeed) els.seed.value = realSeed;
 
             addHistory(url);
+            
             consumeQuota();
             
             // Start Cooldown
@@ -3287,6 +5292,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             // On error, re-enable button if quota exists (unless rate limited)
             if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
         } finally {
+            stopLoadingStateCycle(); // 方案三：停止載入狀態循環
             els.loader.style.display = 'none';
         }
     };
@@ -3296,8 +5302,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
   
   return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
 }
+
 // KV-based Online Counter (Free)
-async function handleHeartbeat(request, env) {
+ async function handleHeartbeat(request, env) {
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
   const now = Math.floor(Date.now() / 1000);
   const key = `online:${ip}`;
@@ -3330,6 +5337,8 @@ function handleUI(request, env) {
   const key = `ratelimit:${ip}`;
     const hasInfipServerKey = !!(env && env.INFIP_API_KEY);
     const hasAquaServerKey = !!(env && env.AQUA_API_KEY);
+    const hasKinaiServerKey = !!(env && env.KINAI_API_KEY);
+    const hasAirforceServerKey = !!(env && env.AIRFORCE_API_KEY);
     const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
     
     // 生成樣式選單 HTML
@@ -3390,6 +5399,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
 .nav-btn.nano-btn:hover {border-color: #FACC15; background: rgba(250, 204, 21, 0.1); color: #FACC15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);}
+.nav-btn.edit-btn:hover {border-color: #A855F7; background: rgba(168, 85, 247, 0.1); color: #A855F7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);}
 .lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px;position:relative}
 .lang-dropdown{position:absolute;top:100%;right:0;background:rgba(20,20,25,0.95);backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 0;min-width:140px;display:none;z-index:1000;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
 .lang-dropdown.show{display:block}
@@ -3508,6 +5518,76 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     margin-top: 4px;
     text-align: center;
 }
+/* 生成進度條樣式 */
+.generation-progress-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.generation-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.generation-progress-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+.generation-progress-percentage {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f59e0b;
+}
+.generation-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.generation-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+    background-size: 200% 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 4px;
+    animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.generation-progress-status {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    text-align: center;
+}
+.generation-progress-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.generation-progress-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.generation-progress-step.active {
+    color: #f59e0b;
+}
+.generation-progress-step.completed {
+    color: #22c55e;
+}
 </style>
 </head>
 <body>
@@ -3527,9 +5607,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
             🍌 <span data-t="nav_nano">Nano版</span>
         </a>
         <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
-        <a href="/video" class="nav-btn" style="border-color:rgba(239,68,68,0.5);color:#ef4444">
-            <span data-t="nav_video">🎬 生成影片</span>
-        </a>
         <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
         <div style="position:relative">
             <button class="lang-btn" id="langSwitch">
@@ -3577,20 +5654,22 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <option value="pollinations" selected>Pollinations.ai (Free)</option>
         <option value="infip">Ghostbot (Infip) 🌟</option>
         <option value="aqua">Aqua API 💧</option>
+        <option value="kinai">Kinai API 🚀</option>
+        <option value="airforce">Airforce API ✈️</option>
     </select>
 </div>
 <div class="form-group" id="apiKeyGroup" style="display:none; background:rgba(245, 158, 11, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
     <label>API Key <span style="font-weight:normal;opacity:0.7">(Stored locally)</span></label>
     <input type="password" id="apiKey" placeholder="Paste your API Key here">
     <div style="font-size:11px;color:#ccc;margin-top:6px">
-        Get free key from <a href="https://infip.pro/api-keys" target="_blank" style="color:#f59e0b;text-decoration:underline">infip.pro/api-keys</a>
+        Get free key from <a id="apiKeysLink" href="https://infip.pro/api-keys" target="_blank" style="color:#f59e0b;text-decoration:underline">infip.pro/api-keys</a>
     </div>
 </div>
 
 <div class="form-group" id="nsfwGroup" style="display:none; align-items:center; justify-content:space-between; background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.3);">
     <div>
         <label for="nsfwToggle" style="margin:0; cursor:pointer; color:#f87171;">🔞 解除成人內容限制 (NSFW)</label>
-        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">啟用此選項將允許生成成人內容 (僅 Infip)</div>
+        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">啟用此選項將允許生成成人內容 (Infip, Kinai)</div>
     </div>
     <input type="checkbox" id="nsfwToggle" style="width:20px; height:20px; cursor:pointer;">
 </div>
@@ -3650,6 +5729,14 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     </div>
 </div>
 
+<!-- 隊列狀態顯示 -->
+<div id="queueStatus" style="margin-top:10px; padding:8px 12px; background:rgba(255,255,255,0.05); border-radius:8px; font-size:12px; display:none;">
+    <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:14px;">📊</span>
+        <span id="queueStatusText">隊列狀態</span>
+    </div>
+</div>
+
 <button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn" style="margin-top:10px;">🎨 開始生成</button>
 </form>
 </div>
@@ -3673,7 +5760,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         </div>
     </div>
     <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3" style="margin-top:10px;"></textarea>
-    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein, NanoBanana (Aqua)</div>
+    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Flux 2 Dev, Imagen 4, Flux, Klein, NanoBanana (Aqua)</div>
 </div>
 
 <!-- ====== 專業提示詞生成器 (Pollinations) ====== -->
@@ -3980,12 +6067,12 @@ async function clearDB(){
 // 多語言支援（繁體中文、英文、日文、韓文）
 const I18N={
     zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", nav_nano:"Nano版", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", nav_nano:"Nano版", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Flux 2 Dev / Imagen 4 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
         cooldown_msg: "⏳ 請等待冷卻時間...",
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
-        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
+        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
         api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
-        nsfw_label: "🔞 解除成人內容限制 (NSFW)", nsfw_desc: "啟用此選項將允許生成成人內容 (僅 Infip)",
+        nsfw_label: "🔞 解除成人內容限制 (NSFW)", nsfw_desc: "啟用此選項將允許生成成人內容 (Infip, Kinai)",
         batch_label: "🖼️ 批量生成", batch_size_label: "生成數量 (Batch Size)",
         prompt_generator_title: "專業提示詞生成器", prompt_generator_upload_ref: "上傳參考圖片 (可選)",
         prompt_generator_select_image: "選擇圖片", prompt_generator_simple_desc: "簡單描述你想要的畫面",
@@ -3996,12 +6083,12 @@ const I18N={
         error_image_too_large: "圖片太大！最大 32MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
     },
     en:{
-        nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
+        nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Flux 2 Dev / Imagen 4 Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
         cooldown_msg: "⏳ Please wait for cooldown...",
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
-        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
+        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
         api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
-        nsfw_label: "🔞 Disable NSFW Filter", nsfw_desc: "Enable this option to allow adult content generation (Infip only)",
+        nsfw_label: "🔞 Disable NSFW Filter", nsfw_desc: "Enable this option to allow adult content generation (Infip, Kinai)",
         batch_label: "🖼️ Batch Generation", batch_size_label: "Batch Size",
         prompt_generator_title: "Professional Prompt Generator", prompt_generator_upload_ref: "Upload Reference Image (Optional)",
         prompt_generator_select_image: "Select Image", prompt_generator_simple_desc: "Simply describe the image you want",
@@ -4015,9 +6102,9 @@ const I18N={
         nav_gen:"🎨 画像生成", nav_his:"📚 履歴", nav_nano:"Nano版", settings_title:"⚙️ 生成設定", provider_label:"API プロバイダー", model_label:"モデル選択", size_label:"画像サイズ", style_label:"アートスタイル 🎨", quality_label:"品質モード", seed_label:"シード値", seed_random:"🎲 ランダム", seed_lock:"🔒 固定", auto_opt_label:"✨ 自動最適化", auto_opt_desc:"ステップ数とガイダンスを自動調整", adv_settings:"🛠️ 詳細設定", steps_label:"生成ステップ数", guidance_label:"ガイダンススケール", gen_btn:"🎨 生成開始", empty_title:"まだ画像が生成されていません", pos_prompt:"ポジティブプロンプト", neg_prompt:"ネガティブプロンプト（任意）", ref_img:"参照画像 (Img2Img) 📸", stat_total:"📊 総記録数", stat_storage:"💾 ストレージ（永続）", btn_export:"📥 エクスポート", btn_clear:"🗑️ 全削除", no_history:"履歴がありません", btn_reuse:"🔄 再利用", btn_dl:"💾 ダウンロード",
         cooldown_msg: "⏳ クールダウンをお待ちください...",
         quality_economy: "エコノミー", quality_standard: "スタンダード", quality_ultra: "ウルトラHD",
-        provider_pollinations: "Pollinations.ai (無料)", provider_infip: "Ghostbot (Infip) 🌟",
+        provider_pollinations: "Pollinations.ai (無料)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
         api_key_label: "APIキー", api_key_desc: "ローカルに保存", api_key_placeholder: "ここにAPIキーを貼り付け",
-        nsfw_label: "🔞 NSFWフィルターを無効化", nsfw_desc: "このオプションを有効にすると、成人向けコンテンツの生成が可能になります（Infipのみ）",
+        nsfw_label: "🔞 NSFWフィルターを無効化", nsfw_desc: "このオプションを有効にすると、成人向けコンテンツの生成が可能になります（Infip, Kinai）",
         batch_label: "🖼️ バッチ生成", batch_size_label: "バッチサイズ",
         prompt_generator_title: "プロフェッショナルプロンプトジェネレーター", prompt_generator_upload_ref: "参照画像をアップロード（任意）",
         prompt_generator_select_image: "画像を選択", prompt_generator_simple_desc: "作成したい画像を簡単に説明",
@@ -4031,9 +6118,9 @@ const I18N={
         nav_gen:"🎨 이미지 생성", nav_his:"📚 기록", nav_nano:"Nano", settings_title:"⚙️ 생성 설정", provider_label:"API 공급자", model_label:"모델 선택", size_label:"이미지 크기", style_label:"아트 스타일 🎨", quality_label:"품질 모드", seed_label:"시드 값", seed_random:"🎲 랜덤", seed_lock:"🔒 잠금", auto_opt_label:"✨ 자동 최적화", auto_opt_desc:"스텝 및 가이던스 자동 조정", adv_settings:"🛠️ 고급 설정", steps_label:"생성 스텝", guidance_label:"가이던스 스케일", gen_btn:"🎨 생성 시작", empty_title:"아직 생성된 이미지가 없습니다", pos_prompt:"긍정적 프롬프트", neg_prompt:"부정적 프롬프트 (선택 사항)", ref_img:"참조 이미지 (Img2Img) 📸", stat_total:"📊 총 기록 수", stat_storage:"💾 저장 공간 (영구)", btn_export:"📥 내보내기", btn_clear:"🗑️ 전체 삭제", no_history:"기록이 없습니다", btn_reuse:"🔄 설정 재사용", btn_dl:"💾 다운로드",
         cooldown_msg: "⏳ 쿨다운을 기다려주세요...",
         quality_economy: "이코노미", quality_standard: "스탠다드", quality_ultra: "울트라 HD",
-        provider_pollinations: "Pollinations.ai (무료)", provider_infip: "Ghostbot (Infip) 🌟",
+        provider_pollinations: "Pollinations.ai (무료)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
         api_key_label: "API 키", api_key_desc: "로컬에 저장", api_key_placeholder: "여기에 API 키를 붙여넣으세요",
-        nsfw_label: "🔞 NSFW 필터 비활성화", nsfw_desc: "이 옵션을 활성화하면 성인 콘텐츠 생성이 허용됩니다 (Infip만 해당)",
+        nsfw_label: "🔞 NSFW 필터 비활성화", nsfw_desc: "이 옵션을 활성화하면 성인 콘텐츠 생성이 허용됩니다 (Infip, Kinai)",
         batch_label: "🖼️ 배치 생성", batch_size_label: "배치 크기",
         prompt_generator_title: "전문 프롬프트 생성기", prompt_generator_upload_ref: "참조 이미지 업로드 (선택 사항)",
         prompt_generator_select_image: "이미지 선택", prompt_generator_simple_desc: "원하는 이미지를 간단히 설명",
@@ -4044,7 +6131,7 @@ const I18N={
         error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
     },
     ar:{
-        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip فقط)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
+        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", provider_kinai:"Kinai API 🚀", provider_airforce:"Airforce API ✈️", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip, Airforce)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
     }
 };
 
@@ -4291,6 +6378,21 @@ function updateModelOptions() {
     const config = PROVIDERS[p];
     if(!config) return;
     
+    // Update API Key link based on provider
+    const apiKeysLink = document.getElementById('apiKeysLink');
+    if (apiKeysLink) {
+        const providerLinks = {
+            'infip': { url: 'https://infip.pro/api-keys', text: 'infip.pro/api-keys' },
+            'aqua': { url: 'https://aqua-api.com/api-keys', text: 'aqua-api.com/api-keys' },
+            'kinai': { url: 'https://kinai.ai/api-keys', text: 'kinai.ai/api-keys' },
+            'airforce': { url: 'https://api.airforce/', text: 'api.airforce/' }
+        };
+        if (providerLinks[p]) {
+            apiKeysLink.href = providerLinks[p].url;
+            apiKeysLink.textContent = providerLinks[p].text;
+        }
+    }
+    
     // Logic: Show API Key input only if required AND not provided by server
     if(config.requires_key && config.auth_mode === 'bearer') {
         if (config.has_server_key) {
@@ -4300,6 +6402,8 @@ function updateModelOptions() {
             let storedKey = '';
             if (p === 'infip') storedKey = sessionStorage.getItem('infip_api_key');
             if (p === 'aqua') storedKey = sessionStorage.getItem('aqua_api_key');
+            if (p === 'kinai') storedKey = sessionStorage.getItem('kinai_api_key');
+            if (p === 'airforce') storedKey = sessionStorage.getItem('airforce_api_key');
             
             apiKeyInput.value = storedKey || '';
             apiKeyInput.placeholder = "Paste your API Key here";
@@ -4308,11 +6412,11 @@ function updateModelOptions() {
         apiKeyGroup.style.display = 'none';
     }
     
-    // Logic: Show NSFW Toggle only for Infip
+    // Logic: Show NSFW Toggle for Infip and Kinai only
     const nsfwGroup = document.getElementById('nsfwGroup');
     const batchGroup = document.getElementById('batchGroup');
     
-    if (p === 'infip') {
+    if (p === 'infip' || p === 'kinai') {
         nsfwGroup.style.display = 'flex';
         batchGroup.style.display = 'block';
     } else {
@@ -4327,7 +6431,7 @@ function updateModelOptions() {
     const groups = {};
     models.forEach(m => {
         // Skip nanobanana model - only available in Nano Pro page
-        // imagen4 is available in Professional UI (Aqua polling model)
+        // imagen-4 is available in Professional UI (Aqua polling model)
         if (m.id === 'nanobanana') return;
         
         const cat = m.category || 'other';
@@ -4547,6 +6651,8 @@ apiKeyInput.addEventListener('input', (e) => {
     const p = providerSelect.value;
     if (p === 'infip') sessionStorage.setItem('infip_api_key', e.target.value);
     if (p === 'aqua') sessionStorage.setItem('aqua_api_key', e.target.value);
+    if (p === 'kinai') sessionStorage.setItem('kinai_api_key', e.target.value);
+    if (p === 'airforce') sessionStorage.setItem('airforce_api_key', e.target.value);
 });
 
 // Show/hide reference images section based on model support
@@ -4570,11 +6676,19 @@ const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
 const STYLE_CATEGORIES=${JSON.stringify(CONFIG.STYLE_CATEGORIES)};
 // Inject server-side key status
 const frontendProviders = ${JSON.stringify(CONFIG.PROVIDERS)};
+// Remove nonpon provider from main UI (only available in Nano Pro page)
+delete frontendProviders.nonpon;
 if (${hasInfipServerKey} && frontendProviders.infip) {
     frontendProviders.infip.has_server_key = true;
 }
 if (${hasAquaServerKey} && frontendProviders.aqua) {
     frontendProviders.aqua.has_server_key = true;
+}
+if (${hasKinaiServerKey} && frontendProviders.kinai) {
+    frontendProviders.kinai.has_server_key = true;
+}
+if (${hasAirforceServerKey} && frontendProviders.airforce) {
+    frontendProviders.airforce.has_server_key = true;
 }
 const PROVIDERS=frontendProviders;
 
@@ -4686,6 +6800,9 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     const curProvider = document.getElementById('provider').value;
     const curKey = document.getElementById('apiKey').value;
     if(curProvider === 'infip') localStorage.setItem('infip_api_key', curKey);
+    if(curProvider === 'aqua') localStorage.setItem('aqua_api_key', curKey);
+    if(curProvider === 'kinai') localStorage.setItem('kinai_api_key', curKey);
+    if(curProvider === 'airforce') localStorage.setItem('airforce_api_key', curKey);
 
     const prompt=document.getElementById('prompt').value;
     const resDiv=document.getElementById('results');
@@ -4694,9 +6811,17 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(!prompt)return;
     
     // 開始生成，鎖定按鈕
-    btn.disabled=true; 
-    btn.textContent=curLang==='zh'?'生成中...':'Generating...';
-    resDiv.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+    btn.disabled=true;
+    const generatingText = curLang === 'zh' ? '生成中...' :
+                          curLang === 'en' ? 'Generating...' :
+                          curLang === 'ja' ? '生成中...' :
+                          curLang === 'ko' ? '생성 중...' :
+                          curLang === 'ar' ? 'جاري الإنشاء...' : '生成中...';
+    btn.textContent = generatingText;
+    // 顯示進度條
+    showGenerationProgress();
+    // 模擬進度更新（實際進度由 API 響應更新）
+    simulateProgress();
     
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
     const isAutoOpt = autoOptCheckbox.checked;
@@ -4712,7 +6837,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(qualityEl) qualityEl.value = 'ultra';
     
     let finalNegative = document.getElementById('negativePrompt').value;
-    if (isNSFW && document.getElementById('provider').value === 'infip') {
+    if (isNSFW && (document.getElementById('provider').value === 'infip' || document.getElementById('provider').value === 'kinai' || document.getElementById('provider').value === 'airforce')) {
         // Filter out common NSFW keywords from negative prompt
         const nsfwKeywords = ['nsfw', 'nudity', 'naked', 'porn', 'xxx', 'uncensored'];
         let negParts = finalNegative.split(',').map(s => s.trim());
@@ -4734,7 +6859,8 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 provider: document.getElementById('provider').value,
                 api_key: document.getElementById('apiKey').value,
                 nsfw: isNSFW,
-                n: batchSize
+                n: batchSize,
+                language: curLang  // Track interface language
             })
         });
         
@@ -4749,28 +6875,49 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 const realSeed = res.headers.get('X-Seed');
                 const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
                 await addToHistory(item);
-                displayResult([item]);
+                // 更新進度到 100%
+                const completeText = curLang === 'zh' ? '生成完成！' :
+                                   curLang === 'en' ? 'Generation Complete!' :
+                                   curLang === 'ja' ? '生成完了！' :
+                                   curLang === 'ko' ? '생성 완료!' :
+                                   curLang === 'ar' ? 'اكتمل الإنشاء!' : '生成完成！';
+                updateProgressUI(100, completeText);
+                setTimeout(() => {
+                    hideGenerationProgress();
+                    displayResult([item]);
+                }, 500);
                 
                 // Determine cooldown based on provider
                 const provider = document.getElementById('provider').value;
-                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
+                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : (provider === 'airforce' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC));
                 startCooldown(cooldownTime);
             };
         }else{
             const data=await res.json();
             if(data.error) throw new Error(data.error.message);
             for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
-            displayResult(items);
+            // 更新進度到 100%
+            const completeText = curLang === 'zh' ? '生成完成！' :
+                               curLang === 'en' ? 'Generation Complete!' :
+                               curLang === 'ja' ? '生成完了！' :
+                               curLang === 'ko' ? '생성 완료!' :
+                               curLang === 'ar' ? 'اكتمل الإنشاء!' : '生成完成！';
+            updateProgressUI(100, completeText);
+            setTimeout(() => {
+                hideGenerationProgress();
+                displayResult(items);
+            }, 500);
             
             // Determine cooldown based on provider
             const provider = document.getElementById('provider').value;
-            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
-            startCooldown(cooldownTime); 
+            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : (provider === 'airforce' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC));
+            startCooldown(cooldownTime);
         }
-    }catch(err){ 
-        resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; 
+    }catch(err){
+        hideGenerationProgress();
+        resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>';
         // 失敗時不冷卻，直接解鎖
-        btn.disabled=false; 
+        btn.disabled=false;
         btn.textContent=I18N[curLang].gen_btn;
     }
 });
@@ -4803,11 +6950,184 @@ function updateBtnText(sec) {
     btn.textContent = msg;
 }
 
+// ====== 圖像生成進度追蹤 ======
+let progressInterval = null;
+let currentProgress = 0;
+
+function showGenerationProgress() {
+    const resDiv = document.getElementById('results');
+    const statusText = curLang === 'zh' ? '🎨 正在生成圖像...' :
+                      curLang === 'en' ? '🎨 Generating image...' :
+                      curLang === 'ja' ? '🎨 画像を生成中...' :
+                      curLang === 'ko' ? '🎨 이미지 생성 중...' :
+                      curLang === 'ar' ? '🎨 جاري إنشاء الصورة...' : '🎨 正在生成圖像...';
+    const initText = curLang === 'zh' ? '初始化中...' :
+                     curLang === 'en' ? 'Initializing...' :
+                     curLang === 'ja' ? '初期化中...' :
+                     curLang === 'ko' ? '초기화 중...' :
+                     curLang === 'ar' ? 'جاري التهيئة...' : '初始化中...';
+    
+    resDiv.innerHTML =
+        '<div class="generation-progress-container">' +
+            '<div class="generation-progress-header">' +
+                '<span class="generation-progress-status">' + statusText + '</span>' +
+                '<span class="generation-progress-percentage" id="progressPercentage">0%</span>' +
+            '</div>' +
+            '<div class="generation-progress-bar">' +
+                '<div class="generation-progress-fill" id="progressFill"></div>' +
+            '</div>' +
+            '<div class="generation-progress-steps">' +
+                '<span class="step-indicator" id="step1">📝</span>' +
+                '<span class="step-indicator" id="step2">🎨</span>' +
+                '<span class="step-indicator" id="step3">✨</span>' +
+                '<span class="step-indicator" id="step4">🖼️</span>' +
+            '</div>' +
+            '<div class="generation-progress-text" id="progressText">' + initText + '</div>' +
+        '</div>';
+    currentProgress = 0;
+    updateProgressUI(0, initText);
+}
+
+function updateProgressUI(percentage, text) {
+    const progressFill = document.getElementById('progressFill');
+    const progressPercentage = document.getElementById('progressPercentage');
+    const progressText = document.getElementById('progressText');
+    
+    if (progressFill) progressFill.style.width = percentage + '%';
+    if (progressPercentage) progressPercentage.textContent = percentage + '%';
+    if (progressText) progressText.textContent = text;
+    
+    // 更新步驟指示器
+    updateStepIndicators(percentage);
+}
+
+function updateStepIndicators(percentage) {
+    const steps = ['step1', 'step2', 'step3', 'step4'];
+    const stepLabels = ['📝', '🎨', '✨', '🖼️'];
+    const activeLabels = ['✅', '🎨', '✨', '🖼️'];
+    
+    steps.forEach((stepId, index) => {
+        const stepEl = document.getElementById(stepId);
+        if (stepEl) {
+            const threshold = (index + 1) * 25;
+            if (percentage >= threshold) {
+                stepEl.textContent = activeLabels[index];
+                stepEl.classList.add('active');
+            } else {
+                stepEl.textContent = stepLabels[index];
+                stepEl.classList.remove('active');
+            }
+        }
+    });
+}
+
+function simulateProgress() {
+    // 清除之前的進度計時器
+    if (progressInterval) {
+        clearInterval(progressInterval);
+    }
+    
+    // 根據語言獲取進度訊息
+    const progressMessages = curLang === 'zh' ? [
+        { percent: 5, text: '正在分析提示詞...' },
+        { percent: 15, text: '正在選擇模型...' },
+        { percent: 25, text: '正在初始化生成參數...' },
+        { percent: 35, text: '正在連接 API 服務器...' },
+        { percent: 45, text: '正在生成圖像...' },
+        { percent: 55, text: '正在渲染細節...' },
+        { percent: 65, text: '正在優化質量...' },
+        { percent: 75, text: '正在應用風格...' },
+        { percent: 85, text: '正在最終處理...' },
+        { percent: 95, text: '即將完成...' }
+    ] : curLang === 'en' ? [
+        { percent: 5, text: 'Analyzing prompt...' },
+        { percent: 15, text: 'Selecting model...' },
+        { percent: 25, text: 'Initializing parameters...' },
+        { percent: 35, text: 'Connecting to API...' },
+        { percent: 45, text: 'Generating image...' },
+        { percent: 55, text: 'Rendering details...' },
+        { percent: 65, text: 'Optimizing quality...' },
+        { percent: 75, text: 'Applying style...' },
+        { percent: 85, text: 'Final processing...' },
+        { percent: 95, text: 'Almost done...' }
+    ] : curLang === 'ja' ? [
+        { percent: 5, text: 'プロンプトを分析中...' },
+        { percent: 15, text: 'モデルを選択中...' },
+        { percent: 25, text: 'パラメータを初期化中...' },
+        { percent: 35, text: 'APIに接続中...' },
+        { percent: 45, text: '画像を生成中...' },
+        { percent: 55, text: '詳細をレンダリング中...' },
+        { percent: 65, text: '品質を最適化中...' },
+        { percent: 75, text: 'スタイルを適用中...' },
+        { percent: 85, text: '最終処理中...' },
+        { percent: 95, text: 'もうすぐ完了...' }
+    ] : curLang === 'ko' ? [
+        { percent: 5, text: '프롬프트 분석 중...' },
+        { percent: 15, text: '모델 선택 중...' },
+        { percent: 25, text: '매개변수 초기화 중...' },
+        { percent: 35, text: 'API 연결 중...' },
+        { percent: 45, text: '이미지 생성 중...' },
+        { percent: 55, text: '세부 사항 렌더링 중...' },
+        { percent: 65, text: '품질 최적화 중...' },
+        { percent: 75, text: '스타일 적용 중...' },
+        { percent: 85, text: '최종 처리 중...' },
+        { percent: 95, text: '거의 완료...' }
+    ] : curLang === 'ar' ? [
+        { percent: 5, text: 'جاري تحليل الموجه...' },
+        { percent: 15, text: 'جاري اختيار النموذج...' },
+        { percent: 25, text: 'جاري تهيئة المعلمات...' },
+        { percent: 35, text: 'جاري الاتصال بـ API...' },
+        { percent: 45, text: 'جاري إنشاء الصورة...' },
+        { percent: 55, text: 'جاري عرض التفاصيل...' },
+        { percent: 65, text: 'جاري تحسين الجودة...' },
+        { percent: 75, text: 'جاري تطبيق النمط...' },
+        { percent: 85, text: 'جاري المعالجة النهائية...' },
+        { percent: 95, text: 'قريب من الانتهاء...' }
+    ] : [
+        { percent: 5, text: '正在分析提示詞...' },
+        { percent: 15, text: '正在選擇模型...' },
+        { percent: 25, text: '正在初始化生成參數...' },
+        { percent: 35, text: '正在連接 API 服務器...' },
+        { percent: 45, text: '正在生成圖像...' },
+        { percent: 55, text: '正在渲染細節...' },
+        { percent: 65, text: '正在優化質量...' },
+        { percent: 75, text: '正在應用風格...' },
+        { percent: 85, text: '正在最終處理...' },
+        { percent: 95, text: '即將完成...' }
+    ];
+    
+    let messageIndex = 0;
+    
+    progressInterval = setInterval(() => {
+        if (currentProgress < 95) {
+            // 找到當前應該顯示的消息
+            while (messageIndex < progressMessages.length && currentProgress >= progressMessages[messageIndex].percent) {
+                messageIndex++;
+            }
+            
+            if (messageIndex < progressMessages.length) {
+                const targetPercent = progressMessages[messageIndex].percent;
+                const increment = Math.max(1, Math.floor((targetPercent - currentProgress) / 5));
+                currentProgress = Math.min(targetPercent, currentProgress + increment);
+                updateProgressUI(currentProgress, progressMessages[messageIndex].text);
+            }
+        }
+    }, 500);
+}
+
+function hideGenerationProgress() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+    // 進度條會在 displayResult 中被替換
+}
+
 function displayResult(items){
     const div=document.createElement('div');div.className='gallery';
     items.forEach(item=>{
         const d=document.createElement('div');d.className='gallery-item';
-        d.innerHTML=\`<img src="\${item.image||item.url}" onclick="openModal(this.src)">\`;
+        d.innerHTML='<img src="' + (item.image||item.url) + '" onclick="openModal(this.src)">';
         div.appendChild(d);
     });
     document.getElementById('results').innerHTML='';
@@ -4834,18 +7154,33 @@ const PromptGenerator = {
         const referenceImage = document.getElementById('referenceImages')?.value.trim() || '';
         
         if (!input && !referenceImage && !this.uploadedImage) {
-            this.showStatus('請輸入畫面描述或上傳圖片', 'error');
+            const errorText = curLang === 'zh' ? '請輸入畫面描述或上傳圖片' :
+                               curLang === 'en' ? 'Please enter a description or upload an image' :
+                               curLang === 'ja' ? '説明を入力するか画像をアップロードしてください' :
+                               curLang === 'ko' ? '설명을 입력하거나 이미지를 업로드하세요' :
+                               curLang === 'ar' ? 'الرجاء إدخال وصف أو رفع صورة' : '請輸入畫面描述或上傳圖片';
+            this.showStatus(errorText, 'error');
             return;
         }
         
         const btn = document.getElementById('generatePromptBtn');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
+        const generatingText = curLang === 'zh' ? '生成中...' :
+                              curLang === 'en' ? 'Generating...' :
+                              curLang === 'ja' ? '生成中...' :
+                              curLang === 'ko' ? '생성 중...' :
+                              curLang === 'ar' ? 'جاري الإنشاء...' : '生成中...';
+        btn.innerHTML = '<span>⏳</span><span>' + generatingText + '</span>';
         
         // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
         if (this.uploadedImage && !this.uploadedImageUrl) {
-            this.showStatus('正在上傳圖片...', 'loading');
+            const uploadingText = curLang === 'zh' ? '正在上傳圖片...' :
+                                  curLang === 'en' ? 'Uploading image...' :
+                                  curLang === 'ja' ? '画像をアップロード中...' :
+                                  curLang === 'ko' ? '이미지 업로드 중...' :
+                                  curLang === 'ar' ? 'جاري رفع الصورة...' : '正在上傳圖片...';
+            this.showStatus(uploadingText, 'loading');
             try {
                 this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
                 this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
@@ -5018,6 +7353,40 @@ document.addEventListener('DOMContentLoaded', () => {
         applyBtn.addEventListener('click', () => PromptGenerator.applyToPrompt());
     }
     
+    // ====== 隊列狀態更新 ======
+    const queueStatusEl = document.getElementById('queueStatus');
+    const queueStatusTextEl = document.getElementById('queueStatusText');
+    
+    // 更新隊列狀態顯示
+    async function updateQueueStatus() {
+        try {
+            const response = await fetch('/api/queue-status');
+            const data = await response.json();
+            
+            if (data.status === 'ok' && data.queues) {
+                const provider = document.getElementById('provider')?.value || 'pollinations';
+                const queue = data.queues[provider];
+                
+                // 只為使用隊列的供應商顯示隊列狀態
+                if (queue && queue.usesQueue && (queue.waiting > 0 || queue.processing > 0)) {
+                    queueStatusEl.style.display = 'block';
+                    var waitingText = queue.waiting > 0 ? queue.waiting + ' ' + I18N[curLang].queue_waiting : '';
+                    var processingText = queue.processing > 0 ? queue.processing + ' ' + I18N[curLang].queue_processing : '';
+                    var separator = waitingText && processingText ? ', ' : '';
+                    queueStatusTextEl.textContent = I18N[curLang].queue_label + ': ' + waitingText + separator + processingText;
+                } else {
+                    queueStatusEl.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch queue status:', error);
+        }
+    }
+    
+    // 每2秒更新一次隊列狀態
+    setInterval(updateQueueStatus, 2000);
+    updateQueueStatus(); // 初始更新
+    
     // ====== 主頁面提示詞生成器拖放功能 ======
     const promptImageDropZone = document.getElementById('promptImageDropZone');
     const promptImageUpload = document.getElementById('promptImageUpload');
@@ -5091,7 +7460,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap; padding:15px 20px;">
     <span style="font-size:14px;">Powered by Flux AI Pro • <a href="https://github.com/kinai9661/Flux-AI-Pro" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
     <span style="opacity:0.5">|</span>
-    <span style="opacity:0.9; font-size:14px;">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://aquadevs.com" target="_blank">AquaDevs</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
+    <span style="opacity:0.9; font-size:14px;">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://aquadevs.com" target="_blank">AquaDevs</a> • <a href="https://kinai.eu.cc" target="_blank">Kinai</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
     <span style="opacity:0.5">|</span>
     <div class="friend-badges" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <a href="https://dofollow.tools" target="_blank" style="display:inline-flex; align-items:center; justify-content:center;">

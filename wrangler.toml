@@ -1,8 +1,8 @@
 # ============================================
 # Cloudflare Workers 配置文件
 # 項目: Flux AI Pro - NanoBanana Edition
-# 版本: 11.12.0 (影片生成功能)
-# 更新: 2026-02-04
+# 版本: 11.16.0
+# 更新: 2026-02-19
 # ============================================
 
 name = "flux-ai-pro"
@@ -10,9 +10,21 @@ main = "worker.js"
 compatibility_date = "2024-12-01"
 
 # ============================================
-# KV 存儲綁定 (NanoBanana 限流和影片生成限流必需)
+# KV 存儲綁定 (NanoBanana 限流必需)
 # ⚠️ 請執行: npx wrangler kv:namespace create "FLUX_KV"
 # 然後將生成的 id 填入下方
+#
+# KV 存儲用途:
+# ────────────────────────────────────────────
+# 【Nano Pro 限流和配額管理】
+# - nano_limit:{ip} (IP 限流計數，60s TTL)
+# - rate_limit:{ip} (API 速率限制計數)
+# ────────────────────────────────────────────
+# 【統計與監控】
+# - online:{ip} (在線用戶計數，60s TTL)
+# - stats:daily:{date} (每日請求統計)
+# - stats:total (總請求計數)
+# ────────────────────────────────────────────
 # ============================================
 [[kv_namespaces]]
 binding = "FLUX_KV"
@@ -28,31 +40,36 @@ binding = "AI"
 # 環境變量（非敏感）
 # ============================================
 [vars]
-WORKER_VERSION = "11.12.0"
+WORKER_VERSION = "11.16.0"
 DEFAULT_MODEL = "flux-schnell"
-MAX_WIDTH = 2048
-MAX_HEIGHT = 2048
+MAX_WIDTH = 4096
+MAX_HEIGHT = 4096
 MAX_TIMEOUT = 300000
 ENVIRONMENT = "production"
 
 # ============================================
 # Secrets 通過 wrangler secret 命令設置
 # 🔐 推薦設置:
+# ============================================
+# 【API 供應商 Keys】
 # 1. POLLINATIONS_API_KEY (Pollinations 圖像生成)
 # 2. INFIP_API_KEY (Ghostbot/Infip)
 # 3. AQUA_API_KEY (Aqua Server)
-# 4. POLLINATIONS_VIDEO_API_KEY (Pollinations 影片生成)
-# 5. RUNWAY_VIDEO_API_KEY (Runway 影片生成)
-# 6. PIKA_VIDEO_API_KEY (Pika 影片生成)
-# 7. LUMA_VIDEO_API_KEY (Luma 影片生成)
-# 8. KLING_VIDEO_API_KEY (Kling 影片生成)
+# 4. KINAI_API_KEY (Kinai API)
+# 5. AIRFORCE_API_KEY (Airforce API)
+# 6. NONPON_API_KEY (Nonpon API)
+#
 # ============================================
 # 設置命令範例：
 # npx wrangler secret put POLLINATIONS_API_KEY
 # npx wrangler secret put INFIP_API_KEY
 # npx wrangler secret put AQUA_API_KEY
-# npx wrangler secret put POLLINATIONS_VIDEO_API_KEY
-# npx wrangler secret put RUNWAY_VIDEO_API_KEY
-# npx wrangler secret put PIKA_VIDEO_API_KEY
-# npx wrangler secret put LUMA_VIDEO_API_KEY
-# npx wrangler secret put KLING_VIDEO_API_KEY
+# npx wrangler secret put KINAI_API_KEY
+# npx wrangler secret put AIRFORCE_API_KEY
+# npx wrangler secret put NONPON_API_KEY
+#
+# 查看所有 secrets:
+# npx wrangler secret list
+#
+# 刪除 secret:
+# npx wrangler secret delete SECRET_NAME
