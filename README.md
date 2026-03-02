@@ -1,6 +1,6 @@
 # 🎨 Flux AI Pro - NanoBanana Edition
 
-![Version](https://img.shields.io/badge/Version-11.16.0-8B5CF6?style=flat-square)
+![Version](https://img.shields.io/badge/Version-11.17.0-8B5CF6?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
 ![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 ![I18N](https://img.shields.io/badge/I18N-5%20Languages-green?style=flat-square)
@@ -14,7 +14,7 @@
 
 - [🌍 English Introduction](#-english-introduction)
 - [🚀 Key Features](#-key-features)
-- [🔥 v11.16.0 更新亮點](#-v11160-更新亮點-release-highlights)
+- [🔥 v11.17.0 更新亮點](#-v11170-更新亮點-release-highlights)
 - [✨ 核心功能特色](#-核心功能特色)
 - [🗂️ 專案結構](#️-專案結構)
 - [🔧 核心技術架構](#-核心技術架構)
@@ -46,7 +46,13 @@
 
 ---
 
-## 🔥 v11.16.0 更新亮點 (Release Highlights)
+## 🔥 v11.17.0 更新亮點 (Release Highlights)
+
+### 🎯 Gemini 原生 API 參數支援
+- **aspectRatio 參數**：Nonpon API 現在使用 Gemini 原生比例格式（1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 21:9, 9:21）
+- **imageSize 參數**：自動轉換尺寸為 1K、2K、4K 等級
+- **參數預覽區塊**：Nano Pro 頁面新增 Gemini 參數預覽，即時顯示轉換結果
+- **視覺標記**：比例選擇器顯示 ✓（原生支援）和 ⟳（需轉換）標記
 
 ### 🎨 Nano Pro UI 大幅升級
 - **功能區塊重組**：將控制面板重組為 4 個區塊（核心輸入、尺寸與風格、進階設定、操作區域），提升操作效率。
@@ -180,6 +186,7 @@
 | 模型 | 描述 | 最大尺寸 |
 |------|------|----------|
 | **Gemini 3 Pro Image Preview** 🌟 | Google Gemini 3 Pro 高品質圖像生成模型 | 4096x4096 |
+| **gemini-3.1-flash-image-preview** 🌟 | nano banana 2 高品質圖像生成模型 | 4096x4096 |
 
 **特色功能**：2K/4K 輸出支持、Steps/Guidance/Quality Mode 參數控制、風格快捷按鈕、每分鐘 3 次免費配額
 
@@ -464,6 +471,15 @@ MIT License. 歡迎 Fork 與二次開發。
 ---
 
 ## 📝 更新日誌 (Changelog)
+
+### v11.17.0 (2026-02-28)
+- **Gemini 原生 API 參數支援**：Nonpon API 現在使用 Gemini 原生格式
+  - 新增 `aspectRatio` 參數（支援 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 21:9, 9:21）
+  - 新增 `imageSize` 參數（支援 1K, 2K, 4K）
+- **Nano Pro UI 介面升級**：
+  - 新增 Gemini 參數預覽區塊，即時顯示轉換後的 aspectRatio 和 imageSize
+  - 比例選擇器新增視覺標記（✓ 原生支援、⟳ 需轉換）
+  - 4:5 IG 比例自動轉換為最接近的 Gemini 支援比例（3:4）
 
 ### v11.16.0 (2026-02-19)
 - 新增 Kaai API 供應商支援
