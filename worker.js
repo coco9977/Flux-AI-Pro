@@ -155,32 +155,6 @@ PROJECT_VERSION: "11.16.0",
       rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 2048, height: 2048 }
     },
-    airforce: {
-      name: "Airforce API",
-      endpoint: "https://api.airforce",
-      type: "openai_compatible",
-      auth_mode: "bearer",
-      requires_key: true,
-      enabled: true,
-      default: false,
-      description: "Airforce AI 圖像生成服務",
-      features: {
-        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: false, api_key_auth: true, nsfw: false
-      },
-      models: [
-        { id: "plutogen-o1", name: "Plutogen O1 🌟", category: "plutogen", description: "Plutogen O1 高品質圖像生成模型", max_size: 2048 },
-        { id: "z-image", name: "Z-Image ⚡", category: "zimage", description: "快速 6B 參數圖像生成", max_size: 2048 },
-        { id: "imagen-4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 2048 },
-        { id: "flux-2-pro", name: "Flux 2 Pro 🌟", category: "flux", description: "Flux 2 Pro 高品質模型", max_size: 2048 },
-        { id: "flux-2-flex", name: "Flux 2 Flex ⚡", category: "flux", description: "Flux 2 Flex 靈活模型", max_size: 2048 },
-        { id: "gpt-image-1.5", name: "GPT Image 1.5 🎨", category: "gpt", description: "GPT Image 1.5 圖像生成模型", max_size: 2048 },
-        { id: "flux-2-klein-4b", name: "Flux 2 Klein 4B", category: "flux", description: "Advanced Flux 2 model - 4B parameters", max_size: 2048 },
-        { id: "flux-2-klein-9b", name: "Flux 2 Klein 9B 🌟", category: "flux", description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048 },
-        { id: "seedream-4.5", name: "SeeDream 4.5 🌈", category: "seedream", description: "夢幻般的圖像生成 v4.5", max_size: 2048 }
-      ],
-      rate_limit: { requests: 60, interval: 60 },
-      max_size: { width: 2048, height: 2048 }
-    },
     nonpon: {
       name: "Nonpon API",
       endpoint: "https://api-reverse-engineering.kines966176.workers.dev",
@@ -307,6 +281,242 @@ class Logger {
   constructor() { this.logs = []; }
   add(title, data) { this.logs.push({ title, data, timestamp: new Date().toISOString() }); }
   get() { return this.logs; }
+}
+
+class AdaptiveStrategyManager {
+  static get VERSION() { return 'd2-pilot-v1'; }
+
+  constructor(env) {
+    this.env = env;
+    this.KV = env?.FLUX_KV || null;
+    this.ttl = 60 * 60 * 24 * 7; // 7 days
+  }
+
+  getProviderStatsKey(provider) {
+    return `d2:provider:${provider}`;
+  }
+
+  createEmptyStats() {
+    return {
+      success: 0,
+      failure: 0,
+      timeout: 0,
+      rate_limit: 0,
+      auth: 0,
+      service_unavailable: 0,
+      other: 0,
+      total_duration: 0,
+      count: 0,
+      updated_at: Date.now()
+    };
+  }
+
+  normalizeStats(stats) {
+    const base = this.createEmptyStats();
+    return {
+      ...base,
+      ...(stats || {}),
+      success: Number(stats?.success || 0),
+      failure: Number(stats?.failure || 0),
+      timeout: Number(stats?.timeout || 0),
+      rate_limit: Number(stats?.rate_limit || 0),
+      auth: Number(stats?.auth || 0),
+      service_unavailable: Number(stats?.service_unavailable || 0),
+      other: Number(stats?.other || 0),
+      total_duration: Number(stats?.total_duration || 0),
+      count: Number(stats?.count || 0),
+      updated_at: Number(stats?.updated_at || Date.now())
+    };
+  }
+
+  async readProviderStats(provider) {
+    if (!this.KV || !provider) return this.createEmptyStats();
+    try {
+      const raw = await this.KV.get(this.getProviderStatsKey(provider));
+      if (!raw) return this.createEmptyStats();
+      return this.normalizeStats(JSON.parse(raw));
+    } catch (error) {
+      console.warn('⚠️ Strategy stats read failed:', provider, error.message);
+      return this.createEmptyStats();
+    }
+  }
+
+  async writeProviderStats(provider, stats) {
+    if (!this.KV || !provider) return;
+    try {
+      await this.KV.put(this.getProviderStatsKey(provider), JSON.stringify(stats), { expirationTtl: this.ttl });
+    } catch (error) {
+      console.warn('⚠️ Strategy stats write failed:', provider, error.message);
+    }
+  }
+
+  applyQueuePenalty(score, queueStatus) {
+    if (!queueStatus || queueStatus.usesQueue === false) return score;
+    const waiting = Number(queueStatus.waiting || 0);
+    const processing = Number(queueStatus.processing || 0);
+    const penalty = Math.min(waiting * 2 + processing, 20);
+    return score - penalty;
+  }
+
+  async getProviderHealth(provider, queueStatus = null) {
+    const stats = await this.readProviderStats(provider);
+    const count = Math.max(stats.count, 0);
+
+    if (count === 0) {
+      const neutralScore = this.applyQueuePenalty(72, queueStatus);
+      return {
+        provider,
+        score: Math.max(5, Math.min(99, neutralScore)),
+        success_rate: 0.95,
+        avg_latency: 3200,
+        count,
+        rate_limit_rate: 0,
+        stats
+      };
+    }
+
+    const successRate = stats.success / count;
+    const avgLatency = stats.total_duration > 0 ? stats.total_duration / count : 3200;
+    const rateLimitRate = stats.rate_limit / count;
+    const unavailableRate = stats.service_unavailable / count;
+
+    let score = successRate * 100;
+    score -= Math.min(avgLatency / 400, 25);
+    score -= rateLimitRate * 20;
+    score -= unavailableRate * 25;
+    score = this.applyQueuePenalty(score, queueStatus);
+    score = Math.max(5, Math.min(99, score));
+
+    return {
+      provider,
+      score,
+      success_rate: successRate,
+      avg_latency: avgLatency,
+      count,
+      rate_limit_rate: rateLimitRate,
+      service_unavailable_rate: unavailableRate,
+      stats
+    };
+  }
+
+  async selectProvider({ requestedProvider = null, defaultProvider = null, availableProviders = [], queueStatusMap = {} }) {
+    const providers = (availableProviders || []).filter(Boolean);
+    if (providers.length === 0) {
+      return {
+        provider: requestedProvider || defaultProvider || CONFIG.DEFAULT_PROVIDER,
+        health: { score: 50 },
+        reason: 'no_available_provider',
+        candidates: []
+      };
+    }
+
+    if (requestedProvider && providers.includes(requestedProvider)) {
+      const health = await this.getProviderHealth(requestedProvider, queueStatusMap[requestedProvider]);
+      return {
+        provider: requestedProvider,
+        health,
+        reason: 'user_requested_provider',
+        candidates: [{ provider: requestedProvider, score: health.score }]
+      };
+    }
+
+    const candidates = [];
+    for (const provider of providers) {
+      const health = await this.getProviderHealth(provider, queueStatusMap[provider]);
+      candidates.push({ provider, score: health.score, health });
+    }
+    candidates.sort((a, b) => b.score - a.score);
+
+    const best = candidates[0];
+    const defaultCandidate = candidates.find(c => c.provider === defaultProvider);
+
+    let selected = best;
+    let reason = 'best_score';
+
+    if (defaultCandidate) {
+      const diff = best.score - defaultCandidate.score;
+      if (diff < 8) {
+        selected = defaultCandidate;
+        reason = 'keep_default_small_gap';
+      }
+    }
+
+    return {
+      provider: selected.provider,
+      health: selected.health,
+      reason,
+      candidates: candidates.slice(0, 3).map(c => ({ provider: c.provider, score: c.score }))
+    };
+  }
+
+  adjustQualityMode(baseMode = 'standard', health = null, queueStatus = null) {
+    const modes = ['economy', 'standard', 'ultra'];
+    const mode = modes.includes(baseMode) ? baseMode : 'standard';
+    const startIndex = modes.indexOf(mode);
+
+    const score = health?.score ?? 72;
+    const waiting = Number(queueStatus?.waiting || 0);
+    const processing = Number(queueStatus?.processing || 0);
+
+    let delta = 0;
+    if (score < 45) delta -= 1;
+    if (waiting >= 3 || processing >= 2) delta -= 1;
+    if (score > 88 && waiting === 0 && processing <= 1) delta += 1;
+
+    const finalIndex = Math.max(0, Math.min(modes.length - 1, startIndex + delta));
+    const finalMode = modes[finalIndex];
+
+    return {
+      mode: finalMode,
+      delta: finalIndex - startIndex,
+      reason: `score=${score.toFixed(1)}, waiting=${waiting}, processing=${processing}`
+    };
+  }
+
+  classifyError(errorMessage = '') {
+    const message = String(errorMessage || '').toLowerCase();
+    if (/429|rate limit|too many requests/.test(message)) return 'rate_limit';
+    if (/503|service is temporarily unavailable|temporarily unavailable|cooldown|all tokens are on cooldown/.test(message)) return 'service_unavailable';
+    if (/timeout|timed out|abort/.test(message)) return 'timeout';
+    if (/401|403|unauthorized|forbidden|invalid api key/.test(message)) return 'auth';
+    return 'other';
+  }
+
+  async recordProviderResult(provider, { success, duration = 0, errorMessage = '' }) {
+    if (!provider) return;
+
+    const stats = await this.readProviderStats(provider);
+
+    if (stats.count > 500) {
+      stats.success = Math.round(stats.success * 0.5);
+      stats.failure = Math.round(stats.failure * 0.5);
+      stats.timeout = Math.round(stats.timeout * 0.5);
+      stats.rate_limit = Math.round(stats.rate_limit * 0.5);
+      stats.auth = Math.round(stats.auth * 0.5);
+      stats.service_unavailable = Math.round(stats.service_unavailable * 0.5);
+      stats.other = Math.round(stats.other * 0.5);
+      stats.total_duration = Math.round(stats.total_duration * 0.5);
+      stats.count = Math.round(stats.count * 0.5);
+    }
+
+    stats.count += 1;
+    stats.total_duration += Math.max(0, Number(duration || 0));
+
+    if (success) {
+      stats.success += 1;
+    } else {
+      stats.failure += 1;
+      const type = this.classifyError(errorMessage);
+      if (type === 'timeout') stats.timeout += 1;
+      else if (type === 'rate_limit') stats.rate_limit += 1;
+      else if (type === 'auth') stats.auth += 1;
+      else if (type === 'service_unavailable') stats.service_unavailable += 1;
+      else stats.other += 1;
+    }
+
+    stats.updated_at = Date.now();
+    await this.writeProviderStats(provider, stats);
+  }
 }
 
 // ====== RateLimiter: 負責 KV 限制邏輯 (3次/分鐘) ======
@@ -811,6 +1021,81 @@ class InfipProvider {
  return InfipProvider.IMG2IMG_MODELS.includes(model.toLowerCase());
  }
 
+ isCooldownOrUnavailable(status, errText = '') {
+ const text = String(errText || '').toLowerCase();
+ if (status !== 503) return false;
+ return /temporarily unavailable|cooldown|all tokens are on cooldown|tokens are on cooldown|disabled/.test(text);
+ }
+
+ createTransientError(prefix, status, errText = '') {
+ const error = new Error(`${prefix} (${status}): ${errText}`);
+ error._status = Number(status || 0);
+ error._providerName = 'infip';
+ error._isTransient = true;
+ error._retryable = true;
+ error._isCooldown = this.isCooldownOrUnavailable(status, errText);
+ return error;
+ }
+
+ extractTaskInfo(data = {}) {
+ const taskId = data.task_id || data.taskId || data.id || data.result?.task_id || data.result?.taskId || data.result?.id || null;
+ const pollUrl = data.poll_url || data.pollUrl || data.status_url || data.statusUrl || null;
+ return { taskId, pollUrl };
+ }
+
+ extractImageUrls(data = {}) {
+ const urls = [];
+ const pushUrl = (value) => {
+ if (typeof value === 'string' && /^https?:\/\//i.test(value)) urls.push(value);
+ };
+
+ pushUrl(data.url);
+ pushUrl(data.result?.url);
+
+ if (Array.isArray(data.data)) {
+ for (const item of data.data) {
+ pushUrl(item?.url);
+ pushUrl(item?.image_url);
+ pushUrl(item?.imageUrl);
+ }
+ }
+
+ if (Array.isArray(data.output)) {
+ for (const item of data.output) {
+ if (typeof item === 'string') pushUrl(item);
+ else {
+ pushUrl(item?.url);
+ pushUrl(item?.image_url);
+ pushUrl(item?.imageUrl);
+ }
+ }
+ }
+
+ if (Array.isArray(data.result?.images)) {
+ for (const item of data.result.images) {
+ if (typeof item === 'string') pushUrl(item);
+ else {
+ pushUrl(item?.url);
+ pushUrl(item?.image_url);
+ pushUrl(item?.imageUrl);
+ }
+ }
+ }
+
+ return [...new Set(urls)];
+ }
+
+ parseInfipResponse(data = {}) {
+ const task = this.extractTaskInfo(data);
+ const imageUrls = this.extractImageUrls(data);
+ return {
+ taskId: task.taskId,
+ pollUrl: task.pollUrl,
+ imageUrls,
+ primaryImageUrl: imageUrls[0] || null
+ };
+ }
+
  async generate(prompt, options, logger) {
  const { model = "img4", width = 1024, height = 1024, apiKey = "", nsfw = false, style = "none", negativePrompt = "", referenceImages = [] } = options;
 
@@ -879,19 +1164,24 @@ class InfipProvider {
 
  if (!response.ok) {
  const errText = await response.text();
+ if (this.isCooldownOrUnavailable(response.status, errText)) {
+ throw this.createTransientError('Infip Img2Img API Error', response.status, errText);
+ }
  throw new Error(`Infip Img2Img API Error (${response.status}): ${errText}`);
  }
 
  const data = await response.json();
 
- // Img2Img 可能返回 task_id（異步）或直接返回圖片
- if (data.task_id) {
- logger.add("🔄 Img2Img Task Created", { taskId: data.task_id });
- imgUrl = await this.pollTask(data.task_id, headers, logger);
- } else if (data.data && data.data.length > 0) {
- imgUrl = data.data[0].url;
- } else if (data.url) {
- imgUrl = data.url;
+ // Img2Img 可能返回 task_id / poll_url（異步）或直接返回圖片
+ const parsedImg2Img = this.parseInfipResponse(data);
+ if (parsedImg2Img.taskId || parsedImg2Img.pollUrl) {
+ logger.add("🔄 Img2Img Task Created", {
+ taskId: parsedImg2Img.taskId,
+ pollUrl: parsedImg2Img.pollUrl || 'derived_from_task_id'
+ });
+ imgUrl = await this.pollTask({ taskId: parsedImg2Img.taskId, pollUrl: parsedImg2Img.pollUrl }, headers, logger);
+ } else if (parsedImg2Img.primaryImageUrl) {
+ imgUrl = parsedImg2Img.primaryImageUrl;
  } else {
  throw new Error("Invalid Img2Img response: " + JSON.stringify(data));
  }
@@ -923,17 +1213,24 @@ class InfipProvider {
 
  if (!response.ok) {
  const errText = await response.text();
+ if (this.isCooldownOrUnavailable(response.status, errText)) {
+ throw this.createTransientError('Infip API Error', response.status, errText);
+ }
  throw new Error(`Infip API Error (${response.status}): ${errText}`);
  }
 
  const data = await response.json();
 
- if (data.task_id) {
- logger.add("🔄 Task Created", { taskId: data.task_id });
- imgUrl = await this.pollTask(data.task_id, headers, logger);
- } else if (data.data && data.data.length > 0) {
+ const parsedAsync = this.parseInfipResponse(data);
+ if (parsedAsync.taskId || parsedAsync.pollUrl) {
+ logger.add("🔄 Task Created", {
+ taskId: parsedAsync.taskId,
+ pollUrl: parsedAsync.pollUrl || 'derived_from_task_id'
+ });
+ imgUrl = await this.pollTask({ taskId: parsedAsync.taskId, pollUrl: parsedAsync.pollUrl }, headers, logger);
+ } else if (parsedAsync.primaryImageUrl) {
  // 某些異步模型可能直接返回結果
- imgUrl = data.data[0].url;
+ imgUrl = parsedAsync.primaryImageUrl;
  logger.add("✅ Direct Response", { url: imgUrl });
  } else {
  throw new Error("Invalid async response: " + JSON.stringify(data));
@@ -964,27 +1261,34 @@ class InfipProvider {
 
  if (!response.ok) {
  const errText = await response.text();
+ if (this.isCooldownOrUnavailable(response.status, errText)) {
+ throw this.createTransientError('Infip API Error', response.status, errText);
+ }
  throw new Error(`Infip API Error (${response.status}): ${errText}`);
  }
 
  const data = await response.json();
 
- if (data.task_id) {
- // 同步模型不應該返回 task_id，但如果有就處理
- logger.add("⚠️ Unexpected task_id", { taskId: data.task_id, note: "Sync model returned task_id, polling anyway" });
- imgUrl = await this.pollTask(data.task_id, headers, logger);
- } else if (data.data && data.data.length > 0) {
+ const parsedSync = this.parseInfipResponse(data);
+ if (parsedSync.taskId || parsedSync.pollUrl) {
+ // 同步模型理論上不應返回 task，若返回則兼容處理
+ logger.add("⚠️ Unexpected Async Task On Sync Path", {
+ taskId: parsedSync.taskId,
+ pollUrl: parsedSync.pollUrl || 'derived_from_task_id',
+ note: "Sync path returned task metadata, polling anyway"
+ });
+ imgUrl = await this.pollTask({ taskId: parsedSync.taskId, pollUrl: parsedSync.pollUrl }, headers, logger);
+ } else if (parsedSync.imageUrls.length > 0) {
  // 處理多圖片響應
- if (data.data.length > 1) {
+ if (parsedSync.imageUrls.length > 1) {
  const results = [];
- for(const item of data.data) {
- if(item.url) {
- const imgResp = await fetch(item.url);
+ for (const itemUrl of parsedSync.imageUrls) {
+ const imgResp = await fetch(itemUrl);
  const imageBuffer = await imgResp.arrayBuffer();
  results.push({
  imageData: imageBuffer,
  contentType: imgResp.headers.get('content-type') || 'image/png',
- url: item.url,
+ url: itemUrl,
  provider: this.name,
  model: model,
  seed: -1,
@@ -993,14 +1297,13 @@ class InfipProvider {
  authenticated: true
  });
  }
- }
  return {
  batch_results: results,
  provider: this.name,
  cost: "QUOTA"
  };
  }
- imgUrl = data.data[0].url;
+ imgUrl = parsedSync.primaryImageUrl;
  } else {
  throw new Error("Invalid response format from Infip API");
  }
@@ -1035,17 +1338,24 @@ class InfipProvider {
 
  /**
  * 輪詢異步任務狀態
- * @param {string} taskId - 任務 ID
+ * @param {string|object} taskRef - 任務 ID 或 { taskId, pollUrl }
  * @param {object} headers - 請求標頭
  * @param {object} logger - 日誌實例
  * @param {number} maxAttempts - 最大輪詢次數（默認 60 次，約 2 分鐘）
  * @param {number} interval - 輪詢間隔（默認 2000ms）
  * @returns {Promise<string>} 圖片 URL
  */
- async pollTask(taskId, headers, logger, maxAttempts = 60, interval = 2000) {
- const statusUrl = `${this.config.endpoint}/v1/tasks/${taskId}`;
+ async pollTask(taskRef, headers, logger, maxAttempts = 60, interval = 2000) {
+ const taskId = typeof taskRef === 'string' ? taskRef : (taskRef?.taskId || null);
+ const pollUrl = typeof taskRef === 'object' ? (taskRef?.pollUrl || null) : null;
+ const statusUrl = pollUrl || (taskId ? `${this.config.endpoint}/v1/tasks/${taskId}` : null);
+
+ if (!statusUrl) {
+ throw new Error('Infip polling requires task_id or poll_url');
+ }
+
  const totalTimeout = Math.round(maxAttempts * interval / 1000);
- logger.add("🔄 Starting Poll", { taskId, maxAttempts, interval, totalTimeout: `${totalTimeout}s` });
+ logger.add("🔄 Starting Poll", { taskId, pollUrl, statusUrl, maxAttempts, interval, totalTimeout: `${totalTimeout}s` });
 
  let currentInterval = interval;
  let consecutiveErrors = 0;
@@ -1072,7 +1382,29 @@ class InfipProvider {
  continue;
  }
 
- // 處理伺服器錯誤 (5xx)
+ // 優先處理 503，支援 Retry-After
+ if (response.status === 503) {
+ consecutiveErrors++;
+ if (consecutiveErrors >= maxConsecutiveErrors) {
+ throw new Error(`Too many consecutive service unavailable errors (${maxConsecutiveErrors}): ${errText}`);
+ }
+
+ const retryAfterHeader = parseInt(response.headers.get('Retry-After') || '0');
+ const retryAfterMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader * 1000 : 0;
+ const backoffTime = retryAfterMs > 0
+ ? Math.max(retryAfterMs, currentInterval)
+ : Math.min(currentInterval * Math.pow(2, consecutiveErrors), 30000);
+
+ logger.add(`⏳ Service Unavailable - Backoff`, {
+ consecutiveErrors,
+ retryAfter: retryAfterMs > 0 ? `${Math.round(retryAfterMs / 1000)}s` : 'n/a',
+ backoffTime: `${Math.round(backoffTime/1000)}s`
+ });
+ await new Promise(r => setTimeout(r, backoffTime));
+ continue;
+ }
+
+ // 處理其餘伺服器錯誤 (5xx)
  if (response.status >= 500) {
  consecutiveErrors++;
  if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -1091,45 +1423,38 @@ class InfipProvider {
  consecutiveErrors = 0;
 
  const data = await response.json();
+ const status = String(data?.status || '').toLowerCase();
 
  // 每 10 次或狀態變化時報告進度
- if (attempt % 10 === 0 || ['completed', 'failed', 'processing'].includes(data.status)) {
+ if (attempt % 10 === 0 || ['completed', 'failed', 'processing', 'pending', 'queued', 'succeeded', 'success', 'done'].includes(status)) {
  const progress = Math.round((attempt / maxAttempts) * 100);
  const elapsed = Math.round(attempt * currentInterval / 1000);
  logger.add(`📊 進度: ${progress}%`, {
  attempt: `${attempt}/${maxAttempts}`,
- status: data.status,
+ status: status || 'unknown',
  elapsed: `${elapsed}s`
  });
  }
 
- if (data.status === 'completed') {
- if (data.result && data.result.url) {
+ if (['completed', 'succeeded', 'success', 'done'].includes(status)) {
+ const parsed = this.parseInfipResponse(data);
+ if (parsed.primaryImageUrl) {
  logger.add("✅ Task Completed", {
- imageUrl: data.result.url,
+ imageUrl: parsed.primaryImageUrl,
  totalAttempts: attempt,
  totalTime: `${Math.round(attempt * currentInterval / 1000)}s`
  });
- return data.result.url;
- }
- // 檢查其他可能的響應格式
- if (data.url) {
- logger.add("✅ Task Completed", { imageUrl: data.url });
- return data.url;
- }
- if (data.data && data.data[0] && data.data[0].url) {
- logger.add("✅ Task Completed", { imageUrl: data.data[0].url });
- return data.data[0].url;
+ return parsed.primaryImageUrl;
  }
  throw new Error("Task completed but no image URL in result: " + JSON.stringify(data));
  }
 
- if (data.status === 'failed') {
- const errorMsg = data.result?.error || data.result?.message || data.error || 'Unknown error';
+ if (['failed', 'error', 'cancelled', 'canceled'].includes(status)) {
+ const errorMsg = data.result?.error || data.result?.message || data.error || data.message || 'Unknown error';
  throw new Error(`Task failed: ${errorMsg}`);
  }
 
- // 仍在處理中，等待後繼續
+ // 仍在處理中，等待後繼續（pending/queued/processing/unknown）
  if (attempt < maxAttempts) {
  // 指數退避：每次增加 10%，最大 10 秒
  currentInterval = Math.min(interval * Math.pow(1.1, attempt), 10000);
@@ -2028,598 +2353,6 @@ class KaaiProvider {
       throw new Error(`Task timeout after ${maxAttempts} attempts (${totalTimeout}s). Task ID: ${taskId}`);
     }
   }
-  
-  // =================================================================================
-  // AirforceProvider - Airforce API Provider
-  // =================================================================================
-class AirforceProvider {
-  constructor(config, env) {
-    this.config = config;
-    this.name = config.name;
-    this.env = env;
-  }
-
-  async generate(prompt, options, logger) {
-    const {
-      model = "plutogen-o1",
-      width = 1024,
-      height = 1024,
-      apiKey = "",
-      nsfw = false,
-      style = "none",
-      negativePrompt = "",
-      language = "en"
-    } = options;
-
-    const finalApiKey = this.env.AIRFORCE_API_KEY || apiKey;
-    if (!finalApiKey || finalApiKey.trim() === '') {
-      throw new Error("Airforce API key is required. Please configure AIRFORCE_API_KEY in your environment variables or provide it in the request.");
-    }
-    
-    // Validate API key format (should be a bearer token)
-    if (finalApiKey.length < 10) {
-      throw new Error("Invalid Airforce API key format. API key should be at least 10 characters.");
-    }
-
-    logger.add("🎨 Airforce Generating", {
-      model,
-      width,
-      height,
-      style,
-      nsfw,
-      language,
-      promptLength: prompt.length
-    });
-
-    try {
-      // Translate prompt to English if needed
-      const translationResult = await translateToEnglish(prompt, this.env);
-      const translatedPrompt = translationResult.text || prompt;
-      
-      // Apply style if specified
-      let finalPrompt = translatedPrompt;
-      if (style !== "none") {
-        const styleResult = StyleProcessor.applyStyle(translatedPrompt, style, negativePrompt);
-        finalPrompt = styleResult.enhancedPrompt || translatedPrompt;
-      }
-
-      const size = `${width}x${height}`;
-      const url = `${this.config.endpoint}/v1/images/generations`;
-      
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': finalApiKey.startsWith('Bearer ') ? finalApiKey : `Bearer ${finalApiKey}`,
-        'User-Agent': 'Flux-AI-Pro-Worker'
-      };
-
-      const body = {
-        model: model,
-        prompt: finalPrompt,
-        n: 1,
-        size: size,
-        response_format: "b64_json"
-      };
-
-      logger.add("📤 Request to Airforce", {
-        url,
-        model: body.model,
-        size: body.size,
-        response_format: body.response_format,
-        promptLength: finalPrompt.length,
-        apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none',
-        apiKeyLength: finalApiKey ? finalApiKey.length : 0,
-        hasBearerPrefix: finalApiKey ? finalApiKey.startsWith('Bearer ') : false
-      });
-
-      const response = await fetchWithTimeout(url, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(body)
-      }, this.config.timeout || 120000);
-
-      logger.add("📥 Airforce Response Status", {
-        status: response.status,
-        ok: response.ok,
-        contentType: response.headers.get('content-type')
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        logger.add("❌ Airforce API Error", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          headers: Object.fromEntries(response.headers.entries())
-        });
-        
-        // Parse error details if possible
-        let errorMessage = `Airforce API error: ${response.status}`;
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData.error) {
-            errorMessage += ` - ${errorData.error.message || errorData.error}`;
-            if (errorData.error.code) {
-              errorMessage += ` (code: ${errorData.error.code})`;
-            }
-          } else if (errorData.message) {
-            errorMessage += ` - ${errorData.message}`;
-          } else {
-            errorMessage += ` - ${errorText}`;
-          }
-        } catch {
-          errorMessage += ` - ${errorText}`;
-        }
-        
-        // Add helpful hints for common errors
-        if (response.status === 401 || response.status === 403) {
-          errorMessage += '. Please check your Airforce API key.';
-        } else if (response.status === 429) {
-          errorMessage += '. Rate limit exceeded. Please try again later.';
-        } else if (response.status === 530) {
-          errorMessage += '. This may be an authentication issue. Please verify your API key.';
-        }
-        
-        throw new Error(errorMessage);
-      }
-
-      // Check if response is SSE (Server-Sent Events) or regular JSON
-      const contentType = response.headers.get('content-type') || '';
-      let results = [];
-      
-      if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
-        // Handle SSE streaming response (fallback for unexpected SSE responses)
-        logger.add("📡 Using SSE stream handler (fallback)");
-        results = await this.handleSSEStream(response, logger, width, height, model);
-      } else {
-        // Handle regular JSON response (standard for Airforce API)
-        logger.add("📡 Using JSON response handler");
-        const data = await response.json();
-        logger.add("📊 Airforce Response Data", {
-          data,
-          dataType: typeof data,
-          dataKeys: Object.keys(data),
-          dataPreview: JSON.stringify(data).substring(0, 500)
-        });
-
-        // Parse JSON response
-        if (data.url) {
-          results.push({
-            url: data.url,
-            width: width,
-            height: height,
-            model: model,
-            provider: this.name
-          });
-          logger.add("✅ JSON: Found URL in data.url");
-        } else if (data.data && Array.isArray(data.data)) {
-          for (const item of data.data) {
-            if (item.url) {
-              results.push({
-                url: item.url,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-            if (item.b64_json) {
-              results.push({
-                url: `data:image/png;base64,${item.b64_json}`,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-          }
-          logger.add("✅ JSON: Processed data.data array", { count: results.length });
-        } else if (data.b64_json) {
-          results.push({
-            url: `data:image/png;base64,${data.b64_json}`,
-            width: width,
-            height: height,
-            model: model,
-            provider: this.name
-          });
-          logger.add("✅ JSON: Found b64_json");
-        } else if (data.images && Array.isArray(data.images)) {
-          for (const item of data.images) {
-            if (item.url) {
-              results.push({
-                url: item.url,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-          }
-          logger.add("✅ JSON: Processed data.images array", { count: results.length });
-        } else if (data.image) {
-          results.push({
-            url: data.image,
-            width: width,
-            height: height,
-            model: model,
-            provider: this.name
-          });
-          logger.add("✅ JSON: Found URL in data.image");
-        } else if (data.output && Array.isArray(data.output)) {
-          for (const item of data.output) {
-            if (item.url || item.image) {
-              results.push({
-                url: item.url || item.image,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-            if (item.b64_json) {
-              results.push({
-                url: `data:image/png;base64,${item.b64_json}`,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-          }
-          logger.add("✅ JSON: Processed data.output array", { count: results.length });
-        } else if (data.result && (data.result.url || data.result.b64_json)) {
-          if (data.result.url) {
-            results.push({
-              url: data.result.url,
-              width: width,
-              height: height,
-              model: model,
-              provider: this.name
-            });
-          }
-          if (data.result.b64_json) {
-            results.push({
-              url: `data:image/png;base64,${data.result.b64_json}`,
-              width: width,
-              height: height,
-              model: model,
-              provider: this.name
-            });
-          }
-          logger.add("✅ JSON: Found data in data.result");
-        } else {
-          logger.add("⚠️ JSON: Unknown format - deep searching", {
-            dataKeys: Object.keys(data),
-            fullData: JSON.stringify(data)
-          });
-          
-          const findImages = (obj, path = "") => {
-            const images = [];
-            if (typeof obj === 'string') {
-              if (obj.startsWith('http://') || obj.startsWith('https://')) {
-                images.push({ url: obj, path });
-              } else if (obj.startsWith('data:image')) {
-                images.push({ url: obj, path });
-              }
-            } else if (typeof obj === 'object' && obj !== null) {
-              for (const [key, value] of Object.entries(obj)) {
-                images.push(...findImages(value, path ? `${path}.${key}` : key));
-              }
-            }
-            return images;
-          };
-          
-          const foundImages = findImages(data);
-          if (foundImages.length > 0) {
-            for (const { url } of foundImages) {
-              results.push({
-                url: url,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-            logger.add("✅ JSON: Found images via deep search", { count: results.length });
-          }
-        }
-      }
-
-      if (results.length === 0) {
-        throw new Error("No images returned from Airforce API");
-      }
-
-      logger.add("✅ Success", {
-        imageCount: results.length,
-        firstUrl: results[0].url?.substring(0, 50) + "..."
-      });
-
-      // Return single result object (compatible with other providers)
-      const firstResult = results[0];
-      
-      // If the URL is a base64 data URI, extract the base64 part
-      let imgData = null;
-      let imgContentType = 'image/png';
-      const imgUrl = firstResult.url;
-      
-      if (imgUrl.startsWith('data:image/')) {
-        // It's already a base64 data URI
-        const match = imgUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
-        if (match) {
-          imgContentType = match[1];
-          const base64Data = match[2];
-          // Convert base64 to ArrayBuffer
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          imgData = bytes.buffer;
-        }
-      }
-      
-      return {
-        imageData: imgData,
-        contentType: imgContentType,
-        url: imgUrl,
-        provider: this.name,
-        model: model,
-        seed: -1, // Airforce doesn't return seed
-        width: width,
-        height: height,
-        auto_translated: false,
-        authenticated: true,
-        cost: "QUOTA"
-      };
-    } catch (e) {
-      logger.add("❌ Airforce Failed", { error: e.message });
-      throw e;
-    }
-  }
-
-  getAspectRatio(width, height) {
-    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-    const divisor = gcd(width, height);
-    return `${width / divisor}:${height / divisor}`;
-  }
-
-  getResolution(width, height) {
-    const totalPixels = width * height;
-    if (totalPixels >= 1920 * 1080) return "2k";
-    if (totalPixels >= 1024 * 1024) return "1k";
-    return "512";
-  }
-
-  async handleSSEStream(response, logger, width, height, model) {
-    const results = [];
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let accumulatedData = '';
-    let chunkCount = 0;
-
-    logger.add("📡 SSE Stream Started", {
-      contentType: response.headers.get('content-type'),
-      hasBody: !!response.body
-    });
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          logger.add("📡 SSE Stream Ended", {
-            totalChunks: chunkCount,
-            accumulatedDataLength: accumulatedData.length
-          });
-          break;
-        }
-
-        chunkCount++;
-        const decodedChunk = decoder.decode(value, { stream: true });
-        accumulatedData += decodedChunk;
-
-        // Use standard SSE format splitting (same as official example)
-        const lines = accumulatedData.split('\n\n');
-        accumulatedData = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const dataStr = line.slice(6);
-            
-            // Skip keepalive and done messages (same as official example)
-            if (dataStr === '[DONE]') {
-              logger.add("📡 SSE: Received [DONE] signal");
-              continue;
-            }
-            if (dataStr === ': keepalive') continue;
-            if (!dataStr || dataStr.trim() === '') continue;
-
-            try {
-              const data = JSON.parse(dataStr);
-            console.log("📡 [AirforceProvider] SSE Data:", data);
-
-            // Handle different response formats
-            // Format 1: Direct URL
-            if (data.url) {
-              results.push({
-                url: data.url,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-              logger.add("✅ SSE: Found URL in data.url", { url: data.url.substring(0, 50) + "..." });
-            }
-            // Format 2: OpenAI compatible - data array
-            else if (data.data && Array.isArray(data.data)) {
-              for (const item of data.data) {
-                if (item.url) {
-                  results.push({
-                    url: item.url,
-                    width: width,
-                    height: height,
-                    model: model,
-                    provider: this.name
-                  });
-                }
-                // Handle b64_json in data array
-                if (item.b64_json) {
-                  results.push({
-                    url: `data:image/png;base64,${item.b64_json}`,
-                    width: width,
-                    height: height,
-                    model: model,
-                    provider: this.name
-                  });
-                  logger.add("✅ SSE: Found b64_json in data.data array");
-                }
-              }
-              logger.add("✅ SSE: Processed data.data array", { count: results.length });
-            }
-            // Format 3: Images array
-            else if (data.images && Array.isArray(data.images)) {
-              for (const item of data.images) {
-                if (item.url) {
-                  results.push({
-                    url: item.url,
-                    width: width,
-                    height: height,
-                    model: model,
-                    provider: this.name
-                  });
-                }
-              }
-              logger.add("✅ SSE: Processed data.images array", { count: results.length });
-            }
-            // Format 4: Direct image property
-            else if (data.image) {
-              results.push({
-                url: data.image,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-              logger.add("✅ SSE: Found URL in data.image", { url: data.image.substring(0, 50) + "..." });
-            }
-            // Format 5: Base64 encoded image (b64_json)
-            else if (data.b64_json) {
-              results.push({
-                url: `data:image/png;base64,${data.b64_json}`,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-              logger.add("✅ SSE: Found b64_json", { dataLength: data.b64_json.length });
-            }
-            // Format 6: Output array
-            else if (data.output && Array.isArray(data.output)) {
-              for (const item of data.output) {
-                if (item.url || item.image) {
-                  results.push({
-                    url: item.url || item.image,
-                    width: width,
-                    height: height,
-                    model: model,
-                    provider: this.name
-                  });
-                }
-                if (item.b64_json) {
-                  results.push({
-                    url: `data:image/png;base64,${item.b64_json}`,
-                    width: width,
-                    height: height,
-                    model: model,
-                    provider: this.name
-                  });
-                }
-              }
-              logger.add("✅ SSE: Processed data.output array", { count: results.length });
-            }
-            // Format 7: Result object
-            else if (data.result && (data.result.url || data.result.b64_json)) {
-              if (data.result.url) {
-                results.push({
-                  url: data.result.url,
-                  width: width,
-                  height: height,
-                  model: model,
-                  provider: this.name
-                });
-              }
-              if (data.result.b64_json) {
-                results.push({
-                  url: `data:image/png;base64,${data.result.b64_json}`,
-                  width: width,
-                  height: height,
-                  model: model,
-                  provider: this.name
-                });
-              }
-              logger.add("✅ SSE: Found data in data.result");
-            }
-            // Format 8: Deep search for any URL or base64
-            else {
-              logger.add("⚠️ SSE: Unknown format - deep searching", {
-                dataKeys: Object.keys(data),
-                dataPreview: JSON.stringify(data).substring(0, 300)
-              });
-              
-              const findImages = (obj, path = "") => {
-                const images = [];
-                if (typeof obj === 'string') {
-                  if (obj.startsWith('http://') || obj.startsWith('https://')) {
-                    images.push({ url: obj, path });
-                  } else if (obj.startsWith('data:image')) {
-                    images.push({ url: obj, path });
-                  }
-                } else if (typeof obj === 'object' && obj !== null) {
-                  for (const [key, value] of Object.entries(obj)) {
-                    images.push(...findImages(value, path ? `${path}.${key}` : key));
-                  }
-                }
-                return images;
-              };
-              
-              const foundImages = findImages(data);
-              if (foundImages.length > 0) {
-                for (const { url } of foundImages) {
-                  results.push({
-                    url: url,
-                    width: width,
-                    height: height,
-                    model: model,
-                    provider: this.name
-                  });
-                }
-                logger.add("✅ SSE: Found images via deep search", { count: results.length });
-              }
-            }
-            } catch (parseError) {
-              logger.add("⚠️ SSE Parse Error", {
-                dataStr: dataStr.substring(0, 500),
-                error: parseError.message
-              });
-            }
-          }
-        }
-      }
-    } catch (streamError) {
-      logger.add("❌ SSE Stream Error", {
-        error: streamError.message
-      });
-    } finally {
-      reader.releaseLock();
-    }
-
-    logger.add("📊 SSE Stream Complete", {
-      totalResults: results.length,
-      accumulatedDataRemaining: accumulatedData.length
-    });
-
-    return results;
-  }
-}
-
 // =================================================================================
 // NonponProvider - Nonpon API Provider
 // =================================================================================
@@ -2942,9 +2675,7 @@ class NonponProvider {
 class ProviderQueueManager {
   constructor() {
     // 只為需要隊列的供應商配置隊列
-    this.queues = {
-      aqua: { queue: [], maxConcurrent: 2, processing: 0 },
-      airforce: { queue: [], maxConcurrent: 1, processing: 0 }
+    this.queues = {      aqua: { queue: [], maxConcurrent: 2, processing: 0 }
     };
     
     // 不使用隊列的供應商列表
@@ -3095,18 +2826,18 @@ class ProviderQueueManager {
 }
 
 class MultiProviderRouter {
-  constructor(apiKeys = {}, env = null) {
+  constructor(apiKeys = {}, env = null, strategyManager = null) {
     this.providers = {};
     this.apiKeys = apiKeys;
     this.env = env;
     this.queueManager = new ProviderQueueManager();
+    this.strategyManager = strategyManager || new AdaptiveStrategyManager(env);
     for (const [key, config] of Object.entries(CONFIG.PROVIDERS)) {
     if (config.enabled) {
     if (key === 'pollinations') this.providers[key] = new PollinationsProvider(config, env);
     else if (key === 'infip') this.providers[key] = new InfipProvider(config, env);
     else if (key === 'aqua') this.providers[key] = new AquaProvider(config, env);
     else if (key === 'kinai') this.providers[key] = new KinaiProvider(config, env);
-    else if (key === 'airforce') this.providers[key] = new AirforceProvider(config, env);
     else if (key === 'nonpon') this.providers[key] = new NonponProvider(config, env);
     else if (key === 'kaai') this.providers[key] = new KaaiProvider(config, env);
     else if (key === 'supabase') this.providers[key] = new SupabaseProvider(config, env);
@@ -3146,49 +2877,223 @@ class MultiProviderRouter {
   }
   async generate(prompt, options, logger) {
     const { provider: requestedProvider = null, numOutputs = 1 } = options;
-    
+    let effectiveOptions = { ...options };
+
     logger.add("🔍 MultiProviderRouter: Generating", {
       requestedProvider,
       availableProviders: Object.keys(this.providers),
       options: { ...options, apiKey: options.apiKey ? '***' : '' }
     });
-    
-    const { name: providerName, instance: provider } = this.getProvider(requestedProvider);
-    
-    logger.add("✅ MultiProviderRouter: Provider selected", {
-      providerName,
-      providerInstance: provider ? provider.name : 'null'
-    });
-    
-    // 使用隊列管理器處理請求
-    return await this.queueManager.addToQueue(providerName, async () => {
-      const results = [];
-      
-      // Optimization for Infip and Kaai: Use native batching if available
-      if ((providerName === 'infip' || providerName === 'kaai') && numOutputs > 1) {
-           const batchOptions = { ...options, numOutputs: numOutputs, seed: options.seed };
-           try {
-               const result = await provider.generate(prompt, batchOptions, logger);
-               if (result.batch_results) {
-                   results.push(...result.batch_results);
-                   return results;
-               } else {
-                   results.push(result);
-               }
-           } catch (e) {
-               logger.add("❌ Batch Generation Failed", { error: e.message });
-               throw e;
-           }
-           return results;
+
+    const queueStatusMap = this.getAllQueueStatus();
+    let selectedProviderName = null;
+    let provider = null;
+    let providerHealth = null;
+    let routingReason = 'legacy_fallback';
+
+    const applyRoutingContext = (providerName, health, reason) => {
+      selectedProviderName = providerName;
+      providerHealth = health || null;
+      routingReason = reason || routingReason;
+    };
+
+    if (this.strategyManager) {
+      const selection = await this.strategyManager.selectProvider({
+        requestedProvider,
+        defaultProvider: CONFIG.DEFAULT_PROVIDER,
+        availableProviders: Object.keys(this.providers),
+        queueStatusMap
+      });
+
+      selectedProviderName = selection.provider;
+      providerHealth = selection.health || null;
+      routingReason = selection.reason || 'strategy_selected';
+      provider = this.providers[selectedProviderName] || null;
+
+      if (!provider) {
+        const fallback = this.getProvider(requestedProvider);
+        selectedProviderName = fallback.name;
+        provider = fallback.instance;
+        routingReason = 'strategy_missing_provider_fallback';
       }
 
-      for (let i = 0; i < numOutputs; i++) {
-        const currentOptions = { ...options, seed: options.seed === -1 ? -1 : options.seed + i };
-        const result = await provider.generate(prompt, currentOptions, logger);
-        results.push(result);
-      }
-      return results;
+      const queueStatus = this.queueManager.getQueueStatus(selectedProviderName);
+      const adjusted = this.strategyManager.adjustQualityMode(effectiveOptions.qualityMode || 'standard', providerHealth, queueStatus);
+      effectiveOptions.qualityMode = adjusted.mode;
+      effectiveOptions._qualityModeInput = options.qualityMode || 'standard';
+      effectiveOptions._qualityModeAdjust = adjusted;
+      effectiveOptions._strategyVersion = AdaptiveStrategyManager.VERSION;
+
+      logger.add("🧠 Strategy Selected", {
+        provider: selectedProviderName,
+        score: providerHealth ? Number(providerHealth.score.toFixed(2)) : null,
+        routing_reason: routingReason,
+        quality_input: effectiveOptions._qualityModeInput,
+        quality_output: effectiveOptions.qualityMode,
+        quality_adjust_reason: adjusted.reason,
+        candidates: selection.candidates || []
+      });
+    } else {
+      const fallback = this.getProvider(requestedProvider);
+      selectedProviderName = fallback.name;
+      provider = fallback.instance;
+      effectiveOptions._qualityModeInput = options.qualityMode || 'standard';
+      effectiveOptions._qualityModeAdjust = { mode: effectiveOptions.qualityMode || 'standard', delta: 0, reason: 'strategy_disabled' };
+      effectiveOptions._strategyVersion = 'disabled';
+    }
+
+    logger.add("✅ MultiProviderRouter: Provider selected", {
+      providerName: selectedProviderName,
+      providerInstance: provider ? provider.name : 'null',
+      providerScore: providerHealth ? Number(providerHealth.score.toFixed(2)) : null,
+      routingReason,
+      qualityModeInput: effectiveOptions._qualityModeInput,
+      qualityModeOutput: effectiveOptions.qualityMode
     });
+
+    const enrichResult = (raw) => ({
+      ...raw,
+      selected_provider: selectedProviderName,
+      requested_provider: requestedProvider,
+      provider_score: providerHealth ? Number(providerHealth.score.toFixed(2)) : null,
+      strategy_version: effectiveOptions._strategyVersion,
+      quality_mode_input: effectiveOptions._qualityModeInput,
+      quality_mode_output: raw.quality_mode || effectiveOptions.qualityMode,
+      routing_reason: routingReason
+    });
+
+    const executeProvider = async (activeProviderName, activeProvider) => {
+      return await this.queueManager.addToQueue(activeProviderName, async () => {
+        const results = [];
+
+        // Optimization for Infip and Kaai: Use native batching if available
+        if ((activeProviderName === 'infip' || activeProviderName === 'kaai') && numOutputs > 1) {
+          const batchOptions = { ...effectiveOptions, numOutputs: numOutputs, seed: effectiveOptions.seed };
+          try {
+            const result = await activeProvider.generate(prompt, batchOptions, logger);
+            if (result.batch_results) {
+              results.push(...result.batch_results.map(item => enrichResult(item)));
+              return results;
+            } else {
+              results.push(enrichResult(result));
+            }
+          } catch (e) {
+            logger.add("❌ Batch Generation Failed", { error: e.message, provider: activeProviderName });
+            e._providerName = activeProviderName;
+            e._providerScore = providerHealth ? Number(providerHealth.score.toFixed(2)) : null;
+            throw e;
+          }
+          return results;
+        }
+
+        for (let i = 0; i < numOutputs; i++) {
+          const currentOptions = { ...effectiveOptions, seed: effectiveOptions.seed === -1 ? -1 : effectiveOptions.seed + i };
+          const result = await activeProvider.generate(prompt, currentOptions, logger);
+          results.push(enrichResult(result));
+        }
+        return results;
+      });
+    };
+
+    const isInfipCooldownError = (error) => {
+      const message = String(error?.message || '').toLowerCase();
+      if (error?._isCooldown === true) return true;
+      if (error?._status === 503 && /temporarily unavailable|cooldown|all tokens are on cooldown/.test(message)) return true;
+      return /infip api error \(503\)|service is temporarily unavailable|all tokens are on cooldown|cooldown/.test(message);
+    };
+
+    try {
+      return await executeProvider(selectedProviderName, provider);
+    } catch (firstError) {
+      const shouldRetryAndFallback = selectedProviderName === 'infip' && isInfipCooldownError(firstError);
+
+      if (!shouldRetryAndFallback) {
+        firstError._providerName = firstError._providerName || selectedProviderName;
+        firstError._providerScore = firstError._providerScore ?? (providerHealth ? Number(providerHealth.score.toFixed(2)) : null);
+        throw firstError;
+      }
+
+      logger.add("♻️ Infip Cooldown Detected", {
+        provider: selectedProviderName,
+        action: 'retry_once_then_fallback',
+        error: firstError.message
+      });
+
+      if (this.strategyManager?.recordProviderResult) {
+        await this.strategyManager.recordProviderResult(selectedProviderName, { success: false, duration: 0, errorMessage: firstError.message });
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 1200));
+
+      try {
+        logger.add("🔁 Retrying Infip Once", { provider: selectedProviderName, wait_ms: 1200 });
+        return await executeProvider(selectedProviderName, provider);
+      } catch (retryError) {
+        logger.add("⚠️ Infip Retry Failed", { provider: selectedProviderName, error: retryError.message });
+
+        if (this.strategyManager?.recordProviderResult) {
+          await this.strategyManager.recordProviderResult(selectedProviderName, { success: false, duration: 0, errorMessage: retryError.message });
+        }
+
+        const fallbackProviders = Object.keys(this.providers).filter(name => name !== selectedProviderName);
+        if (fallbackProviders.length === 0) {
+          retryError._providerName = retryError._providerName || selectedProviderName;
+          retryError._providerScore = retryError._providerScore ?? (providerHealth ? Number(providerHealth.score.toFixed(2)) : null);
+          throw retryError;
+        }
+
+        const fallbackSelection = this.strategyManager
+          ? await this.strategyManager.selectProvider({
+              requestedProvider: null,
+              defaultProvider: CONFIG.DEFAULT_PROVIDER,
+              availableProviders: fallbackProviders,
+              queueStatusMap: this.getAllQueueStatus()
+            })
+          : { provider: fallbackProviders[0], health: null, reason: 'legacy_first_available' };
+
+        const fallbackProviderName = fallbackSelection?.provider;
+        const fallbackProvider = fallbackProviderName ? this.providers[fallbackProviderName] : null;
+
+        if (!fallbackProvider) {
+          retryError._providerName = retryError._providerName || selectedProviderName;
+          retryError._providerScore = retryError._providerScore ?? (providerHealth ? Number(providerHealth.score.toFixed(2)) : null);
+          throw retryError;
+        }
+
+        applyRoutingContext(
+          fallbackProviderName,
+          fallbackSelection?.health || null,
+          `fallback_after_infip_cooldown:${fallbackSelection?.reason || 'selected'}`
+        );
+
+        if (this.strategyManager) {
+          const fallbackQueueStatus = this.queueManager.getQueueStatus(fallbackProviderName);
+          const fallbackAdjusted = this.strategyManager.adjustQualityMode(
+            effectiveOptions._qualityModeInput || options.qualityMode || 'standard',
+            providerHealth,
+            fallbackQueueStatus
+          );
+          effectiveOptions.qualityMode = fallbackAdjusted.mode;
+          effectiveOptions._qualityModeAdjust = fallbackAdjusted;
+        }
+
+        logger.add("🛟 Fallback Provider Selected", {
+          from: 'infip',
+          to: fallbackProviderName,
+          score: providerHealth ? Number(providerHealth.score.toFixed(2)) : null,
+          routing_reason: routingReason,
+          quality_output: effectiveOptions.qualityMode
+        });
+
+        try {
+          return await executeProvider(fallbackProviderName, fallbackProvider);
+        } catch (fallbackError) {
+          fallbackError._providerName = fallbackError._providerName || fallbackProviderName;
+          fallbackError._providerScore = fallbackError._providerScore ?? (providerHealth ? Number(providerHealth.score.toFixed(2)) : null);
+          throw fallbackError;
+        }
+      }
+    }
   }
 
   /**
@@ -3610,11 +3515,21 @@ async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
   const startTime = Date.now();
   const clientIP = getClientIP(request);
+  const strategyManager = new AdaptiveStrategyManager(env);
+
+  let requestedProviderForMetrics = null;
+  let selectedProviderForMetrics = null;
+  let providerScoreForMetrics = null;
+  let requestedQualityMode = 'standard';
+  let finalQualityModeForMetrics = 'standard';
   
   try {
     const body = await request.json();
     const prompt = body.prompt;
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
+
+    requestedProviderForMetrics = body.provider || null;
+    requestedQualityMode = body.quality_mode || 'standard';
 
     console.log("🍌 [Server] 收到生成請求:", {
       model: body.model,
@@ -3658,9 +3573,9 @@ async function handleInternalGenerate(request, env, ctx) {
     
     const seedInput = body.seed !== undefined ? body.seed : -1;
     let seedValue = -1;
-    if (seedInput !== -1) { 
-        const parsedSeed = parseInt(seedInput); 
-        if (!isNaN(parsedSeed)) seedValue = parsedSeed; 
+    if (seedInput !== -1) {
+        const parsedSeed = parseInt(seedInput);
+        if (!isNaN(parsedSeed)) seedValue = parsedSeed;
     }
     
     const autoOptimize = body.auto_optimize !== false;
@@ -3684,36 +3599,114 @@ async function handleInternalGenerate(request, env, ctx) {
       style: body.style || "none",
       autoOptimize: autoOptimize,
       autoHD: body.auto_hd !== false,
-      qualityMode: body.quality_mode || 'standard',
+      qualityMode: requestedQualityMode,
       referenceImages: referenceImages,
       nsfw: body.nsfw === true,
       language: body.language || 'en'  // Track interface language
     };
     
-    const router = new MultiProviderRouter({}, env);
+    const router = new MultiProviderRouter({}, env, strategyManager);
     const results = await router.generate(prompt, options, logger);
     const duration = Date.now() - startTime;
+
+    if (results.length > 0) {
+      const first = results[0];
+      selectedProviderForMetrics = first.selected_provider || first.provider || requestedProviderForMetrics || CONFIG.DEFAULT_PROVIDER;
+      providerScoreForMetrics = typeof first.provider_score === 'number' ? first.provider_score : null;
+      finalQualityModeForMetrics = first.quality_mode_output || first.quality_mode || options.qualityMode || requestedQualityMode;
+      await strategyManager.recordProviderResult(selectedProviderForMetrics, { success: true, duration });
+    }
     
     if (results.length === 1 && results[0].imageData) {
       const result = results[0];
       return new Response(result.imageData, {
-        headers: { 'Content-Type': result.contentType || 'image/png', 'Content-Disposition': `inline; filename="flux-ai-${result.seed}.png"`, 'X-Model': result.model, 'X-Model-Name': result.style_name || result.model, 'X-Seed': result.seed.toString(), 'X-Width': result.width.toString(), 'X-Height': result.height.toString(), 'X-Generation-Time': duration + 'ms', 'X-Quality-Mode': result.quality_mode, 'X-Style': result.style, 'X-Style-Name': result.style_name || result.style, 'X-Style-Category': result.style_category || 'unknown', 'X-Generation-Mode': result.generation_mode || '文生圖', 'X-Authenticated': result.authenticated ? 'true' : 'false', 'X-API-Endpoint': CONFIG.PROVIDERS.pollinations.endpoint, ...corsHeaders() }
+        headers: {
+          'Content-Type': result.contentType || 'image/png',
+          'Content-Disposition': `inline; filename="flux-ai-${result.seed}.png"`,
+          'X-Model': result.model,
+          'X-Model-Name': result.style_name || result.model,
+          'X-Seed': result.seed.toString(),
+          'X-Width': result.width.toString(),
+          'X-Height': result.height.toString(),
+          'X-Generation-Time': duration + 'ms',
+          'X-Quality-Mode': result.quality_mode,
+          'X-Quality-Mode-Input': requestedQualityMode,
+          'X-Quality-Mode-Output': finalQualityModeForMetrics,
+          'X-Style': result.style,
+          'X-Style-Name': result.style_name || result.style,
+          'X-Style-Category': result.style_category || 'unknown',
+          'X-Generation-Mode': result.generation_mode || '文生圖',
+          'X-Authenticated': result.authenticated ? 'true' : 'false',
+          'X-API-Endpoint': CONFIG.PROVIDERS.pollinations.endpoint,
+          'X-Selected-Provider': selectedProviderForMetrics || 'unknown',
+          'X-Provider-Score': providerScoreForMetrics === null ? 'n/a' : providerScoreForMetrics.toString(),
+          'X-Strategy-Version': AdaptiveStrategyManager.VERSION,
+          ...corsHeaders()
+        }
       });
     }
+
     const imagesData = await Promise.all(results.map(async (r) => {
       if (r.imageData) {
         const uint8Array = new Uint8Array(r.imageData);
         let binary = '';
         const len = uint8Array.byteLength;
         for (let i = 0; i < len; i++) binary += String.fromCharCode(uint8Array[i]);
-        return { image: `data:${r.contentType};base64,${btoa(binary)}`, model: r.model, seed: r.seed, width: r.width, height: r.height, quality_mode: r.quality_mode, style: r.style, style_name: r.style_name || r.style, style_category: r.style_category || 'unknown', generation_mode: r.generation_mode, authenticated: r.authenticated };
+        return {
+          image: `data:${r.contentType};base64,${btoa(binary)}`,
+          model: r.model,
+          seed: r.seed,
+          width: r.width,
+          height: r.height,
+          quality_mode: r.quality_mode,
+          quality_mode_input: r.quality_mode_input || requestedQualityMode,
+          quality_mode_output: r.quality_mode_output || r.quality_mode,
+          style: r.style,
+          style_name: r.style_name || r.style,
+          style_category: r.style_category || 'unknown',
+          generation_mode: r.generation_mode,
+          authenticated: r.authenticated,
+          selected_provider: r.selected_provider || r.provider,
+          provider_score: r.provider_score,
+          strategy_version: r.strategy_version || AdaptiveStrategyManager.VERSION,
+          routing_reason: r.routing_reason
+        };
       }
       return null;
     }));
-    return new Response(JSON.stringify({ created: Math.floor(Date.now() / 1000), data: imagesData.filter(d => d !== null), generation_time_ms: duration, api_endpoint: CONFIG.PROVIDERS.pollinations.endpoint, authenticated: CONFIG.POLLINATIONS_AUTH.enabled, styles_available: mergedStyles.stats.total }), { headers: corsHeaders({ 'Content-Type': 'application/json', 'X-Generation-Time': duration + 'ms', 'X-API-Endpoint': CONFIG.PROVIDERS.pollinations.endpoint, 'X-Styles-Count': mergedStyles.stats.total.toString() }) });
+
+    return new Response(JSON.stringify({
+      created: Math.floor(Date.now() / 1000),
+      data: imagesData.filter(d => d !== null),
+      generation_time_ms: duration,
+      api_endpoint: CONFIG.PROVIDERS.pollinations.endpoint,
+      authenticated: CONFIG.POLLINATIONS_AUTH.enabled,
+      styles_available: mergedStyles.stats.total,
+      strategy: {
+        version: AdaptiveStrategyManager.VERSION,
+        selected_provider: selectedProviderForMetrics,
+        provider_score: providerScoreForMetrics,
+        quality_mode_input: requestedQualityMode,
+        quality_mode_output: finalQualityModeForMetrics
+      }
+    }), {
+      headers: corsHeaders({
+        'Content-Type': 'application/json',
+        'X-Generation-Time': duration + 'ms',
+        'X-API-Endpoint': CONFIG.PROVIDERS.pollinations.endpoint,
+        'X-Styles-Count': mergedStyles.stats.total.toString(),
+        'X-Selected-Provider': selectedProviderForMetrics || 'unknown',
+        'X-Provider-Score': providerScoreForMetrics === null ? 'n/a' : providerScoreForMetrics.toString(),
+        'X-Strategy-Version': AdaptiveStrategyManager.VERSION
+      })
+    });
   } catch (e) {
+    const failedDuration = Date.now() - startTime;
+    const failedProvider = e._providerName || selectedProviderForMetrics || requestedProviderForMetrics || CONFIG.DEFAULT_PROVIDER;
+    await strategyManager.recordProviderResult(failedProvider, { success: false, duration: failedDuration, errorMessage: e.message });
+
     logger.add("❌ Error", e.message);
-    return new Response(JSON.stringify({ error: { message: e.message, debug_logs: logger.get(), api_endpoint: CONFIG.PROVIDERS.pollinations.endpoint, authenticated: CONFIG.POLLINATIONS_AUTH.enabled } }), { status: 400, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+    return new Response(JSON.stringify({ error: { message: e.message, debug_logs: logger.get(), api_endpoint: CONFIG.PROVIDERS.pollinations.endpoint, authenticated: CONFIG.POLLINATIONS_AUTH.enabled, strategy_version: AdaptiveStrategyManager.VERSION, selected_provider: failedProvider } }), { status: 400, headers: corsHeaders({ 'Content-Type': 'application/json', 'X-Strategy-Version': AdaptiveStrategyManager.VERSION }) });
   }
 }
 // 🔥 Cyber-Banana UI: 包含每小時限額(5張)、Pro模型、燈箱、下載功能
@@ -6295,7 +6288,6 @@ function handleUI(request, env) {
     const hasAquaServerKey = !!(env && env.AQUA_API_KEY);
     const hasKinaiServerKey = !!(env && env.KINAI_API_KEY);
     const hasKaaiServerKey = !!(env && env.KAAI_API_KEY);
-    const hasAirforceServerKey = !!(env && env.AIRFORCE_API_KEY);
     const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
     
     // 生成樣式選單 HTML
@@ -6612,7 +6604,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <option value="infip">Ghostbot (Infip) 🌟</option>
         <option value="aqua">Aqua API 💧</option>
         <option value="kinai">Kinai API 🚀</option>
-        <option value="airforce">Airforce API ✈️</option>
         <option value="kaai">Kaai API 🎨</option>
     </select>
 </div>
@@ -7050,7 +7041,7 @@ const I18N={
         nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", nav_nano:"Nano版", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Flux 2 Dev / Imagen 4 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
         cooldown_msg: "⏳ 請等待冷卻時間...",
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
-        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
+        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
         nsfw_label: "🔞 解除成人內容限制 (NSFW)", nsfw_desc: "啟用此選項將允許生成成人內容 (Infip, Kinai)",
         batch_label: "🖼️ 批量生成", batch_size_label: "生成數量 (Batch Size)",
@@ -7066,7 +7057,7 @@ const I18N={
         nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Flux 2 Dev / Imagen 4 Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
         cooldown_msg: "⏳ Please wait for cooldown...",
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
-        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
+        provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
         nsfw_label: "🔞 Disable NSFW Filter", nsfw_desc: "Enable this option to allow adult content generation (Infip, Kinai)",
         batch_label: "🖼️ Batch Generation", batch_size_label: "Batch Size",
@@ -7082,7 +7073,7 @@ const I18N={
         nav_gen:"🎨 画像生成", nav_his:"📚 履歴", nav_nano:"Nano版", settings_title:"⚙️ 生成設定", provider_label:"API プロバイダー", model_label:"モデル選択", size_label:"画像サイズ", style_label:"アートスタイル 🎨", quality_label:"品質モード", seed_label:"シード値", seed_random:"🎲 ランダム", seed_lock:"🔒 固定", auto_opt_label:"✨ 自動最適化", auto_opt_desc:"ステップ数とガイダンスを自動調整", adv_settings:"🛠️ 詳細設定", steps_label:"生成ステップ数", guidance_label:"ガイダンススケール", gen_btn:"🎨 生成開始", empty_title:"まだ画像が生成されていません", pos_prompt:"ポジティブプロンプト", neg_prompt:"ネガティブプロンプト（任意）", ref_img:"参照画像 (Img2Img) 📸", stat_total:"📊 総記録数", stat_storage:"💾 ストレージ（永続）", btn_export:"📥 エクスポート", btn_clear:"🗑️ 全削除", no_history:"履歴がありません", btn_reuse:"🔄 再利用", btn_dl:"💾 ダウンロード",
         cooldown_msg: "⏳ クールダウンをお待ちください...",
         quality_economy: "エコノミー", quality_standard: "スタンダード", quality_ultra: "ウルトラHD",
-        provider_pollinations: "Pollinations.ai (無料)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
+        provider_pollinations: "Pollinations.ai (無料)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "APIキー", api_key_desc: "ローカルに保存", api_key_placeholder: "ここにAPIキーを貼り付け",
         nsfw_label: "🔞 NSFWフィルターを無効化", nsfw_desc: "このオプションを有効にすると、成人向けコンテンツの生成が可能になります（Infip, Kinai）",
         batch_label: "🖼️ バッチ生成", batch_size_label: "バッチサイズ",
@@ -7098,7 +7089,7 @@ const I18N={
         nav_gen:"🎨 이미지 생성", nav_his:"📚 기록", nav_nano:"Nano", settings_title:"⚙️ 생성 설정", provider_label:"API 공급자", model_label:"모델 선택", size_label:"이미지 크기", style_label:"아트 스타일 🎨", quality_label:"품질 모드", seed_label:"시드 값", seed_random:"🎲 랜덤", seed_lock:"🔒 잠금", auto_opt_label:"✨ 자동 최적화", auto_opt_desc:"스텝 및 가이던스 자동 조정", adv_settings:"🛠️ 고급 설정", steps_label:"생성 스텝", guidance_label:"가이던스 스케일", gen_btn:"🎨 생성 시작", empty_title:"아직 생성된 이미지가 없습니다", pos_prompt:"긍정적 프롬프트", neg_prompt:"부정적 프롬프트 (선택 사항)", ref_img:"참조 이미지 (Img2Img) 📸", stat_total:"📊 총 기록 수", stat_storage:"💾 저장 공간 (영구)", btn_export:"📥 내보내기", btn_clear:"🗑️ 전체 삭제", no_history:"기록이 없습니다", btn_reuse:"🔄 설정 재사용", btn_dl:"💾 다운로드",
         cooldown_msg: "⏳ 쿨다운을 기다려주세요...",
         quality_economy: "이코노미", quality_standard: "스탠다드", quality_ultra: "울트라 HD",
-        provider_pollinations: "Pollinations.ai (무료)", provider_infip: "Ghostbot (Infip) 🌟", provider_airforce: "Airforce API ✈️",
+        provider_pollinations: "Pollinations.ai (무료)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "API 키", api_key_desc: "로컬에 저장", api_key_placeholder: "여기에 API 키를 붙여넣으세요",
         nsfw_label: "🔞 NSFW 필터 비활성화", nsfw_desc: "이 옵션을 활성화하면 성인 콘텐츠 생성이 허용됩니다 (Infip, Kinai)",
         batch_label: "🖼️ 배치 생성", batch_size_label: "배치 크기",
@@ -7111,7 +7102,7 @@ const I18N={
         error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
     },
     ar:{
-        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", provider_kinai:"Kinai API 🚀", provider_airforce:"Airforce API ✈️", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip, Airforce)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
+        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", provider_kinai:"Kinai API 🚀", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip, Kinai)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
     }
 };
 
@@ -7365,7 +7356,6 @@ function updateModelOptions() {
             'infip': { url: 'https://infip.pro/api-keys', text: 'infip.pro/api-keys' },
             'aqua': { url: 'https://aqua-api.com/api-keys', text: 'aqua-api.com/api-keys' },
             'kinai': { url: 'https://kinai.ai/api-keys', text: 'kinai.ai/api-keys' },
-            'airforce': { url: 'https://api.airforce/', text: 'api.airforce/' },
             'kaai': { url: 'https://kaai.eu.cc/', text: 'kaai.eu.cc/' }
         };
         if (providerLinks[p]) {
@@ -7384,7 +7374,6 @@ function updateModelOptions() {
             if (p === 'infip') storedKey = sessionStorage.getItem('infip_api_key');
             if (p === 'aqua') storedKey = sessionStorage.getItem('aqua_api_key');
             if (p === 'kinai') storedKey = sessionStorage.getItem('kinai_api_key');
-            if (p === 'airforce') storedKey = sessionStorage.getItem('airforce_api_key');
             if (p === 'kaai') storedKey = sessionStorage.getItem('kaai_api_key');
             
             apiKeyInput.value = storedKey || '';
@@ -7642,7 +7631,6 @@ apiKeyInput.addEventListener('input', (e) => {
     if (p === 'infip') sessionStorage.setItem('infip_api_key', e.target.value);
     if (p === 'aqua') sessionStorage.setItem('aqua_api_key', e.target.value);
     if (p === 'kinai') sessionStorage.setItem('kinai_api_key', e.target.value);
-    if (p === 'airforce') sessionStorage.setItem('airforce_api_key', e.target.value);
     if (p === 'kaai') sessionStorage.setItem('kaai_api_key', e.target.value);
 });
 
@@ -7677,9 +7665,6 @@ if (${hasAquaServerKey} && frontendProviders.aqua) {
 }
 if (${hasKinaiServerKey} && frontendProviders.kinai) {
     frontendProviders.kinai.has_server_key = true;
-}
-if (${hasAirforceServerKey} && frontendProviders.airforce) {
-    frontendProviders.airforce.has_server_key = true;
 }
 if (${hasKaaiServerKey} && frontendProviders.kaai) {
     frontendProviders.kaai.has_server_key = true;
@@ -7796,7 +7781,6 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(curProvider === 'infip') localStorage.setItem('infip_api_key', curKey);
     if(curProvider === 'aqua') localStorage.setItem('aqua_api_key', curKey);
     if(curProvider === 'kinai') localStorage.setItem('kinai_api_key', curKey);
-    if(curProvider === 'airforce') localStorage.setItem('airforce_api_key', curKey);
 
     const prompt=document.getElementById('prompt').value;
     const resDiv=document.getElementById('results');
@@ -7832,7 +7816,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(qualityEl) qualityEl.value = 'ultra';
     
     let finalNegative = document.getElementById('negativePrompt').value;
-    if (isNSFW && (document.getElementById('provider').value === 'infip' || document.getElementById('provider').value === 'kinai' || document.getElementById('provider').value === 'airforce')) {
+    if (isNSFW && (document.getElementById('provider').value === 'infip' || document.getElementById('provider').value === 'kinai')) {
         // Filter out common NSFW keywords from negative prompt
         const nsfwKeywords = ['nsfw', 'nudity', 'naked', 'porn', 'xxx', 'uncensored'];
         let negParts = finalNegative.split(',').map(s => s.trim());
@@ -7884,7 +7868,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 
                 // Determine cooldown based on provider
                 const provider = document.getElementById('provider').value;
-                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : (provider === 'airforce' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC));
+                const cooldownTime = (provider === 'infip' || provider === 'kinai') ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
                 startCooldown(cooldownTime);
             };
         }else{
@@ -7905,7 +7889,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
             
             // Determine cooldown based on provider
             const provider = document.getElementById('provider').value;
-            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : (provider === 'airforce' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC));
+            const cooldownTime = (provider === 'infip' || provider === 'kinai') ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
             startCooldown(cooldownTime);
         }
     }catch(err){
