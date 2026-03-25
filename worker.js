@@ -25,27 +25,33 @@ PROJECT_VERSION: "11.16.0",
   },
   
   PRESET_SIZES: {
-    "square-1k": { name: "方形 1024x1024", width: 1024, height: 1024 },
-    "square-1.5k": { name: "方形 1536x1536", width: 1536, height: 1536 },
-    "square-2k": { name: "方形 2048x2048", width: 2048, height: 2048 },
-    "square-4k": { name: "方形 4096x4096 (4K)", width: 4096, height: 4096 },
-    "portrait-9-16-hd": { name: "豎屏 9:16 HD", width: 1080, height: 1920 },
-    "portrait-9-16-2k": { name: "豎屏 9:16 2K", width: 2160, height: 3840 },
-    "portrait-9-16-4k": { name: "豎屏 9:16 4K", width: 4320, height: 7680 },
-    "landscape-16-9-hd": { name: "橫屏 16:9 HD", width: 1920, height: 1080 },
-    "landscape-16-9-2k": { name: "橫屏 16:9 2K", width: 3840, height: 2160 },
-    "landscape-16-9-4k": { name: "橫屏 16:9 4K", width: 7680, height: 4320 },
-    "instagram-square": { name: "Instagram 方形", width: 1080, height: 1080 },
+    "square-1k": { name: "方形 1K (1:1)", width: 1024, height: 1024 },
+    "square-1.5k": { name: "方形 1.5K (1:1)", width: 1536, height: 1536 },
+    "square-2k": { name: "方形 2K (1:1)", width: 2048, height: 2048 },
+    "square-4k": { name: "方形 4K (1:1)", width: 4096, height: 4096 },
+
+    "portrait-3-4": { name: "直式 3:4", width: 768, height: 1024 },
+    "portrait-4-5": { name: "直式 4:5 (社群)", width: 1080, height: 1350 },
+    "portrait-9-16-hd": { name: "直式 9:16 HD", width: 1080, height: 1920 },
+    "portrait-9-16-2k": { name: "直式 9:16 2K", width: 1440, height: 2560 },
+    "portrait-9-21": { name: "直式 9:21 (超長)", width: 1080, height: 2520 },
+    "tall-1-2": { name: "直式 1:2", width: 1024, height: 2048 },
+
+    "landscape-4-3": { name: "橫式 4:3", width: 1024, height: 768 },
+    "landscape-3-2": { name: "橫式 3:2", width: 1200, height: 800 },
+    "landscape-16-9-hd": { name: "橫式 16:9 HD", width: 1920, height: 1080 },
+    "landscape-16-9-2k": { name: "橫式 16:9 2K", width: 2560, height: 1440 },
+    "landscape-21-9": { name: "橫式 21:9 (超寬)", width: 2520, height: 1080 },
+    "banner-2-1": { name: "橫幅 2:1", width: 2048, height: 1024 },
+
+    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 },
+    "cinematic-21-9-2k": { name: "電影感 21:9 2K", width: 3840, height: 1646 },
+    "ultra-4k-16-9": { name: "高解析 4K 16:9", width: 4096, height: 2304 },
+
+    "instagram-square": { name: "Instagram 方形 1:1", width: 1080, height: 1080 },
     "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 },
     "wallpaper-2k": { name: "桌布 2K", width: 2560, height: 1440 },
-    "wallpaper-4k": { name: "桌布 4K", width: 3840, height: 2160 },
-    "portrait-3-4": { name: "豎屏 3:4", width: 768, height: 1024 },
-    "portrait-4-5": { name: "豎屏 4:5", width: 1080, height: 1350 },
-    "landscape-4-3": { name: "橫屏 4:3", width: 1024, height: 768 },
-    "landscape-3-2": { name: "橫屏 3:2", width: 1200, height: 800 },
-    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 },
-    "cinematic-21-9-2k": { name: "電影感 21:9 2K", width: 3840, height: 1644 },
-    "cinematic-21-9-4k": { name: "電影感 21:9 4K", width: 7680, height: 3288 }
+    "wallpaper-4k": { name: "桌布 4K", width: 3840, height: 2160 }
   },
   
   PROVIDERS: {
@@ -63,13 +69,12 @@ PROJECT_VERSION: "11.16.0",
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "flux-2-dev", name: "Flux 2 Dev 🌟", confirmed: true, category: "flux", description: "Flux 2 開發者版本 - 高品質圖像生成", max_size: 2048, pricing: { image_price: 0.0005, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "nanobanana", name: "NanoBanana 🍌", confirmed: true, category: "flux", description: "NanoBanana 高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "flux-schnell", name: "Flux Schnell ⚡", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "zimage", name: "Z-Image Turbo ⚡", confirmed: true, category: "zimage", description: "快速 6B 參數圖像生成 (Alpha)", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "klein-large", name: "FLUX.2 Klein 9B 🌟", confirmed: true, category: "flux", description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
+        { id: "flux-schnell",  name: "Flux Schnell ⚡",    confirmed: true, category: "flux",  description: "快速且高質量的圖像生成",                      max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "zimage",        name: "Z-Image Turbo ⚡",   confirmed: true, category: "zimage",description: "快速 6B 參數圖像生成 (Alpha)",                  max_size: 2048, pricing: { image_price: 0.0002,  currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "klein",         name: "FLUX.2 Klein 4B",    confirmed: true, category: "flux",  description: "Advanced Flux 2 model",                      max_size: 2048, pricing: { image_price: 0.0003,  currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "klein-large",   name: "FLUX.2 Klein 9B 🌟", confirmed: true, category: "flux",  description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048, pricing: { image_price: 0.0004,  currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "grok-imagine",  name: "Grok Imagine 🚀",    confirmed: true, category: "grok",  description: "xAI Grok 圖像生成模型",                      max_size: 2048, pricing: { image_price: 0.0005,  currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "qwen-image",    name: "Qwen Image 🎨",      confirmed: true, category: "qwen",  description: "通義千問圖像生成模型",                        max_size: 2048, pricing: { image_price: 0.0003,  currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
@@ -137,24 +142,6 @@ PROJECT_VERSION: "11.16.0",
       rate_limit: { requests: 50, interval: 60 },
       max_size: { width: 2048, height: 2048 }
     },
-    kinai: {
-      name: "Kinai API",
-      endpoint: "https://kinai.eu.cc/v1",
-      type: "openai_compatible",
-      auth_mode: "bearer",
-      requires_key: true,
-      enabled: true,
-      default: false,
-      description: "Kinai AI 圖像生成服務",
-      features: {
-        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
-      },
-      models: [
-        { id: "glm-image", name: "GLM Image 🎨", category: "glm", description: "智譜 GLM 圖像生成模型", max_size: 2048 }
-      ],
-      rate_limit: { requests: 60, interval: 60 },
-      max_size: { width: 2048, height: 2048 }
-    },
     nonpon: {
       name: "Nonpon API",
       endpoint: "https://api-reverse-engineering.kines966176.workers.dev",
@@ -174,28 +161,6 @@ PROJECT_VERSION: "11.16.0",
       rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 4096, height: 4096 }
     },
-    kaai: {
-      name: "Kaai API",
-      endpoint: "https://kaai.eu.cc/v1",
-      type: "openai_compatible",
-      auth_mode: "bearer",
-      requires_key: true,
-      enabled: true,
-      default: false,
-      description: "Kaai AI 圖像生成服務 - OpenAI 相容 API",
-      features: {
-        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true, max_batch_size: 4
-      },
-      models: [
-        { id: "dall-e-3-hd", name: "DALL-E 3 HD 🌟", category: "dalle", description: "DALL-E 3 高清版本 - 最高品質圖像生成", max_size: 2048 },
-        { id: "gpt-image-1.5", name: "GPT Image 1.5 🎨", category: "gpt", description: "GPT Image 1.5 - 最新圖像生成模型", max_size: 2048 },
-        { id: "gpt-image-1", name: "GPT Image 1 🖼️", category: "gpt", description: "GPT Image 1 - OpenAI 圖像生成模型", max_size: 2048 },
-        { id: "dall-e-3", name: "DALL-E 3 ✨", category: "dalle", description: "DALL-E 3 - 高品質圖像生成", max_size: 2048 },
-        { id: "dall-e-2", name: "DALL-E 2 ⚡", category: "dalle", description: "DALL-E 2 - 快速圖像生成", max_size: 1024 }
-      ],
-      rate_limit: { requests: 60, interval: 60 },
-      max_size: { width: 2048, height: 2048 }
-      },
       supabase: {
       name: "Supabase API",
       endpoint: "https://gjosebfngzowbcrwzxnw.supabase.co/functions/v1/openai-compatible",
@@ -238,14 +203,13 @@ PROJECT_VERSION: "11.16.0",
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: {
-      "flux-2-dev": { min: 30, optimal: 35, max: 60 },
-      "imagen-4": { min: 25, optimal: 30, max: 50 },
-      "nanobanana": { min: 25, optimal: 30, max: 50 },
-      "seedream": { min: 25, optimal: 30, max: 50 },
+      "imagen-4":     { min: 25, optimal: 30, max: 50 },
       "flux-schnell": { min: 20, optimal: 25, max: 40 },
-      "zimage": { min: 25, optimal: 30, max: 50 },
-      "klein": { min: 25, optimal: 30, max: 50 },
-      "klein-large": { min: 30, optimal: 35, max: 55 }
+      "zimage":       { min: 25, optimal: 30, max: 50 },
+      "klein":        { min: 25, optimal: 30, max: 50 },
+      "klein-large":  { min: 30, optimal: 35, max: 55 },
+      "grok-imagine": { min: 25, optimal: 30, max: 50 },
+      "qwen-image":   { min: 25, optimal: 30, max: 50 }
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
     STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
@@ -265,14 +229,13 @@ PROJECT_VERSION: "11.16.0",
     },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise, jpeg artifacts, watermark, text, signature, mutation, deformed, extra limbs, extra fingers, bad hands, bad feet, poor composition, out of frame, worst quality, normal quality, error, missing fingers, extra digit, fewer digits, cropped",
     MODEL_QUALITY_PROFILES: {
-      "flux-2-dev": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.25, guidance_boost: 1.2, recommended_quality: "ultra" },
-      "imagen-4": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "seedream": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "flux-schnell": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
-      "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" }
+      "imagen-4":     { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1,  recommended_quality: "ultra" },
+      "flux-schnell": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0,  guidance_boost: 1.0,  recommended_quality: "standard" },
+      "zimage":       { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1,  recommended_quality: "ultra" },
+      "klein":        { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1,  recommended_quality: "ultra" },
+      "klein-large":  { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2,  guidance_boost: 1.15, recommended_quality: "ultra" },
+      "grok-imagine": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1,  recommended_quality: "ultra" },
+      "qwen-image":   { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1,  guidance_boost: 1.05, recommended_quality: "standard" }
     }
   }
 };
@@ -754,7 +717,7 @@ class PollinationsProvider {
     let validReferenceImages = [];
     if (referenceImages && referenceImages.length > 0) {
       if (!supportsRefImages) {
-        logger.add("⚠️ Reference Images", { warning: model + " 不支持參考圖像，已忽略", supported_models: ["flux-2-dev", "imagen-4"] });
+        logger.add("⚠️ Reference Images", { warning: model + " 不支持參考圖像，已忽略", supported_models: ["imagen-4"] });
       } else if (referenceImages.length > maxRefImages) {
         logger.add("⚠️ Reference Images", { warning: model + " 最多支持 " + maxRefImages + " 張參考圖", provided: referenceImages.length, using: maxRefImages });
         validReferenceImages = referenceImages.slice(0, maxRefImages);
@@ -1797,285 +1760,6 @@ class AquaProvider {
   }
 }
 
-class KinaiProvider {
-  constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
-  
-  async generate(prompt, options, logger) {
-    const { model = "flux-2-dev", width = 1024, height = 1024, apiKey = "", style = "none", negativePrompt = "", nsfw = false } = options;
-    
-    // Prefer environment variable if available
-    const finalApiKey = this.env.KINAI_API_KEY || apiKey;
-
-    if (!finalApiKey) throw new Error("Kinai API Key is required (Set KINAI_API_KEY env var or provide via UI)");
-
-    let basePrompt = prompt;
-    let translationLog = { translated: false };
-    if (/[\u4e00-\u9fa5]/.test(prompt)) {
-      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
-      const translation = await translateToEnglish(prompt, this.env);
-      if (translation.translated) {
-        basePrompt = translation.text;
-        translationLog = translation;
-        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
-      }
-    }
-
-    // Apply Style
-    const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
-    logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
-
-    const url = `${this.config.endpoint}/images/generations`;
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${finalApiKey}`,
-      'User-Agent': 'Flux-AI-Pro-Worker'
-    };
-    
-    // Kinai supports various sizes
-    let sizeStr = "1024x1024";
-    if (width > height && width >= 1500) sizeStr = "1792x1024";
-    else if (height > width && height >= 1500) sizeStr = "1024x1792";
-    else if (width >= 2048) sizeStr = "2048x2048";
-    
-    // Kinai supports up to 4 images per request
-    const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
-
-    const body = {
-      model: model,
-      prompt: enhancedPrompt,
-      n: batchSize,
-      size: sizeStr,
-      response_format: "url"
-    };
-
-    // NSFW Mode - Disable safety checks
-    if (nsfw) {
-      body.safety_check = false;
-      body.censor_nsfw = false;
-      logger.add("🔞 NSFW Mode", { enabled: true, note: "Safety checks disabled" });
-    }
-
-    logger.add("📡 Kinai Request", { endpoint: url, model: model, size: sizeStr });
-
-    try {
-      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
-      
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Kinai API Error (${response.status}): ${errText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Handle Async Task (if any accidental async model used)
-      if (data.task_id) {
-         throw new Error("Async models (task_id) are not supported in this version. Please use Sync models like flux-2-dev.");
-      }
-      
-      if (data.data && data.data.length > 0) {
-        // Handle multiple images response
-        if (data.data.length > 1) {
-            const results = [];
-            for(const item of data.data) {
-                if(item.url) {
-                    const imgUrl = item.url;
-                    const imgResp = await fetch(imgUrl);
-                    const imageBuffer = await imgResp.arrayBuffer();
-                    results.push({
-                        imageData: imageBuffer,
-                        contentType: imgResp.headers.get('content-type') || 'image/png',
-                        url: imgUrl,
-                        provider: this.name,
-                        model: model,
-                        seed: -1,
-                        width: width,
-                        height: height,
-                        authenticated: true
-                    });
-                }
-            }
-            return {
-                batch_results: results,
-                provider: this.name,
-                cost: "QUOTA"
-            };
-        }
-
-        const imgUrl = data.data[0].url;
-        logger.add("⬇️ Downloading Image", { url: imgUrl });
-        
-        // Download image to return binary
-        const imgResp = await fetch(imgUrl);
-        const imageBuffer = await imgResp.arrayBuffer();
-        const contentType = imgResp.headers.get('content-type') || 'image/png';
-        
-        return {
-            imageData: imageBuffer,
-            contentType: contentType,
-            url: imgUrl,
-            provider: this.name,
-            model: model,
-            seed: -1,
-            width: width,
-            height: height,
-            auto_translated: translationLog.translated,
-            authenticated: true,
-            cost: "QUOTA"
-        };
-      } else {
-        throw new Error("Invalid response format from Kinai API");
-      }
-    } catch (e) {
-      logger.add("❌ Kinai Failed", { error: e.message });
-      throw e;
-    }
-  }
-}
-
-// =================================================================================
-// KaaiProvider - Kaai API Provider (OpenAI Compatible)
-// =================================================================================
-class KaaiProvider {
-  constructor(config, env) {
-    this.config = config;
-    this.name = config.name;
-    this.env = env;
-  }
-  
-  async generate(prompt, options, logger) {
-    const {
-      model = "dall-e-3",
-      width = 1024,
-      height = 1024,
-      apiKey = "",
-      style = "none",
-      negativePrompt = "",
-      quality = "standard",
-      outputFormat = "jpeg",
-      background = "auto"
-    } = options;
-    
-    // Prefer environment variable if available
-    const finalApiKey = this.env.KAAI_API_KEY || apiKey;
-
-    if (!finalApiKey) throw new Error("Kaai API Key is required (Set KAAI_API_KEY env var or provide via UI)");
-
-    let basePrompt = prompt;
-    let translationLog = { translated: false };
-    if (/[\u4e00-\u9fa5]/.test(prompt)) {
-      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
-      const translation = await translateToEnglish(prompt, this.env);
-      if (translation.translated) {
-        basePrompt = translation.text;
-        translationLog = translation;
-        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
-      }
-    }
-
-    // Apply Style
-    const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
-    logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
-
-    const url = `${this.config.endpoint}/images/generations`;
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${finalApiKey}`,
-      'User-Agent': 'Flux-AI-Pro-Worker'
-    };
-    
-    // Map size to supported formats
-    let sizeStr = "1024x1024";
-    if (width > height && width >= 1500) sizeStr = "1792x1024";
-    else if (height > width && height >= 1500) sizeStr = "1024x1792";
-    else if (width >= 2048) sizeStr = "2048x2048";
-    
-    // Kaai supports up to 4 images per request
-    const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
-
-    const body = {
-      model: model,
-      prompt: enhancedPrompt,
-      n: batchSize,
-      size: sizeStr,
-      quality: quality,
-      style: style === 'none' ? 'natural' : 'vivid',
-      output_format: outputFormat,
-      background: background,
-      response_format: "url"
-    };
-
-    logger.add("📡 Kaai Request", { endpoint: url, model: model, size: sizeStr, quality: quality });
-
-    try {
-      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
-      
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Kaai API Error (${response.status}): ${errText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.data && data.data.length > 0) {
-        // Handle multiple images response
-        if (data.data.length > 1) {
-            const results = [];
-            for(const item of data.data) {
-                if(item.url) {
-                    const imgUrl = item.url;
-                    const imgResp = await fetch(imgUrl);
-                    const imageBuffer = await imgResp.arrayBuffer();
-                    results.push({
-                        imageData: imageBuffer,
-                        contentType: imgResp.headers.get('content-type') || 'image/png',
-                        url: imgUrl,
-                        provider: this.name,
-                        model: model,
-                        seed: -1,
-                        width: width,
-                        height: height,
-                        authenticated: true
-                    });
-                }
-            }
-            return {
-                batch_results: results,
-                provider: this.name,
-                cost: "QUOTA"
-            };
-        }
-
-        const imgUrl = data.data[0].url;
-        logger.add("⬇️ Downloading Image", { url: imgUrl });
-        
-        // Download image to return binary
-        const imgResp = await fetch(imgUrl);
-        const imageBuffer = await imgResp.arrayBuffer();
-        const contentType = imgResp.headers.get('content-type') || 'image/png';
-        
-        return {
-            imageData: imageBuffer,
-            contentType: contentType,
-            url: imgUrl,
-            provider: this.name,
-            model: model,
-            seed: -1,
-            width: width,
-            height: height,
-            auto_translated: translationLog.translated,
-            authenticated: true,
-            cost: "QUOTA"
-        };
-      } else {
-        throw new Error("Invalid response format from Kaai API");
-      }
-    } catch (e) {
-      logger.add("❌ Kaai Failed", { error: e.message });
-      throw e;
-    }
-  }
-  }
-  
   // =================================================================================
   // SupabaseProvider - Supabase OpenAI Compatible API Provider
   // =================================================================================
@@ -2354,6 +2038,87 @@ class KaaiProvider {
     }
   }
 // =================================================================================
+// RatioResolver - Shared Gemini ratio/size resolver
+// =================================================================================
+class RatioResolver {
+	static GEMINI_SUPPORTED_RATIOS = [
+		{ ratio: '1:1', w: 1, h: 1 },
+		{ ratio: '16:9', w: 16, h: 9 },
+		{ ratio: '9:16', w: 9, h: 16 },
+		{ ratio: '4:3', w: 4, h: 3 },
+		{ ratio: '3:4', w: 3, h: 4 },
+		{ ratio: '3:2', w: 3, h: 2 },
+		{ ratio: '2:3', w: 2, h: 3 },
+		{ ratio: '21:9', w: 21, h: 9 },
+		{ ratio: '9:21', w: 9, h: 21 }
+	];
+
+	static toSafeInt(value, fallback = 1) {
+		const n = Number.parseInt(value, 10);
+		return Number.isFinite(n) && n > 0 ? n : fallback;
+	}
+
+	static gcd(a, b) {
+		let x = Math.abs(a);
+		let y = Math.abs(b);
+		while (y !== 0) {
+			const t = y;
+			y = x % y;
+			x = t;
+		}
+		return x || 1;
+	}
+
+	static findExactRatio(width, height) {
+		const w = this.toSafeInt(width);
+		const h = this.toSafeInt(height);
+		const d = this.gcd(w, h);
+		const ratioStr = `${Math.round(w / d)}:${Math.round(h / d)}`;
+		const found = this.GEMINI_SUPPORTED_RATIOS.find(item => item.ratio === ratioStr);
+		return found ? found.ratio : null;
+	}
+
+	static findClosestRatio(width, height) {
+		const w = this.toSafeInt(width);
+		const h = this.toSafeInt(height);
+		const inputLogRatio = Math.log(w / h);
+		let closest = this.GEMINI_SUPPORTED_RATIOS[0];
+		let minDiff = Number.POSITIVE_INFINITY;
+
+		for (const ratioInfo of this.GEMINI_SUPPORTED_RATIOS) {
+			const supportedLogRatio = Math.log(ratioInfo.w / ratioInfo.h);
+			const diff = Math.abs(inputLogRatio - supportedLogRatio);
+			if (diff < minDiff) {
+				minDiff = diff;
+				closest = ratioInfo;
+			}
+		}
+
+		return closest.ratio;
+	}
+
+	static convertToGeminiAspectRatio(width, height) {
+		const exact = this.findExactRatio(width, height);
+		if (exact) return exact;
+		return this.findClosestRatio(width, height);
+	}
+
+	static convertToGeminiImageSize(width, height) {
+		const w = this.toSafeInt(width);
+		const h = this.toSafeInt(height);
+		const totalPixels = w * h;
+
+		if (totalPixels >= 3840 * 2160) {
+			return "4K";
+		}
+		if (totalPixels >= 1920 * 1080) {
+			return "2K";
+		}
+		return "1K";
+	}
+}
+
+// =================================================================================
 // NonponProvider - Nonpon API Provider
 // =================================================================================
 class NonponProvider {
@@ -2370,35 +2135,7 @@ class NonponProvider {
 	 * @returns {string} - Gemini 支援的 aspectRatio 字串
 	 */
 	convertToGeminiAspectRatio(width, height) {
-		// Gemini 支援的 aspectRatio 及其數值
-		const supportedRatios = [
-			{ ratio: '1:1', value: 1 },
-			{ ratio: '16:9', value: 16/9 },
-			{ ratio: '9:16', value: 9/16 },
-			{ ratio: '4:3', value: 4/3 },
-			{ ratio: '3:4', value: 3/4 },
-			{ ratio: '3:2', value: 3/2 },
-			{ ratio: '2:3', value: 2/3 },
-			{ ratio: '21:9', value: 21/9 },
-			{ ratio: '9:21', value: 9/21 }
-		];
-
-		// 計算輸入的比例值
-		const inputRatio = width / height;
-
-		// 找出最接近的支援比例
-		let closestRatio = supportedRatios[0];
-		let minDiff = Math.abs(inputRatio - closestRatio.value);
-
-		for (const ratioInfo of supportedRatios) {
-			const diff = Math.abs(inputRatio - ratioInfo.value);
-			if (diff < minDiff) {
-				minDiff = diff;
-				closestRatio = ratioInfo;
-			}
-		}
-
-		return closestRatio.ratio;
+		return RatioResolver.convertToGeminiAspectRatio(width, height);
 	}
 
 	/**
@@ -2408,16 +2145,7 @@ class NonponProvider {
 	 * @returns {string} - "1K", "2K", 或 "4K"
 	 */
 	convertToGeminiImageSize(width, height) {
-		const totalPixels = width * height;
-
-		// 根據總像素判斷
-		if (totalPixels >= 3840 * 2160) {
-			return "4K"; // 4K: 8294400 像素以上
-		} else if (totalPixels >= 1920 * 1080) {
-			return "2K"; // 2K: 2073600 像素以上
-		} else {
-			return "1K"; // 1K: 其他
-		}
+		return RatioResolver.convertToGeminiImageSize(width, height);
 	}
 
 	async generate(prompt, options, logger) {
@@ -2679,7 +2407,7 @@ class ProviderQueueManager {
     };
     
     // 不使用隊列的供應商列表
-    this.noQueueProviders = ['pollinations', 'infip', 'kinai', 'nonpon', 'kaai'];
+    this.noQueueProviders = ['pollinations', 'infip', 'nonpon'];
   }
 
   /**
@@ -2837,9 +2565,7 @@ class MultiProviderRouter {
     if (key === 'pollinations') this.providers[key] = new PollinationsProvider(config, env);
     else if (key === 'infip') this.providers[key] = new InfipProvider(config, env);
     else if (key === 'aqua') this.providers[key] = new AquaProvider(config, env);
-    else if (key === 'kinai') this.providers[key] = new KinaiProvider(config, env);
     else if (key === 'nonpon') this.providers[key] = new NonponProvider(config, env);
-    else if (key === 'kaai') this.providers[key] = new KaaiProvider(config, env);
     else if (key === 'supabase') this.providers[key] = new SupabaseProvider(config, env);
     }
     }
@@ -2966,8 +2692,8 @@ class MultiProviderRouter {
       return await this.queueManager.addToQueue(activeProviderName, async () => {
         const results = [];
 
-        // Optimization for Infip and Kaai: Use native batching if available
-        if ((activeProviderName === 'infip' || activeProviderName === 'kaai') && numOutputs > 1) {
+        // Optimization for Infip: Use native batching if available
+        if (activeProviderName === 'infip' && numOutputs > 1) {
           const batchOptions = { ...effectiveOptions, numOutputs: numOutputs, seed: effectiveOptions.seed };
           try {
             const result = await activeProvider.generate(prompt, batchOptions, logger);
@@ -5482,49 +5208,68 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         }
     }
     
-    // ====== Gemini 參數轉換函數 ======
-    function convertToGeminiAspectRatio(width, height) {
-    const w = parseInt(width);
-    const h = parseInt(height);
-    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
-    const divisor = gcd(w, h);
-    const ratioW = Math.round(w / divisor);
-    const ratioH = Math.round(h / divisor);
-    const ratioStr = ratioW + ':' + ratioH;
-    // Gemini 支援的比例
-    const supportedRatios = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9', '9:21'];
-    if (supportedRatios.includes(ratioStr)) {
-    return ratioStr;
+    // ====== Gemini 參數轉換函數（與伺服端 RatioResolver 對齊） ======
+    const GEMINI_SUPPORTED_RATIOS = [
+    { ratio: '1:1', w: 1, h: 1 },
+    { ratio: '16:9', w: 16, h: 9 },
+    { ratio: '9:16', w: 9, h: 16 },
+    { ratio: '4:3', w: 4, h: 3 },
+    { ratio: '3:4', w: 3, h: 4 },
+    { ratio: '3:2', w: 3, h: 2 },
+    { ratio: '2:3', w: 2, h: 3 },
+    { ratio: '21:9', w: 21, h: 9 },
+    { ratio: '9:21', w: 9, h: 21 }
+    ];
+
+    function toSafeInt(value, fallback = 1) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) && n > 0 ? n : fallback;
     }
-    // 嘗試找到最接近的支援比例
-    const ratioValue = w / h;
-    const ratioMap = {
-    '1:1': 1,
-    '16:9': 16/9,
-    '9:16': 9/16,
-    '4:3': 4/3,
-    '3:4': 3/4,
-    '3:2': 3/2,
-    '2:3': 2/3,
-    '21:9': 21/9,
-    '9:21': 9/21
-    };
-    let closestRatio = '1:1';
-    let minDiff = Math.abs(ratioValue - 1);
-    for (const [ratio, value] of Object.entries(ratioMap)) {
-    const diff = Math.abs(ratioValue - value);
+
+    function gcd(a, b) {
+    let x = Math.abs(a);
+    let y = Math.abs(b);
+    while (y !== 0) {
+    const t = y;
+    y = x % y;
+    x = t;
+    }
+    return x || 1;
+    }
+
+    function convertToGeminiAspectRatio(width, height) {
+    const w = toSafeInt(width);
+    const h = toSafeInt(height);
+
+    const divisor = gcd(w, h);
+    const ratioStr = Math.round(w / divisor) + ':' + Math.round(h / divisor);
+    const exact = GEMINI_SUPPORTED_RATIOS.find(item => item.ratio === ratioStr);
+    if (exact) {
+    return exact.ratio;
+    }
+
+    const inputLogRatio = Math.log(w / h);
+    let closestRatio = GEMINI_SUPPORTED_RATIOS[0].ratio;
+    let minDiff = Number.POSITIVE_INFINITY;
+
+    for (const item of GEMINI_SUPPORTED_RATIOS) {
+    const supportedLogRatio = Math.log(item.w / item.h);
+    const diff = Math.abs(inputLogRatio - supportedLogRatio);
     if (diff < minDiff) {
     minDiff = diff;
-    closestRatio = ratio;
+    closestRatio = item.ratio;
     }
     }
+
     return closestRatio;
     }
     
     function convertToGeminiImageSize(width, height) {
-    const pixels = parseInt(width) * parseInt(height);
-    if (pixels >= 4096 * 4096 * 0.8) return '4K';
-    if (pixels >= 2048 * 2048 * 0.8) return '2K';
+    const w = toSafeInt(width);
+    const h = toSafeInt(height);
+    const pixels = w * h;
+    if (pixels >= 3840 * 2160) return '4K';
+    if (pixels >= 1920 * 1080) return '2K';
     return '1K';
     }
     
@@ -6286,8 +6031,6 @@ function handleUI(request, env) {
   const key = `ratelimit:${ip}`;
     const hasInfipServerKey = !!(env && env.INFIP_API_KEY);
     const hasAquaServerKey = !!(env && env.AQUA_API_KEY);
-    const hasKinaiServerKey = !!(env && env.KINAI_API_KEY);
-    const hasKaaiServerKey = !!(env && env.KAAI_API_KEY);
     const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
     
     // 生成樣式選單 HTML
@@ -6603,8 +6346,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <option value="pollinations" selected>Pollinations.ai (Free)</option>
         <option value="infip">Ghostbot (Infip) 🌟</option>
         <option value="aqua">Aqua API 💧</option>
-        <option value="kinai">Kinai API 🚀</option>
-        <option value="kaai">Kaai API 🎨</option>
     </select>
 </div>
 <div class="form-group" id="apiKeyGroup" style="display:none; background:rgba(245, 158, 11, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
@@ -6618,7 +6359,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="form-group" id="nsfwGroup" style="display:none; align-items:center; justify-content:space-between; background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.3);">
     <div>
         <label for="nsfwToggle" style="margin:0; cursor:pointer; color:#f87171;">🔞 解除成人內容限制 (NSFW)</label>
-        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">啟用此選項將允許生成成人內容 (Infip, Kinai)</div>
+        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">啟用此選項將允許生成成人內容 (Infip)</div>
     </div>
     <input type="checkbox" id="nsfwToggle" style="width:20px; height:20px; cursor:pointer;">
 </div>
@@ -7043,7 +6784,7 @@ const I18N={
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
         provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
-        nsfw_label: "🔞 解除成人內容限制 (NSFW)", nsfw_desc: "啟用此選項將允許生成成人內容 (Infip, Kinai)",
+        nsfw_label: "🔞 解除成人內容限制 (NSFW)", nsfw_desc: "啟用此選項將允許生成成人內容 (Infip)",
         batch_label: "🖼️ 批量生成", batch_size_label: "生成數量 (Batch Size)",
         prompt_generator_title: "專業提示詞生成器", prompt_generator_upload_ref: "上傳參考圖片 (可選)",
         prompt_generator_select_image: "選擇圖片", prompt_generator_simple_desc: "簡單描述你想要的畫面",
@@ -7059,7 +6800,7 @@ const I18N={
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
         provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "API Key", api_key_desc: "Stored locally", api_key_placeholder: "Paste your API Key here",
-        nsfw_label: "🔞 Disable NSFW Filter", nsfw_desc: "Enable this option to allow adult content generation (Infip, Kinai)",
+        nsfw_label: "🔞 Disable NSFW Filter", nsfw_desc: "Enable this option to allow adult content generation (Infip)",
         batch_label: "🖼️ Batch Generation", batch_size_label: "Batch Size",
         prompt_generator_title: "Professional Prompt Generator", prompt_generator_upload_ref: "Upload Reference Image (Optional)",
         prompt_generator_select_image: "Select Image", prompt_generator_simple_desc: "Simply describe the image you want",
@@ -7075,7 +6816,7 @@ const I18N={
         quality_economy: "エコノミー", quality_standard: "スタンダード", quality_ultra: "ウルトラHD",
         provider_pollinations: "Pollinations.ai (無料)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "APIキー", api_key_desc: "ローカルに保存", api_key_placeholder: "ここにAPIキーを貼り付け",
-        nsfw_label: "🔞 NSFWフィルターを無効化", nsfw_desc: "このオプションを有効にすると、成人向けコンテンツの生成が可能になります（Infip, Kinai）",
+        nsfw_label: "🔞 NSFWフィルターを無効化", nsfw_desc: "このオプションを有効にすると、成人向けコンテンツの生成が可能になります（Infip）",
         batch_label: "🖼️ バッチ生成", batch_size_label: "バッチサイズ",
         prompt_generator_title: "プロフェッショナルプロンプトジェネレーター", prompt_generator_upload_ref: "参照画像をアップロード（任意）",
         prompt_generator_select_image: "画像を選択", prompt_generator_simple_desc: "作成したい画像を簡単に説明",
@@ -7091,7 +6832,7 @@ const I18N={
         quality_economy: "이코노미", quality_standard: "스탠다드", quality_ultra: "울트라 HD",
         provider_pollinations: "Pollinations.ai (무료)", provider_infip: "Ghostbot (Infip) 🌟",
         api_key_label: "API 키", api_key_desc: "로컬에 저장", api_key_placeholder: "여기에 API 키를 붙여넣으세요",
-        nsfw_label: "🔞 NSFW 필터 비활성화", nsfw_desc: "이 옵션을 활성화하면 성인 콘텐츠 생성이 허용됩니다 (Infip, Kinai)",
+        nsfw_label: "🔞 NSFW 필터 비활성화", nsfw_desc: "이 옵션을 활성화하면 성인 콘텐츠 생성이 허용됩니다 (Infip)",
         batch_label: "🖼️ 배치 생성", batch_size_label: "배치 크기",
         prompt_generator_title: "전문 프롬프트 생성기", prompt_generator_upload_ref: "참조 이미지 업로드 (선택 사항)",
         prompt_generator_select_image: "이미지 선택", prompt_generator_simple_desc: "원하는 이미지를 간단히 설명",
@@ -7102,7 +6843,7 @@ const I18N={
         error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
     },
     ar:{
-        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", provider_kinai:"Kinai API 🚀", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip, Kinai)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
+        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
     }
 };
 
@@ -7354,9 +7095,7 @@ function updateModelOptions() {
     if (apiKeysLink) {
         const providerLinks = {
             'infip': { url: 'https://infip.pro/api-keys', text: 'infip.pro/api-keys' },
-            'aqua': { url: 'https://aqua-api.com/api-keys', text: 'aqua-api.com/api-keys' },
-            'kinai': { url: 'https://kinai.ai/api-keys', text: 'kinai.ai/api-keys' },
-            'kaai': { url: 'https://kaai.eu.cc/', text: 'kaai.eu.cc/' }
+            'aqua': { url: 'https://aqua-api.com/api-keys', text: 'aqua-api.com/api-keys' }
         };
         if (providerLinks[p]) {
             apiKeysLink.href = providerLinks[p].url;
@@ -7373,8 +7112,6 @@ function updateModelOptions() {
             let storedKey = '';
             if (p === 'infip') storedKey = sessionStorage.getItem('infip_api_key');
             if (p === 'aqua') storedKey = sessionStorage.getItem('aqua_api_key');
-            if (p === 'kinai') storedKey = sessionStorage.getItem('kinai_api_key');
-            if (p === 'kaai') storedKey = sessionStorage.getItem('kaai_api_key');
             
             apiKeyInput.value = storedKey || '';
             apiKeyInput.placeholder = "Paste your API Key here";
@@ -7383,11 +7120,11 @@ function updateModelOptions() {
         apiKeyGroup.style.display = 'none';
     }
     
-    // Logic: Show NSFW Toggle for Infip and Kinai only
+    // Logic: Show batch generation for Infip only
     const nsfwGroup = document.getElementById('nsfwGroup');
     const batchGroup = document.getElementById('batchGroup');
     
-    if (p === 'infip' || p === 'kinai' || p === 'kaai') {
+    if (p === 'infip') {
         nsfwGroup.style.display = 'none';
         batchGroup.style.display = 'block';
     } else {
@@ -7630,8 +7367,6 @@ apiKeyInput.addEventListener('input', (e) => {
     const p = providerSelect.value;
     if (p === 'infip') sessionStorage.setItem('infip_api_key', e.target.value);
     if (p === 'aqua') sessionStorage.setItem('aqua_api_key', e.target.value);
-    if (p === 'kinai') sessionStorage.setItem('kinai_api_key', e.target.value);
-    if (p === 'kaai') sessionStorage.setItem('kaai_api_key', e.target.value);
 });
 
 // Show/hide reference images section based on model support
@@ -7662,12 +7397,6 @@ if (${hasInfipServerKey} && frontendProviders.infip) {
 }
 if (${hasAquaServerKey} && frontendProviders.aqua) {
     frontendProviders.aqua.has_server_key = true;
-}
-if (${hasKinaiServerKey} && frontendProviders.kinai) {
-    frontendProviders.kinai.has_server_key = true;
-}
-if (${hasKaaiServerKey} && frontendProviders.kaai) {
-    frontendProviders.kaai.has_server_key = true;
 }
 const PROVIDERS=frontendProviders;
 
@@ -7780,7 +7509,6 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     const curKey = document.getElementById('apiKey').value;
     if(curProvider === 'infip') localStorage.setItem('infip_api_key', curKey);
     if(curProvider === 'aqua') localStorage.setItem('aqua_api_key', curKey);
-    if(curProvider === 'kinai') localStorage.setItem('kinai_api_key', curKey);
 
     const prompt=document.getElementById('prompt').value;
     const resDiv=document.getElementById('results');
@@ -7816,7 +7544,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(qualityEl) qualityEl.value = 'ultra';
     
     let finalNegative = document.getElementById('negativePrompt').value;
-    if (isNSFW && (document.getElementById('provider').value === 'infip' || document.getElementById('provider').value === 'kinai')) {
+    if (isNSFW && document.getElementById('provider').value === 'infip') {
         // Filter out common NSFW keywords from negative prompt
         const nsfwKeywords = ['nsfw', 'nudity', 'naked', 'porn', 'xxx', 'uncensored'];
         let negParts = finalNegative.split(',').map(s => s.trim());
@@ -7868,7 +7596,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 
                 // Determine cooldown based on provider
                 const provider = document.getElementById('provider').value;
-                const cooldownTime = (provider === 'infip' || provider === 'kinai') ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
+                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
                 startCooldown(cooldownTime);
             };
         }else{
@@ -7889,7 +7617,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
             
             // Determine cooldown based on provider
             const provider = document.getElementById('provider').value;
-            const cooldownTime = (provider === 'infip' || provider === 'kinai') ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
+            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
             startCooldown(cooldownTime);
         }
     }catch(err){
@@ -8437,9 +8165,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap; padding:15px 20px;">
-    <span style="font-size:14px;">Powered by Flux AI Pro • <a href="https://github.com/kinai9661/Flux-AI-Pro" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
+    <span style="font-size:14px;">Powered by Flux AI Pro • <a href="https://github.com" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
     <span style="opacity:0.5">|</span>
-    <span style="opacity:0.9; font-size:14px;">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://aquadevs.com" target="_blank">AquaDevs</a> • <a href="https://kinai.eu.cc" target="_blank">Kinai</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
+    <span style="opacity:0.9; font-size:14px;">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://aquadevs.com" target="_blank">AquaDevs</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
     <span style="opacity:0.5">|</span>
     <div class="friend-badges" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <a href="https://dofollow.tools" target="_blank" style="display:inline-flex; align-items:center; justify-content:center;">

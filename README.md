@@ -1,12 +1,12 @@
 # 🎨 Flux AI Pro - NanoBanana Edition
 
-![Version](https://img.shields.io/badge/Version-11.18.0-8B5CF6?style=flat-square)
+![Version](https://img.shields.io/badge/Version-11.21.0-8B5CF6?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
 ![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 ![I18N](https://img.shields.io/badge/I18N-5%20Languages-green?style=flat-square)
 ![Models](https://img.shields.io/badge/Models-40%2B-purple?style=flat-square)
 
-**Flux AI Pro - NanoBanana Edition** 是一個基於 Cloudflare Workers 構建的高性能、單文件 AI 圖像生成解決方案。它整合了 Pollinations.ai、Infip/Ghostbot、Aqua Server、Kinai API、Nonpon API 和 Kaai API 等頂級 AI 供應商，提供無伺服器、極速且功能豐富的創作體驗。
+**Flux AI Pro - NanoBanana Edition** 是一個基於 Cloudflare Workers 構建的高性能、單文件 AI 圖像生成解決方案。它整合了 Pollinations.ai、Infip/Ghostbot、Aqua Server、Nonpon API 和 Supabase API 等頂級 AI 供應商，提供無伺服器、極速且功能豐富的創作體驗。
 
 ---
 
@@ -14,7 +14,7 @@
 
 - [🌍 English Introduction](#-english-introduction)
 - [🚀 Key Features](#-key-features)
-- [🔥 v11.17.0 更新亮點](#-v11170-更新亮點-release-highlights)
+- [🔥 v11.21.0 更新亮點](#-v11210-更新亮點-release-highlights)
 - [✨ 核心功能特色](#-核心功能特色)
 - [🗂️ 專案結構](#️-專案結構)
 - [🔧 核心技術架構](#-核心技術架構)
@@ -35,7 +35,7 @@
 - **雙重介面設計**：
   - **專業版 UI**：完整控制 Steps、Guidance 和 Seed 等參數。
   - **NanoBanana Pro**：簡化、手機友好的「一鍵」生成體驗，使用 Gemini 3 Pro Image Preview 模型。
-- **多供應商架構**：無縫切換 Pollinations.ai（免費）、Infip/Ghostbot（專業版）、Aqua Server、Kinai API、Nonpon API 和 Kaai API。
+- **多供應商架構**：無縫切換 Pollinations.ai（免費）、Infip/Ghostbot（專業版）、Aqua Server、Nonpon API 和 Supabase API。
 - **全球語言支援**：原生支援 **英文、繁體中文、日文、韓文和阿拉伯文**。
 - **智慧語言偵測**：自動遵循您的系統/瀏覽器語言設置。
 - **完整 RTL 支援**：為從右到左語言（阿拉伯語）提供專用佈局和文字方向。
@@ -46,7 +46,7 @@
 
 ---
 
-## 🔥 v11.17.0 更新亮點 (Release Highlights)
+## 🔥 v11.21.0 更新亮點 (Release Highlights)
 
 ### 🎯 Gemini 原生 API 參數支援
 - **aspectRatio 參數**：Nonpon API 現在使用 Gemini 原生比例格式（1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 21:9, 9:21）
@@ -79,15 +79,16 @@
 - 提供完整的 RESTful API 端點供外部呼叫
 
 ### 🔧 供應商優化
-- **Nonpon API**：新增 Nonpon API 供應商，使用 Gemini 3 Pro Image Preview 模型。
-- **Kaai API**：新增 Kaai API 供應商，支援 DALL-E 3、GPT Image 系列模型。
+- **Pollinations.ai 模型更新**：移除舊版模型（flux-2-dev、seedream、nanobanana），新增 Grok Imagine 和 Qwen Image 模型。
+- **Nonpon API**：Nano Pro ���用，使用 Gemini 3 Pro Image Preview 模型。
 
 ### 🆕 新功能
+- **Grok Imagine 🚀**：xAI Grok 圖像生成模型，Pollinations.ai 最新模型。
+- **Qwen Image 🎨**：通義千���（Qwen）圖像生成模型，Pollinations.ai 新增支援。
 - **Gemini 3 Pro 參數控制**：Nano Pro 頁面新增 Steps、Guidance、Quality Mode 參數控制。
 - **2K/4K 輸出支持**：Nano Pro 頁面支持 2K (2048x2048) 和 4K (4096x4096) 輸出。
 - **風格快捷按鈕**：Nano Pro 頁面新增 10 個常用風格快捷按鈕。
 - **每分鐘配額系統**：Nano Pro 頁面改為每分鐘 3 次免費配額。
-- **歷史記錄本地化**：Nano Pro 頁面歷史記錄僅在本地顯示，不再同步到主頁 IndexedDB。
 
 ---
 
@@ -113,15 +114,14 @@
 
 #### 🎨 Pollinations.ai（免費）
 
-| 模型 | 描述 | 最大尺寸 |
-|------|------|----------|
-| **Flux 2 Dev** 🌟 | Flux 2 開發者版本 - 高品質圖像生成 | 2048x2048 |
-| **NanoBanana** 🍌 | NanoBanana 高品質模型 | 2048x2048 |
-| **SeeDream** 🌈 | 夢幻般的圖像生成 | 2048x2048 |
-| **Flux Schnell** ⚡ | 快速且高質量的圖像生成 | 2048x2048 |
-| **Z-Image** ⚡ | 快速 6B 參數圖像生成 (Alpha) | 2048x2048 |
-| **FLUX.2 Klein 4B** | Advanced Flux 2 model | 2048x2048 |
-| **FLUX.2 Klein 9B** 🌟 | Advanced Flux 2 Large model - 9B parameters | 2048x2048 |
+| 模型 ID | 名稱 | ���述 | 最大尺寸 |
+|---------|------|------|----------|
+| `flux-schnell` | **Flux Schnell ⚡** | 快速且高質量的圖像生成 | 2048x2048 |
+| `zimage` | **Z-Image Turbo ⚡** | ���速 6B 參數圖像生成 (Alpha) | 2048x2048 |
+| `klein` | **FLUX.2 Klein 4B** | Advanced Flux 2 model | 2048x2048 |
+| `klein-large` | **FLUX.2 Klein 9B 🌟** | Advanced Flux 2 Large model - 9B parameters | 2048x2048 |
+| `grok-imagine` | **Grok Imagine 🚀** | xAI Grok 圖像生���模型 | 2048x2048 |
+| `qwen-image` | **Qwen Image 🎨** | 通義千問圖像生成模型 | 2048x2048 |
 
 #### 🔥 Infip/Ghostbot（專業版）
 
@@ -156,15 +156,6 @@
 
 **特色功能**：Img2Img 功能（nanobanana 支援參考圖片上傳）
 
-#### 🌟 Kinai API
-
-| 模型 | 描述 | 最大尺寸 |
-|------|------|----------|
-| **GLM Image** 🎨 | 智譜 GLM 圖像生成模型 | 2048x2048 |
-
-**特色功能**：NSFW 模式支援、批量生成（最多 4 張）
-
-
 #### 🍌 Nonpon API（Nano Pro 專用）
 
 | 模型 | 描述 | 最大尺寸 |
@@ -172,18 +163,6 @@
 | **Gemini 3 Pro Image Preview** 🌟 | Google Gemini 3 Pro 高品質圖像生成模型 | 4096x4096 |
 
 **特色功能**：2K/4K 輸出支持、Steps/Guidance/Quality Mode 參數控制、風格快捷按鈕、每分鐘 3 次免費配額
-
-#### 🎨 Kaai API（OpenAI 相容）
-
-| 模型 | 描述 | 最大尺寸 |
-|------|------|----------|
-| **DALL-E 3 HD** 🌟 | DALL-E 3 高清版本 - 最高品質圖像生成 | 2048x2048 |
-| **GPT Image 1.5** 🎨 | GPT Image 1.5 - 最新圖像生成模型 | 2048x2048 |
-| **GPT Image 1** 🖼️ | GPT Image 1 - OpenAI 圖像生成模型 | 2048x2048 |
-| **DALL-E 3** ✨ | DALL-E 3 - 高品質圖像生成 | 2048x2048 |
-| **DALL-E 2** ⚡ | DALL-E 2 - 快速圖像生成 | 1024x1024 |
-
-**特色功能**：OpenAI 相容 API、批量生成（最多 4 張）
 
 ### 4. 風格系統
 
@@ -278,8 +257,6 @@ Flux-AI-Pro-main/
 | `PollinationsProvider` | worker.js:457 | Pollinations API 處理 |
 | `InfipProvider` | worker.js:741 | Infip API 處理 |
 | `AquaProvider` | worker.js:891 | Aqua API 處理 (含輪詢) |
-| `KinaiProvider` | worker.js:1192 | Kinai API 處理 |
-| `KaaiProvider` | worker.js:1330 | Kaai API 處理 |
 | `HDOptimizer` | worker.js:347 | HD 優化器 |
 | `ParameterOptimizer` | worker.js:382 | 參數優化器 |
 | `StyleProcessor` | worker.js:424 | 風格處理器 |
@@ -345,9 +322,7 @@ npx wrangler kv:namespace create "FLUX_KV"
 npx wrangler secret put POLLINATIONS_API_KEY
 npx wrangler secret put INFIP_API_KEY
 npx wrangler secret put AQUA_API_KEY
-npx wrangler secret put KINAI_API_KEY
 npx wrangler secret put NONPON_API_KEY
-npx wrangler secret put KAAI_API_KEY
 ```
 
 ### 5. 部署
@@ -436,9 +411,7 @@ GET /api/stats
 - [Pollinations.ai](https://pollinations.ai) - Free AI Image API
 - [Infip.pro](https://infip.pro) - Ghostbot Web API
 - [Aqua Server](https://aqua.server) - AI Generation Server
-- [Kinai API](https://kinai.eu.cc) - High-Performance AI Generation API
 - [Nonpon API](https://api-reverse-engineering.kines966176.workers.dev) - AI Image Generation API (Nano Pro 專用)
-- [Kaai API](https://kaai.eu.cc) - OpenAI Compatible API (DALL-E/GPT Image)
 - [ShowMeBest.AI](https://showmebest.ai) - AI Tool Directory
 - [Cloudflare Workers](https://workers.cloudflare.com) - Serverless Platform
 
@@ -451,6 +424,20 @@ MIT License. 歡迎 Fork 與二次開發。
 ---
 
 ## 📝 更新日誌 (Changelog)
+
+### v11.21.0 (2026-03-24)
+- 移除 Kinai API、Kaai API 相關章節與說明
+- 清理供應商列表與 Secrets 設定示例
+- 更新文件版本與更新日誌
+
+### v11.20.0 (2026-03-24)
+- **Pollinations.ai 模型更新**：
+  - 移除：`flux-2-dev`、`seedream`、`nanobanana`（已下線）
+  - 新增：`grok-imagine`（xAI Grok 圖像生成）、`qwen-image`（通義千問圖像生���）
+- 更新 `OPTIMIZATION_RULES.MODEL_STEPS` 步數配置
+- 更新 `HD_OPTIMIZATION.MODEL_QUALITY_PROFILES` 品質設定檔
+- 更新 5 種語言翻譯（zh、en、ja、ko、ar）
+- 修��� `supported_models` 警告陣列中的 hardcoded 模型 ID
 
 ### v11.19.0 (2026-03-02)
 - **Supabase API 輪詢機制**：完整實作非同步任務輪詢功能
@@ -476,7 +463,7 @@ MIT License. 歡迎 Fork 與二次開發。
 - 4:5 IG 比例自動轉換為最接近的 Gemini 支援比例（3:4）
 
 ### v11.16.0 (2026-02-19)
-- 新增 Kaai API 供應商支援
+- 新增 OpenAI 相容供應商支援
 - 改進錯誤處理和日誌記錄
 - 更新風格系統架構
 
@@ -493,4 +480,4 @@ MIT License. 歡迎 Fork 與二次開發。
 
 ---
 
-**Made with ❤️ by Kinai**
+**Made with ❤️ by Flux AI Pro Team**
